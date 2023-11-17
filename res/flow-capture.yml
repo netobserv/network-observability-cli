@@ -32,9 +32,8 @@ spec:
             value: "1"
           - name: ENABLE_RTT
             value: "true"
-          # TODO: find why this breaks collection: EOF
-          #- name: ENABLE_PKT_DROPS
-          #  value: "true"
+          - name: ENABLE_PKT_DROPS
+            value: "true"
           - name: ENABLE_DNS_TRACKING
             value: "true"
           - name: EXPORT
