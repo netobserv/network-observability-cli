@@ -41,3 +41,12 @@ spec:
             value: "tcp"
           - name: FLOWS_TARGET_PORT
             value: "9999"
+        volumeMounts:
+            - name: bpf-kernel-debug
+              mountPath: /sys/kernel/debug
+              mountPropagation: Bidirectional
+      volumes:
+        - name: bpf-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+            type: Directory
