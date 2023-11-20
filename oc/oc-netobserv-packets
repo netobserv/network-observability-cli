@@ -16,4 +16,3 @@ setup packets $filter
 
 echo "\nRunning network-observability-cli get-packets... "
 ${BASH_SOURCE%/*}/network-observability-cli --nodes $nodes --ports $ports --filter $filter get-packets
-

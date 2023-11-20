@@ -15,4 +15,3 @@ setup flows $filter
 
 echo "\nRunning network-observability-cli get-flows... "
 ${BASH_SOURCE%/*}/network-observability-cli --nodes $nodes --ports $ports ${filter:+"--filter" "$filter"} get-flows
-

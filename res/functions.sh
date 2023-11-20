@@ -67,5 +67,8 @@ function cleanup {
   if output=$(oc whoami 2>&1); then
     printf "\nCleaning up... "
     oc delete namespace netobserv-cli
+  else
+    echo "Cleanup namespace skipped"
+    return
   fi
 }

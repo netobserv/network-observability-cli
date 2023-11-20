@@ -45,7 +45,7 @@ func runFlowCapture(cmd *cobra.Command, args []string) {
 	go scanner()
 
 	wg.Add(len(addresses))
-	for i, _ := range addresses {
+	for i := range addresses {
 		go runFlowCaptureOnAddr(addresses[i], nodes[i])
 	}
 	wg.Wait()
@@ -145,7 +145,10 @@ func updateTable() {
 		// clear terminal to render table properly
 		c := exec.Command("clear")
 		c.Stdout = os.Stdout
-		c.Run()
+		err := c.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		fmt.Print("Running network-observability-cli as Flow Capture\n")
 		fmt.Printf("Log level: %s\n", logLevel)

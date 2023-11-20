@@ -29,7 +29,7 @@ var results = []PcapResult{}
 
 func runPacketCapture(cmd *cobra.Command, args []string) {
 	wg.Add(len(addresses))
-	for i, _ := range addresses {
+	for i := range addresses {
 		go runPacketCaptureOnAddr(addresses[i], nodes[i])
 	}
 	wg.Wait()
@@ -103,7 +103,10 @@ func managePcapTable(result PcapResult) {
 		// clear terminal to render table properly
 		c := exec.Command("clear")
 		c.Stdout = os.Stdout
-		c.Run()
+		err := c.Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		log.Infof("Running network-observability-cli as Packet Capture\nLog level: %s\nFilters: %s\n", logLevel, filter)
 
