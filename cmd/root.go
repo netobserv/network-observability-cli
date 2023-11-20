@@ -25,7 +25,8 @@ var (
 	addresses []string
 	filter    string
 
-	lastRefresh = time.Now()
+	startupTime = time.Now()
+	lastRefresh = startupTime
 	wg          = sync.WaitGroup{}
 	mutex       = sync.Mutex{}
 

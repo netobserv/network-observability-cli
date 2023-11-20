@@ -28,6 +28,8 @@ spec:
         env:
           - name: INTERFACES
             value: "{{FLOW_FILTER_VALUE}}"
+          - name: EXCLUDE_INTERFACES
+            value: "lo"
           - name: SAMPLING
             value: "1"
           - name: ENABLE_RTT

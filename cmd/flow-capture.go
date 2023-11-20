@@ -3,23 +3,23 @@ package cmd
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/textproto"
 	"os"
 	"os/exec"
+	"regexp"
+	"slices"
 	"sort"
+	"strings"
 	"time"
 
-	"github.com/jpillora/sizestr"
+	"github.com/eiannone/keyboard"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
+	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
 
 	"github.com/fatih/color"
-	"github.com/rodaine/table"
-)
-
-const (
-	flowsToShow = 40
 )
 
 var flowCmd = &cobra.Command{
@@ -29,9 +29,21 @@ var flowCmd = &cobra.Command{
 	Run:   runFlowCapture,
 }
 
-var lastFlows = []config.GenericMap{}
+var (
+	regexes     = []string{}
+	flowsToShow = 40
+	raw         = "Raw"
+	standard    = "Standard"
+	pktDrop     = "PktDrop"
+	dns         = "DNS"
+	rtt         = "RTT"
+	display     = []string{pktDrop, dns, rtt}
+	lastFlows   = []config.GenericMap{}
+)
 
 func runFlowCapture(cmd *cobra.Command, args []string) {
+	go scanner()
+
 	wg.Add(len(addresses))
 	for i, _ := range addresses {
 		go runFlowCaptureOnAddr(addresses[i], nodes[i])
@@ -78,12 +90,12 @@ func runFlowCaptureOnAddr(addr string, filename string) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			go manageFlowTable(line)
+			go manageFlowsDisplay(line)
 		}
 	}
 }
 
-func manageFlowTable(line []byte) {
+func manageFlowsDisplay(line []byte) {
 	genericMap := config.GenericMap{}
 	err := json.Unmarshal(line, &genericMap)
 	if err != nil {
@@ -98,10 +110,33 @@ func manageFlowTable(line []byte) {
 	sort.Slice(lastFlows, func(i, j int) bool {
 		return lastFlows[i]["TimeFlowEndMs"].(float64) < lastFlows[j]["TimeFlowEndMs"].(float64)
 	})
+	if len(regexes) > 0 {
+		filtered := []config.GenericMap{}
+		for _, flow := range lastFlows {
+			match := true
+			for i := range regexes {
+				ok, _ := regexp.MatchString(regexes[i], fmt.Sprintf("%v", flow))
+				match = match && ok
+				if !match {
+					break
+				}
+			}
+			if match {
+				filtered = append(filtered, flow)
+			}
+		}
+		lastFlows = filtered
+	}
 	if len(lastFlows) > flowsToShow {
 		lastFlows = lastFlows[len(lastFlows)-flowsToShow:]
 	}
+	updateTable()
 
+	// unlock
+	mutex.Unlock()
+}
+
+func updateTable() {
 	// don't refresh terminal too often to avoid blinking
 	now := time.Now()
 	if int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
@@ -112,12 +147,16 @@ func manageFlowTable(line []byte) {
 		c.Stdout = os.Stdout
 		c.Run()
 
-		log.Infof("Running network-observability-cli as Flow Capture\nLog level: %s\nFilters: %s\n", logLevel, filter)
+		fmt.Print("Running network-observability-cli as Flow Capture\n")
+		fmt.Printf("Log level: %s\n", logLevel)
+		fmt.Printf("Collection filters: %s\n", filter)
+		fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
+		fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
 
 		// recreate table from scratch
 		headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
 		columnFmt := color.New(color.FgHiYellow).SprintfFunc()
-		tbl := table.New(
+		cols := []interface{}{
 			"Time",
 			"SrcAddr",
 			"SrcPort",
@@ -128,65 +167,211 @@ func manageFlowTable(line []byte) {
 			"Proto",
 			"Dscp",
 			"Bytes",
-			"DropBytes",
 			"Packets",
-			"DropPackets",
-			"DropState",
-			"DropCause",
-			"DnsId",
-			"DnsLatencyMs",
-			"DnsRCode",
-			"DnsErrno",
-			"RTT",
-		)
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-		// append most recent rows
-		for _, flow := range lastFlows {
-			tbl.AddRow(
-				time.UnixMilli(int64(flow["TimeFlowEndMs"].(float64))).Format("15:04:05.000000"),
-				flow["SrcAddr"],
-				flow["SrcPort"],
-				flow["DstAddr"],
-				flow["DstPort"],
-				flow["FlowDirection"],
-				flow["Interface"],
-				flow["Proto"],
-				flow["Dscp"],
-				ToPacketCount(flow, "Bytes"),
-				ToPacketCount(flow, "PktDropBytes"),
-				flow["Packets"],
-				flow["PktDropPackets"],
-				flow["PktDropLatestState"],
-				flow["PktDropLatestDropCause"],
-				flow["DnsId"],
-				ToDuration(flow, "DnsLatencyMs", time.Millisecond),
-				flow["DnsRCode"],
-				flow["DnsErrno"],
-				ToDuration(flow, "TimeFlowRttNs", time.Nanosecond),
-			)
 		}
 
-		// print table
-		tbl.Print()
-	}
+		if slices.Contains(display, pktDrop) {
+			cols = append(cols, []interface{}{
+				"DropBytes",
+				"DropPackets",
+				"DropState",
+				"DropCause",
+			}...)
+		}
 
-	// unlock
-	mutex.Unlock()
+		if slices.Contains(display, dns) {
+			cols = append(cols, []interface{}{
+				"DnsId",
+				"DnsLatencyMs",
+				"DnsRCode",
+				"DnsErrno",
+			}...)
+		}
+
+		if slices.Contains(display, rtt) {
+			cols = append(cols, []interface{}{
+				"RTT",
+			}...)
+		}
+
+		if slices.Contains(display, raw) {
+			fmt.Print("Raw flow logs:\n")
+			for _, flow := range lastFlows {
+				fmt.Printf("%v\n", flow)
+			}
+			fmt.Printf("%s\n", strings.Repeat("-", 500))
+		} else {
+			tbl := table.New(cols...)
+			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+			// append most recent rows
+			for _, flow := range lastFlows {
+				row := []interface{}{
+					time.UnixMilli(int64(flow["TimeFlowEndMs"].(float64))).Format("15:04:05.000000"),
+					ToText(flow, "SrcAddr"),
+					ToText(flow, "SrcPort"),
+					ToText(flow, "DstAddr"),
+					ToText(flow, "DstPort"),
+					ToDirection(flow, "FlowDirection"),
+					ToText(flow, "Interface"),
+					ToProto(flow, "Proto"),
+					ToDSCP(flow, "Dscp"),
+					ToPacketCount(flow, "Bytes"),
+					ToText(flow, "Packets"),
+				}
+
+				if slices.Contains(display, pktDrop) {
+					row = append(row, []interface{}{
+						ToPacketCount(flow, "PktDropBytes"),
+						ToText(flow, "PktDropPackets"),
+						ToText(flow, "PktDropLatestState"),
+						ToText(flow, "PktDropLatestDropCause"),
+					}...)
+				}
+
+				if slices.Contains(display, dns) {
+					row = append(row, []interface{}{
+						ToText(flow, "DnsId"),
+						ToDuration(flow, "DnsLatencyMs", time.Millisecond),
+						ToText(flow, "DnsRCode"),
+						ToText(flow, "DnsErrno"),
+					}...)
+				}
+
+				if slices.Contains(display, rtt) {
+					row = append(row, []interface{}{
+						ToDuration(flow, "TimeFlowRttNs", time.Nanosecond),
+					}...)
+				}
+
+				tbl.AddRow(row...)
+			}
+
+			// inserting empty row ensure minimum column sizes
+			emptyRow := []interface{}{
+				strings.Repeat("-", 16), // TimeFlowEndMs
+				strings.Repeat("-", 16), // SrcAddr
+				strings.Repeat("-", 6),  // SrcPort
+				strings.Repeat("-", 16), // DstAddr
+				strings.Repeat("-", 6),  // DstPort
+				strings.Repeat("-", 10), // FlowDirection
+				strings.Repeat("-", 16), // Interface
+				strings.Repeat("-", 6),  // Proto
+				strings.Repeat("-", 8),  // Dscp
+				strings.Repeat("-", 6),  // Bytes
+				strings.Repeat("-", 6),  // Packets
+			}
+
+			if slices.Contains(display, pktDrop) {
+				emptyRow = append(emptyRow, []interface{}{
+					strings.Repeat("-", 12), // PktDropBytes
+					strings.Repeat("-", 12), // PktDropPackets
+					strings.Repeat("-", 20), // PktDropLatestState
+					strings.Repeat("-", 40), // PktDropLatestDropCause
+				}...)
+			}
+
+			if slices.Contains(display, dns) {
+				emptyRow = append(emptyRow, []interface{}{
+					strings.Repeat("-", 6), // DnsId
+					strings.Repeat("-", 6), // DnsLatencyMs
+					strings.Repeat("-", 6), // DnsRCode
+					strings.Repeat("-", 6), // DnsErrno
+				}...)
+			}
+
+			if slices.Contains(display, rtt) {
+				emptyRow = append(emptyRow, []interface{}{
+					strings.Repeat("-", 6), // TimeFlowRttNs
+				}...)
+			}
+
+			tbl.AddRow(emptyRow...)
+
+			// print table
+			tbl.Print()
+		}
+
+		if len(regexes) > 0 {
+			fmt.Printf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
+		} else {
+			fmt.Printf("Type anything to filter incoming flows in view\n")
+		}
+	}
 }
 
-func ToPacketCount(genericMap config.GenericMap, fieldName string) interface{} {
-	v, ok := genericMap[fieldName]
-	if ok {
-		return sizestr.ToString(int64(v.(float64)))
+func scanner() {
+	if err := keyboard.Open(); err != nil {
+		panic(err)
 	}
-	return nil
-}
+	defer func() {
+		_ = keyboard.Close()
+	}()
 
-func ToDuration(genericMap config.GenericMap, fieldName string, factor time.Duration) interface{} {
-	v, ok := genericMap[fieldName]
-	if ok {
-		return (time.Duration(int64(v.(float64))) * factor).String()
+	for {
+		char, key, err := keyboard.GetKey()
+		if err != nil {
+			panic(err)
+		}
+		if key == keyboard.KeyCtrlC {
+			log.Info("Ctrl-C pressed, exiting program.")
+
+			// exit program
+			os.Exit(0)
+		} else if key == keyboard.KeyArrowUp {
+			flowsToShow = flowsToShow + 1
+		} else if key == keyboard.KeyArrowDown {
+			if flowsToShow > 10 {
+				flowsToShow = flowsToShow - 1
+			}
+		} else if key == keyboard.KeyArrowRight {
+			if slices.Contains(display, pktDrop) && slices.Contains(display, dns) && slices.Contains(display, rtt) {
+				display = []string{raw}
+			} else if slices.Contains(display, raw) {
+				display = []string{standard}
+			} else if slices.Contains(display, standard) {
+				display = []string{pktDrop}
+			} else if slices.Contains(display, pktDrop) {
+				display = []string{dns}
+			} else if slices.Contains(display, dns) {
+				display = []string{rtt}
+			} else {
+				display = []string{pktDrop, dns, rtt}
+			}
+		} else if key == keyboard.KeyArrowLeft {
+			if slices.Contains(display, pktDrop) && slices.Contains(display, dns) && slices.Contains(display, rtt) {
+				display = []string{rtt}
+			} else if slices.Contains(display, rtt) {
+				display = []string{dns}
+			} else if slices.Contains(display, dns) {
+				display = []string{pktDrop}
+			} else if slices.Contains(display, pktDrop) {
+				display = []string{standard}
+			} else if slices.Contains(display, standard) {
+				display = []string{raw}
+			} else {
+				display = []string{pktDrop, dns, rtt}
+			}
+		} else if key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2 {
+			if len(regexes) > 0 {
+				lastIndex := len(regexes) - 1
+				if len(regexes[lastIndex]) > 0 {
+					regexes[lastIndex] = regexes[lastIndex][:len(regexes[lastIndex])-1]
+				} else {
+					regexes = regexes[:lastIndex]
+				}
+			}
+		} else if key == keyboard.KeyEnter {
+			regexes = append(regexes, "")
+		} else {
+			if len(regexes) == 0 {
+				regexes = []string{string(char)}
+			} else {
+				lastIndex := len(regexes) - 1
+				regexes[lastIndex] = regexes[lastIndex] + string(char)
+			}
+		}
+		lastRefresh = startupTime
+		updateTable()
 	}
-	return nil
 }

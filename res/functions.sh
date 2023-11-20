@@ -1,6 +1,10 @@
 function setup {
   echo "Setting up... "
 
+  stty -F /dev/tty cbreak min 1
+  stty -F /dev/tty -echo
+  setterm -linewrap off
+
   if ! output=$(oc whoami 2>&1); then
     printf 'You must be connected using oc login command first\n' >&2
     exit 1
@@ -57,6 +61,9 @@ function setup {
 }
 
 function cleanup {
+  stty -F /dev/tty echo
+  setterm -linewrap on
+
   if output=$(oc whoami 2>&1); then
     printf "\nCleaning up... "
     oc delete namespace netobserv-cli
