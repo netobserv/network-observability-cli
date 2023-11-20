@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netobserv-cli
+  namespace: netobserv-cli
+  labels:
+    app: netobserv-cli
+spec:
+  selector:
+    matchLabels:
+      app: netobserv-cli
+  template:
+    metadata:
+      labels:
+        app: netobserv-cli
+    spec:
+      serviceAccountName: netobserv-cli
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: netobserv-cli
+        image: quay.io/netobserv/netobserv-ebpf-agent:main
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+          - name: ENABLE_PCA
+            value: "true"
+          - name: PCA_FILTER
+            value: "{{PCA_FILTER_VALUE}}"
+          - name: PCA_SERVER_PORT
+            value: "9999"

@@ -1,0 +1,17 @@
+#!/bin/bash
+source "${BASH_SOURCE%/*}/network-observability-cli-resources/functions.sh"
+
+# interface filter such as 'br-ex'
+filter=$1
+
+if [ -z "$filter" ]
+then
+  filter=""
+fi
+
+trap cleanup EXIT
+
+setup flows $filter
+
+echo "\nRunning network-observability-cli get-flows... "
+${BASH_SOURCE%/*}/network-observability-cli --nodes $nodes --ports $ports ${filter:+"--filter" "$filter"} get-flows

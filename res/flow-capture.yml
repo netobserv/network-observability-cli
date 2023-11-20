@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: netobserv-cli
+  namespace: netobserv-cli
+  labels:
+    app: netobserv-cli
+spec:
+  selector:
+    matchLabels:
+      app: netobserv-cli
+  template:
+    metadata:
+      labels:
+        app: netobserv-cli
+    spec:
+      serviceAccountName: netobserv-cli
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: netobserv-cli
+        # image: quay.io/netobserv/netobserv-ebpf-agent:main
+        image: quay.io/jpinsonn/netobserv-ebpf-agent:flow-stream-1
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+          - name: INTERFACES
+            value: "{{FLOW_FILTER_VALUE}}"
+          - name: EXCLUDE_INTERFACES
+            value: "lo"
+          - name: SAMPLING
+            value: "1"
+          - name: ENABLE_RTT
+            value: "true"
+          - name: ENABLE_PKT_DROPS
+            value: "true"
+          - name: ENABLE_DNS_TRACKING
+            value: "true"
+          - name: EXPORT
+            value: "tcp"
+          - name: FLOWS_TARGET_PORT
+            value: "9999"
+        volumeMounts:
+            - name: bpf-kernel-debug
+              mountPath: /sys/kernel/debug
+              mountPropagation: Bidirectional
+      volumes:
+        - name: bpf-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+            type: Directory

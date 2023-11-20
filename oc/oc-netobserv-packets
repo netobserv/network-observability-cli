@@ -1,0 +1,18 @@
+#!/bin/bash
+source "${BASH_SOURCE%/*}/network-observability-cli-resources/functions.sh"
+
+# pcap filter such as 'tcp,80'
+filter=$1
+
+if [ -z "$filter" ]
+then
+  echo "Specify a valid filter as first argument such as 'oc get-packets tcp,80'"
+  exit 1
+fi
+
+trap cleanup EXIT
+
+setup packets $filter
+
+echo "\nRunning network-observability-cli get-packets... "
+${BASH_SOURCE%/*}/network-observability-cli --nodes $nodes --ports $ports --filter $filter get-packets
