@@ -1,6 +1,6 @@
 module github.com/netobserv/network-observability-cli
 
-go 1.21.4
+go 1.21
 
 require (
 	github.com/fatih/color v1.16.0
