@@ -84,8 +84,7 @@ The `cleanup` function will automatically remove the eBPF programs when the CLI 
 You can add this plugin to your favorite oc commands using the following steps:
 
 ```bash
-make build
-sudo cp -a ./build/. /usr/bin/
+make oc-commands
 ```
 
 This will add `oc netobserv flows` and `oc netobserv packets` commands to your CLI.

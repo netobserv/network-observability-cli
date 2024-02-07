@@ -38,3 +38,7 @@ lint: prereqs ## Lint code
 .PHONY: clean
 clean:
 	@rm -rf $(DIST_DIR)
+
+.PHONY: oc-commands
+oc-commands: build
+	sudo cp -a ./build/. /usr/bin/
