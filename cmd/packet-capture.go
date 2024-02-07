@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -28,9 +29,13 @@ type PcapResult struct {
 var results = []PcapResult{}
 
 func runPacketCapture(cmd *cobra.Command, args []string) {
+	wg := sync.WaitGroup{}
 	wg.Add(len(addresses))
 	for i := range addresses {
-		go runPacketCaptureOnAddr(addresses[i], nodes[i])
+		go func(idx int) {
+			defer wg.Done()
+			runPacketCaptureOnAddr(addresses[idx], nodes[idx])
+		}(i)
 	}
 	wg.Wait()
 }

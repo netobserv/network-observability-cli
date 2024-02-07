@@ -27,7 +27,6 @@ var (
 
 	startupTime = time.Now()
 	lastRefresh = startupTime
-	wg          = sync.WaitGroup{}
 	mutex       = sync.Mutex{}
 
 	rootCmd = &cobra.Command{

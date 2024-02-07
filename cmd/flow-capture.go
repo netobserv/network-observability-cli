@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/eiannone/keyboard"
@@ -44,9 +45,13 @@ var (
 func runFlowCapture(cmd *cobra.Command, args []string) {
 	go scanner()
 
+	wg := sync.WaitGroup{}
 	wg.Add(len(addresses))
 	for i := range addresses {
-		go runFlowCaptureOnAddr(addresses[i], nodes[i])
+		go func(idx int) {
+			defer wg.Done()
+			runFlowCaptureOnAddr(addresses[idx], nodes[idx])
+		}(i)
 	}
 	wg.Wait()
 }
