@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eiannone/keyboard"
 	"github.com/fatih/color"
 	"github.com/jpillora/sizestr"
 	"github.com/rodaine/table"
@@ -30,6 +31,8 @@ var results = []PcapResult{}
 
 func runPacketCapture(cmd *cobra.Command, args []string) {
 	wg := sync.WaitGroup{}
+	go packetCaptureScanner()
+
 	wg.Add(len(addresses))
 	for i := range addresses {
 		go func(idx int) {
@@ -139,4 +142,26 @@ func managePcapTable(result PcapResult) {
 
 	// unlock
 	mutex.Unlock()
+}
+
+func packetCaptureScanner() {
+	if err := keyboard.Open(); err != nil {
+		panic(err)
+	}
+	defer func() {
+		_ = keyboard.Close()
+	}()
+
+	for {
+		_, key, err := keyboard.GetKey()
+		if err != nil {
+			panic(err)
+		}
+		if key == keyboard.KeyCtrlC {
+			log.Info("Ctrl-C pressed, exiting program.")
+
+			// exit program
+			os.Exit(0)
+		}
+	}
 }
