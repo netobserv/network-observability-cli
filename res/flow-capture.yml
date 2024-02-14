@@ -20,7 +20,7 @@ spec:
       containers:
       - name: netobserv-cli
         # image: quay.io/netobserv/netobserv-ebpf-agent:main
-        image: quay.io/jpinsonn/netobserv-ebpf-agent:flow-stream-1
+        image: quay.io/jpinsonn/netobserv-ebpf-agent:1497-1
         imagePullPolicy: Always
         securityContext:
           privileged: true
@@ -39,9 +39,79 @@ spec:
           - name: ENABLE_DNS_TRACKING
             value: "true"
           - name: EXPORT
-            value: "tcp"
-          - name: FLOWS_TARGET_PORT
-            value: "9999"
+            value: "direct-flp"
+          - name: FLP_CONFIG
+            value: >
+              {
+                "parameters":[
+                    {
+                      "name":"enrich",
+                      "transform":{
+                          "type":"network",
+                          "network":{
+                            "rules":[
+                                {
+                                  "input":"SrcAddr",
+                                  "output":"SrcK8S",
+                                  "type":"add_kubernetes",
+                                  "kubernetes":{
+                                      "add_zone": true
+                                  }
+                                },
+                                {
+                                  "input":"DstAddr",
+                                  "output":"DstK8S",
+                                  "type":"add_kubernetes",
+                                  "kubernetes":{
+                                      "add_zone": true
+                                  }
+                                },
+                                {
+                                  "type":"reinterpret_direction"
+                                },
+                                {
+                                  "type":"add_kubernetes_infra",
+                                  "kubernetes_infra":{
+                                      "inputs":[
+                                        "SrcAddr",
+                                        "DstAddr"
+                                      ],
+                                      "output":"K8S_FlowLayer",
+                                      "infra_prefixes":"netobserv"
+                                  }
+                                }
+                            ],
+                            "directionInfo":{
+                                "reporterIPField":"AgentIP",
+                                "srcHostField":"SrcK8S_HostIP",
+                                "dstHostField":"DstK8S_HostIP",
+                                "flowDirectionField":"FlowDirection",
+                                "ifDirectionField":"IfDirection"
+                            }
+                          }
+                      }
+                    },
+                    {
+                      "name":"send",
+                      "write":{
+                          "type":"tcp",
+                          "tcp":{
+                            "port":"9999"
+                          }
+                      }
+                    }
+                ],
+                "pipeline":[
+                    {
+                      "name":"enrich",
+                      "follows":"preset-ingester"
+                    },
+                    {
+                      "name":"send",
+                      "follows":"enrich"
+                    }
+                ],
+              }
         volumeMounts:
             - name: bpf-kernel-debug
               mountPath: /sys/kernel/debug

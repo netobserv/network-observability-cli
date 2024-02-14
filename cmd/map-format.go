@@ -12,7 +12,7 @@ const (
 	emptyText = "n/a"
 )
 
-func ToPacketCount(genericMap config.GenericMap, fieldName string) interface{} {
+func toCount(genericMap config.GenericMap, fieldName string) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
 		return sizestr.ToString(int64(v.(float64)))
@@ -20,7 +20,7 @@ func ToPacketCount(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
-func ToDuration(genericMap config.GenericMap, fieldName string, factor time.Duration) interface{} {
+func toDuration(genericMap config.GenericMap, fieldName string, factor time.Duration) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
 		return (time.Duration(int64(v.(float64))) * factor).String()
@@ -28,7 +28,7 @@ func ToDuration(genericMap config.GenericMap, fieldName string, factor time.Dura
 	return emptyText
 }
 
-func ToDirection(genericMap config.GenericMap, fieldName string) string {
+func toDirection(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		switch v.(float64) {
@@ -45,7 +45,7 @@ func ToDirection(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func ToProto(genericMap config.GenericMap, fieldName string) string {
+func toProto(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		switch v.(float64) {
@@ -348,7 +348,7 @@ func ToProto(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func ToDSCP(genericMap config.GenericMap, fieldName string) interface{} {
+func toDSCP(genericMap config.GenericMap, fieldName string) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
 		switch v.(float64) {
@@ -383,10 +383,75 @@ func ToDSCP(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
-func ToText(genericMap config.GenericMap, fieldName string) interface{} {
+func toText(genericMap config.GenericMap, fieldName string) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
 		return v
 	}
 	return emptyText
+}
+
+func toTimeString(genericMap config.GenericMap, fieldName string) string {
+	return time.UnixMilli(int64(genericMap[fieldName].(float64))).Format("15:04:05.000000")
+}
+
+func ToTableRow(genericMap config.GenericMap, cols []string) []interface{} {
+	row := []interface{}{}
+
+	for _, col := range cols {
+		// convert field name / value accordingly
+		switch col {
+		case "Time":
+			row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
+		case "SrcZone":
+			row = append(row, toText(genericMap, "SrcK8S_Zone"))
+		case "DstZone":
+			row = append(row, toText(genericMap, "DstK8S_Zone"))
+		case "SrcHostName":
+			row = append(row, toText(genericMap, "SrcK8S_HostName"))
+		case "DstHostName":
+			row = append(row, toText(genericMap, "DstK8S_HostName"))
+		case "SrcOwnerName":
+			row = append(row, toText(genericMap, "SrcK8S_OwnerName"))
+		case "SrcOwnerType":
+			row = append(row, toText(genericMap, "SrcK8S_OwnerType"))
+		case "DstOwnerName":
+			row = append(row, toText(genericMap, "DstK8S_OwnerName"))
+		case "DstOwnerType":
+			row = append(row, toText(genericMap, "DstK8S_OwnerType"))
+		case "SrcName":
+			row = append(row, toText(genericMap, "SrcK8S_Name"))
+		case "SrcType":
+			row = append(row, toText(genericMap, "SrcK8S_Type"))
+		case "DstName":
+			row = append(row, toText(genericMap, "DstK8S_Name"))
+		case "DstType":
+			row = append(row, toText(genericMap, "DstK8S_Type"))
+		case "Dir":
+			row = append(row, toDirection(genericMap, "FlowDirection"))
+		case "Proto":
+			row = append(row, toProto(genericMap, "Proto"))
+		case "Dscp":
+			row = append(row, toDSCP(genericMap, "Dscp"))
+		case "Bytes":
+			row = append(row, toCount(genericMap, "Bytes"))
+		case "DropBytes":
+			row = append(row, toCount(genericMap, "PktDropBytes"))
+		case "DropPackets":
+			row = append(row, toText(genericMap, "PktDropPackets"))
+		case "DropState":
+			row = append(row, toText(genericMap, "PktDropLatestState"))
+		case "DropCause":
+			row = append(row, toText(genericMap, "PktDropLatestDropCause"))
+		case "DnsLatency":
+			row = append(row, toDuration(genericMap, "DnsLatencyMs", time.Millisecond))
+		case "RTT":
+			row = append(row, toDuration(genericMap, "TimeFlowRttNs", time.Nanosecond))
+		default:
+			// else simply pick field value as text from column name
+			row = append(row, toText(genericMap, col))
+		}
+	}
+
+	return row
 }
