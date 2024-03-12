@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+set -eux
+
 function setup {
   echo "Setting up... "
 
@@ -11,27 +14,27 @@ function setup {
   fi
 
   filename=""
-  mkdir -p ${BASH_SOURCE%/*}/current
+  mkdir -p "${BASH_SOURCE%/*}"/current
 
-  if [ $1 = "flows" ]; then
+  if [ "$1" = "flows" ]; then
     filename="flow-capture"
-    sed "s/{{FLOW_FILTER_VALUE}}/$2/gi" ${BASH_SOURCE%/*}/flow-capture.yml > ${BASH_SOURCE%/*}/current/agent.yml
-  elif [ $1 = "packets" ]; then
+    sed "s/{{FLOW_FILTER_VALUE}}/$2/gi" "${BASH_SOURCE%/*}"/flow-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
+  elif [ "$1" = "packets" ]; then
     filename="packet-capture"
-    sed "s/{{PCA_FILTER_VALUE}}/$2/gi" ${BASH_SOURCE%/*}/packet-capture.yml > ${BASH_SOURCE%/*}/current/agent.yml
+    sed "s/{{PCA_FILTER_VALUE}}/$2/gi" "${BASH_SOURCE%/*}"/packet-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
   else
     echo "invalid setup argument"
     return
   fi
 
   echo "creating netobserv-cli namespace"
-  oc apply -f ${BASH_SOURCE%/*}/namespace.yml
+  oc apply -f "${BASH_SOURCE%/*}"/namespace.yml
 
   echo "creating service account"
-  oc apply -f ${BASH_SOURCE%/*}/service-account.yml
+  oc apply -f "${BASH_SOURCE%/*}"/service-account.yml
 
   echo "creating $filename agents"
-  oc apply -f ${BASH_SOURCE%/*}/current/agent.yml
+  oc apply -f "${BASH_SOURCE%/*}"/current/agent.yml
   oc rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
 
   echo "forwarding agents ports"
@@ -43,8 +46,8 @@ function setup {
   do 
     echo "forwarding $pod:9999 to local port $port"
     pkill --oldest --full "$port:9999"
-    oc port-forward $pod $port:9999 -n netobserv-cli & # run in background
-    node=$(oc get $pod -n netobserv-cli -o jsonpath='{.spec.nodeName}')
+    oc port-forward "$pod" $port:9999 -n netobserv-cli & # run in background
+    node=$(oc get "$pod" -n netobserv-cli -o jsonpath='{.spec.nodeName}')
     if [ -z "$ports" ]
     then
       nodes="$node"
@@ -64,6 +67,7 @@ function cleanup {
   stty -F /dev/tty echo
   setterm -linewrap on
 
+  # shellcheck disable=SC2034
   if output=$(oc whoami 2>&1); then
     printf "\nCleaning up... "
     oc delete namespace netobserv-cli

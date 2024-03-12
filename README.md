@@ -31,6 +31,14 @@ To run this CLI, you will need:
 
 To build the project locally:
 
+### Install `shellcheck` package
+
+```bash
+sudo dnf install -y shellcheck
+```
+
+### Build the project
+
 ```bash
 make build
 ```
