@@ -31,15 +31,23 @@ var flowCmd = &cobra.Command{
 }
 
 var (
-	regexes     = []string{}
 	flowsToShow = 40
-	raw         = "Raw"
-	standard    = "Standard"
-	pktDrop     = "PktDrop"
-	dns         = "DNS"
-	rtt         = "RTT"
-	display     = []string{pktDrop, dns, rtt}
+	regexes     = []string{}
 	lastFlows   = []config.GenericMap{}
+
+	rawDisplay      = "Raw"
+	standardDisplay = "Standard"
+	pktDropDisplay  = "PktDrop"
+	dnsDisplay      = "DNS"
+	rttDisplay      = "RTT"
+	display         = []string{pktDropDisplay, dnsDisplay, rttDisplay}
+
+	noEnrichment       = "None"
+	zoneEnrichment     = "Zone"
+	hostEnrichment     = "Host"
+	ownerEnrichment    = "Owner"
+	resourceEnrichment = "Resource"
+	enrichement        = []string{resourceEnrichment}
 )
 
 func runFlowCapture(cmd *cobra.Command, args []string) {
@@ -116,11 +124,14 @@ func manageFlowsDisplay(line []byte) {
 		return lastFlows[i]["TimeFlowEndMs"].(float64) < lastFlows[j]["TimeFlowEndMs"].(float64)
 	})
 	if len(regexes) > 0 {
+		// regexes may change during the render so we make a copy first
+		rCopy := make([]string, len(regexes))
+		copy(rCopy[:], regexes)
 		filtered := []config.GenericMap{}
 		for _, flow := range lastFlows {
 			match := true
-			for i := range regexes {
-				ok, _ := regexp.MatchString(regexes[i], fmt.Sprintf("%v", flow))
+			for i := range rCopy {
+				ok, _ := regexp.MatchString(rCopy[i], fmt.Sprintf("%v", flow))
 				match = match && ok
 				if !match {
 					break
@@ -139,6 +150,27 @@ func manageFlowsDisplay(line []byte) {
 
 	// unlock
 	mutex.Unlock()
+}
+
+func toSize(fieldName string) int {
+	switch fieldName {
+	case "SrcName", "DstName", "SrcOwnerName", "DstOwnerName", "SrcHostName", "DstHostName":
+		return 45
+	case "DropCause", "SrcAddr", "DstAddr":
+		return 40
+	case "DropState":
+		return 20
+	case "Time", "Interface", "SrcZone", "DstZone":
+		return 16
+	case "DropBytes", "DropPackets", "SrcOwnerType", "DstOwnerType":
+		return 12
+	case "Dir":
+		return 10
+	case "Dscp", "SrcType", "DstType":
+		return 8
+	default:
+		return 6
+	}
 }
 
 func updateTable() {
@@ -160,140 +192,119 @@ func updateTable() {
 		fmt.Printf("Collection filters: %s\n", filter)
 		fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
 		fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
+		fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
 
-		// recreate table from scratch
-		headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
-		columnFmt := color.New(color.FgHiYellow).SprintfFunc()
-		cols := []interface{}{
-			"Time",
-			"SrcAddr",
-			"SrcPort",
-			"DstAddr",
-			"DstPort",
-			"Dir",
-			"Interface",
-			"Proto",
-			"Dscp",
-			"Bytes",
-			"Packets",
-		}
-
-		if slices.Contains(display, pktDrop) {
-			cols = append(cols, []interface{}{
-				"DropBytes",
-				"DropPackets",
-				"DropState",
-				"DropCause",
-			}...)
-		}
-
-		if slices.Contains(display, dns) {
-			cols = append(cols, []interface{}{
-				"DnsId",
-				"DnsLatencyMs",
-				"DnsRCode",
-				"DnsErrno",
-			}...)
-		}
-
-		if slices.Contains(display, rtt) {
-			cols = append(cols, []interface{}{
-				"RTT",
-			}...)
-		}
-
-		if slices.Contains(display, raw) {
+		if slices.Contains(display, rawDisplay) {
 			fmt.Print("Raw flow logs:\n")
 			for _, flow := range lastFlows {
 				fmt.Printf("%v\n", flow)
 			}
 			fmt.Printf("%s\n", strings.Repeat("-", 500))
 		} else {
-			tbl := table.New(cols...)
+			// recreate table from scratch
+			headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
+			columnFmt := color.New(color.FgHiYellow).SprintfFunc()
+
+			// main field, always show the end time
+			cols := []string{
+				"Time",
+			}
+
+			// enrichment fields
+			if !slices.Contains(enrichement, noEnrichment) {
+				if slices.Contains(enrichement, zoneEnrichment) {
+					cols = append(cols,
+						"SrcZone",
+						"DstZone",
+					)
+				}
+
+				if slices.Contains(enrichement, hostEnrichment) {
+					cols = append(cols,
+						"SrcHostName",
+						"DstHostName",
+					)
+				}
+
+				if slices.Contains(enrichement, ownerEnrichment) {
+					cols = append(cols,
+						"SrcOwnerName",
+						"SrcOwnerType",
+						"DstOwnerName",
+						"DstOwnerType",
+					)
+				}
+
+				if slices.Contains(enrichement, resourceEnrichment) {
+					cols = append(cols,
+						"SrcName",
+						"SrcType",
+						"DstName",
+						"DstType",
+					)
+				}
+			} else {
+				cols = append(cols,
+					"SrcAddr",
+					"SrcPort",
+					"DstAddr",
+					"DstPort",
+				)
+			}
+
+			// standard / feature fields
+			if !slices.Contains(display, standardDisplay) {
+				if slices.Contains(display, pktDropDisplay) {
+					cols = append(cols,
+						"DropBytes",
+						"DropPackets",
+						"DropState",
+						"DropCause",
+					)
+				}
+
+				if slices.Contains(display, dnsDisplay) {
+					cols = append(cols,
+						"DnsId",
+						"DnsLatency",
+						"DnsRCode",
+						"DnsErrno",
+					)
+				}
+
+				if slices.Contains(display, rttDisplay) {
+					cols = append(cols,
+						"RTT",
+					)
+				}
+			} else {
+				cols = append(cols,
+					"Dir",
+					"Interface",
+					"Proto",
+					"Dscp",
+					"Bytes",
+					"Packets",
+				)
+			}
+
+			colInterfaces := make([]interface{}, len(cols))
+			for i, c := range cols {
+				colInterfaces[i] = c
+			}
+			tbl := table.New(colInterfaces...)
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			// append most recent rows
 			for _, flow := range lastFlows {
-				row := []interface{}{
-					time.UnixMilli(int64(flow["TimeFlowEndMs"].(float64))).Format("15:04:05.000000"),
-					ToText(flow, "SrcAddr"),
-					ToText(flow, "SrcPort"),
-					ToText(flow, "DstAddr"),
-					ToText(flow, "DstPort"),
-					ToDirection(flow, "FlowDirection"),
-					ToText(flow, "Interface"),
-					ToProto(flow, "Proto"),
-					ToDSCP(flow, "Dscp"),
-					ToPacketCount(flow, "Bytes"),
-					ToText(flow, "Packets"),
-				}
-
-				if slices.Contains(display, pktDrop) {
-					row = append(row, []interface{}{
-						ToPacketCount(flow, "PktDropBytes"),
-						ToText(flow, "PktDropPackets"),
-						ToText(flow, "PktDropLatestState"),
-						ToText(flow, "PktDropLatestDropCause"),
-					}...)
-				}
-
-				if slices.Contains(display, dns) {
-					row = append(row, []interface{}{
-						ToText(flow, "DnsId"),
-						ToDuration(flow, "DnsLatencyMs", time.Millisecond),
-						ToText(flow, "DnsRCode"),
-						ToText(flow, "DnsErrno"),
-					}...)
-				}
-
-				if slices.Contains(display, rtt) {
-					row = append(row, []interface{}{
-						ToDuration(flow, "TimeFlowRttNs", time.Nanosecond),
-					}...)
-				}
-
-				tbl.AddRow(row...)
+				tbl.AddRow(ToTableRow(flow, cols)...)
 			}
 
 			// inserting empty row ensure minimum column sizes
-			emptyRow := []interface{}{
-				strings.Repeat("-", 16), // TimeFlowEndMs
-				strings.Repeat("-", 16), // SrcAddr
-				strings.Repeat("-", 6),  // SrcPort
-				strings.Repeat("-", 16), // DstAddr
-				strings.Repeat("-", 6),  // DstPort
-				strings.Repeat("-", 10), // FlowDirection
-				strings.Repeat("-", 16), // Interface
-				strings.Repeat("-", 6),  // Proto
-				strings.Repeat("-", 8),  // Dscp
-				strings.Repeat("-", 6),  // Bytes
-				strings.Repeat("-", 6),  // Packets
+			emptyRow := []interface{}{}
+			for _, col := range cols {
+				emptyRow = append(emptyRow, strings.Repeat("-", toSize(col)))
 			}
-
-			if slices.Contains(display, pktDrop) {
-				emptyRow = append(emptyRow, []interface{}{
-					strings.Repeat("-", 12), // PktDropBytes
-					strings.Repeat("-", 12), // PktDropPackets
-					strings.Repeat("-", 20), // PktDropLatestState
-					strings.Repeat("-", 40), // PktDropLatestDropCause
-				}...)
-			}
-
-			if slices.Contains(display, dns) {
-				emptyRow = append(emptyRow, []interface{}{
-					strings.Repeat("-", 6), // DnsId
-					strings.Repeat("-", 6), // DnsLatencyMs
-					strings.Repeat("-", 6), // DnsRCode
-					strings.Repeat("-", 6), // DnsErrno
-				}...)
-			}
-
-			if slices.Contains(display, rtt) {
-				emptyRow = append(emptyRow, []interface{}{
-					strings.Repeat("-", 6), // TimeFlowRttNs
-				}...)
-			}
-
 			tbl.AddRow(emptyRow...)
 
 			// print table
@@ -333,32 +344,60 @@ func scanner() {
 				flowsToShow = flowsToShow - 1
 			}
 		} else if key == keyboard.KeyArrowRight {
-			if slices.Contains(display, pktDrop) && slices.Contains(display, dns) && slices.Contains(display, rtt) {
-				display = []string{raw}
-			} else if slices.Contains(display, raw) {
-				display = []string{standard}
-			} else if slices.Contains(display, standard) {
-				display = []string{pktDrop}
-			} else if slices.Contains(display, pktDrop) {
-				display = []string{dns}
-			} else if slices.Contains(display, dns) {
-				display = []string{rtt}
+			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) {
+				display = []string{rawDisplay}
+			} else if slices.Contains(display, rawDisplay) {
+				display = []string{standardDisplay}
+			} else if slices.Contains(display, standardDisplay) {
+				display = []string{pktDropDisplay}
+			} else if slices.Contains(display, pktDropDisplay) {
+				display = []string{dnsDisplay}
+			} else if slices.Contains(display, dnsDisplay) {
+				display = []string{rttDisplay}
 			} else {
-				display = []string{pktDrop, dns, rtt}
+				display = []string{pktDropDisplay, dnsDisplay, rttDisplay}
 			}
 		} else if key == keyboard.KeyArrowLeft {
-			if slices.Contains(display, pktDrop) && slices.Contains(display, dns) && slices.Contains(display, rtt) {
-				display = []string{rtt}
-			} else if slices.Contains(display, rtt) {
-				display = []string{dns}
-			} else if slices.Contains(display, dns) {
-				display = []string{pktDrop}
-			} else if slices.Contains(display, pktDrop) {
-				display = []string{standard}
-			} else if slices.Contains(display, standard) {
-				display = []string{raw}
+			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) {
+				display = []string{rttDisplay}
+			} else if slices.Contains(display, rttDisplay) {
+				display = []string{dnsDisplay}
+			} else if slices.Contains(display, dnsDisplay) {
+				display = []string{pktDropDisplay}
+			} else if slices.Contains(display, pktDropDisplay) {
+				display = []string{standardDisplay}
+			} else if slices.Contains(display, standardDisplay) {
+				display = []string{rawDisplay}
 			} else {
-				display = []string{pktDrop, dns, rtt}
+				display = []string{pktDropDisplay, dnsDisplay, rttDisplay}
+			}
+		} else if key == keyboard.KeyPgup {
+			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
+				enrichement = []string{noEnrichment}
+			} else if slices.Contains(enrichement, noEnrichment) {
+				enrichement = []string{resourceEnrichment}
+			} else if slices.Contains(enrichement, resourceEnrichment) {
+				enrichement = []string{ownerEnrichment}
+			} else if slices.Contains(enrichement, ownerEnrichment) {
+				enrichement = []string{hostEnrichment}
+			} else if slices.Contains(enrichement, hostEnrichment) {
+				enrichement = []string{zoneEnrichment}
+			} else {
+				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
+			}
+		} else if key == keyboard.KeyPgdn {
+			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
+				enrichement = []string{zoneEnrichment}
+			} else if slices.Contains(enrichement, zoneEnrichment) {
+				enrichement = []string{hostEnrichment}
+			} else if slices.Contains(enrichement, hostEnrichment) {
+				enrichement = []string{ownerEnrichment}
+			} else if slices.Contains(enrichement, ownerEnrichment) {
+				enrichement = []string{resourceEnrichment}
+			} else if slices.Contains(enrichement, resourceEnrichment) {
+				enrichement = []string{noEnrichment}
+			} else {
+				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
 			}
 		} else if key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2 {
 			if len(regexes) > 0 {
