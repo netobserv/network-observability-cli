@@ -131,6 +131,16 @@ oc-commands: ## Generate oc plugins and add them to /usr/bin/
 	./scripts/inject.sh $(DIST_DIR) $(IMAGE)
 	sudo cp -a ./build/. /usr/bin/
 
+.PHONY: create-kind-cluster
+create-kind-cluster: prereqs ## Create a kind cluster
+	scripts/kind-cluster.sh
+
+.PHONY: destroy-kind-cluster
+destroy-kind-cluster: ## Destroy the kind cluster.
+	oc delete -f ./res/flow-capture.yml --ignore-not-found
+	oc delete -f ./res/namespace.yml --ignore-not-found
+	kind delete cluster
+
 ##@ Images
 
 # note: to build and push custom image tag use: IMAGE_ORG=myuser VERSION=dev s

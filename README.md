@@ -79,6 +79,34 @@ For example:
 It will display a table view with latest packets collected and write data under output/pcap directory.
 To stop capturing press Ctrl-C.
 
+### FLow Capture and write to Sqlite database
+
+```bash
+./oc/oc-netobserv-flows-db
+```
+
+This will write flows to `flows.db` file and it can be inspected using `sqlite3` for example 
+
+```bash
+$ oc exec -it -n netobserv-cli collector -- bash
+bash-5.1$ sqlite3 flows.db 
+SQLite version 3.34.1 2021-01-20 14:10:07
+Enter ".help" for usage hints.
+sqlite> SELECT DnsLatencyMs, DnsFlagsResponseCode, DnsId, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets FROM flow WHERE DnsLatencyMs >10 LIMIT 10;
+12|NoError|58747|10.128.0.63|57856||17|172.30.0.10|53|284|1
+11|NoError|20486|10.128.0.52|56575||17|169.254.169.254|53|225|1
+11|NoError|59544|10.128.0.103|51089||17|172.30.0.10|53|307|1
+13|NoError|32519|10.128.0.52|55241||17|169.254.169.254|53|254|1
+12|NoError|32519|10.0.0.3|55241||17|169.254.169.254|53|254|1
+15|NoError|57673|10.128.0.19|59051||17|172.30.0.10|53|313|1
+13|NoError|35652|10.0.0.3|46532||17|169.254.169.254|53|183|1
+32|NoError|37326|10.0.0.3|52718||17|169.254.169.254|53|169|1
+14|NoError|14530|10.0.0.3|58203||17|169.254.169.254|53|246|1
+15|NoError|40548|10.0.0.3|45933||17|169.254.169.254|53|174|1
+sqlite> .exit
+bash-5.1$ 
+
+```
 ### Cleanup
 
 The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if an error occurs.

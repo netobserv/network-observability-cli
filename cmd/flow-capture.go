@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eiannone/keyboard"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap"
+
+	"github.com/eiannone/keyboard"
+	"github.com/fatih/color"
 	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
-
-	"github.com/fatih/color"
 )
 
 var flowCmd = &cobra.Command{
