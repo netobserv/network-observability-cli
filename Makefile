@@ -1,5 +1,6 @@
 NAME := network-observability-cli
 DIST_DIR ?= build
+FILES_OUTPUT_DIR ?= output
 OUTPUT := $(DIST_DIR)/$(NAME)
 
 # Image building tool (docker / podman) - docker is preferred in CI
@@ -44,6 +45,7 @@ endif
 .PHONY: clean
 clean: ## Clean up build directory
 	@rm -rf $(DIST_DIR)
+	@rm -rf $(FILES_OUTPUT_DIR)
 
 .PHONY: oc-commands
 oc-commands: build
