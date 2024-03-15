@@ -18,10 +18,10 @@ function setup {
 
   if [ "$1" = "flows" ]; then
     filename="flow-capture"
-    sed "s/{{FLOW_FILTER_VALUE}}/$(2)/gi" "${BASH_SOURCE%/*}"/flow-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
+    sed "s/{{FLOW_FILTER_VALUE}}/${2:-}/gi" "${BASH_SOURCE%/*}"/flow-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
   elif [ "$1" = "packets" ]; then
     filename="packet-capture"
-    sed "s/{{PCA_FILTER_VALUE}}/$(2)/gi" "${BASH_SOURCE%/*}"/packet-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
+    sed "s/{{PCA_FILTER_VALUE}}/${2:-}/gi" "${BASH_SOURCE%/*}"/packet-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
   else
     echo "invalid setup argument"
     return
@@ -45,7 +45,7 @@ function setup {
   for pod in $pods
   do 
     echo "forwarding $pod:9999 to local port $port"
-    pkill --oldest --full "$port:9999"
+    pkill --oldest --full "$port:9999" || true
     oc port-forward "$pod" $port:9999 -n netobserv-cli & # run in background
     node=$(oc get "$pod" -n netobserv-cli -o jsonpath='{.spec.nodeName}')
     if [ -z "$ports" ]
