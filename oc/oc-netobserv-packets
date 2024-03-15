@@ -2,12 +2,15 @@
 source "${BASH_SOURCE%/*}/network-observability-cli-resources/functions.sh"
 
 # pcap filter such as 'tcp,80'
-filter=$1
+filter=""
 
-if [ -z "$filter" ]
+if [ -z "${1:-}" ]
 then
   echo "Specify a valid filter as first argument such as 'oc get-packets tcp,80'"
   exit 1
+else
+  echo "Filters set as $1"
+  filter=$1
 fi
 
 trap cleanup EXIT
