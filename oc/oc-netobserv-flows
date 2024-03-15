@@ -2,11 +2,14 @@
 source "${BASH_SOURCE%/*}/network-observability-cli-resources/functions.sh"
 
 # interface filter such as 'br-ex'
-filter=$1
+filter=""
 
-if [ -z "$filter" ]
+if [ -z "${1:-}" ]
 then
-  filter=""
+  echo "Filters not set"
+else
+  echo "Filters set as $1"
+  filter=$1
 fi
 
 trap cleanup EXIT
