@@ -21,9 +21,14 @@ prereqs: ## Test if prerequisites are met, and installing missing dependencies
 	@echo "### Test if prerequisites are met, and installing missing dependencies"
 	GOFLAGS="" go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
 
+.PHONY: vendors
+vendors: ## Refresh vendors directory.
+	@echo "### Checking vendors"
+	go mod tidy && go mod vendor
+
 .PHONY: build
 build: prepare lint ## Build the binary and run Lint
-	@go build -o $(OUTPUT)
+	@go build -mod vendor -o $(OUTPUT)
 	cp -a ./oc/. ./$(DIST_DIR)
 	cp -a ./res/. ./$(DIST_DIR)/network-observability-cli-resources
 
@@ -39,7 +44,7 @@ ifeq (, $(shell which shellcheck))
 	@echo "### shellcheck could not be found, skipping shell lint"
 else
 	@echo "### Run shellcheck against bash scripts"
-	find . -name '*.sh' | xargs shellcheck
+	shellcheck ./res/*.sh
 endif
 
 .PHONY: clean
