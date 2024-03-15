@@ -18,10 +18,10 @@ function setup {
 
   if [ "$1" = "flows" ]; then
     filename="flow-capture"
-    sed "s/{{FLOW_FILTER_VALUE}}/$2/gi" "${BASH_SOURCE%/*}"/flow-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
+    sed "s/{{FLOW_FILTER_VALUE}}/$(2)/gi" "${BASH_SOURCE%/*}"/flow-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
   elif [ "$1" = "packets" ]; then
     filename="packet-capture"
-    sed "s/{{PCA_FILTER_VALUE}}/$2/gi" "${BASH_SOURCE%/*}"/packet-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
+    sed "s/{{PCA_FILTER_VALUE}}/$(2)/gi" "${BASH_SOURCE%/*}"/packet-capture.yml > "${BASH_SOURCE%/*}"/current/agent.yml
   else
     echo "invalid setup argument"
     return
