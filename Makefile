@@ -70,7 +70,9 @@ prepare:
 .PHONY: prereqs
 prereqs: ## Test if prerequisites are met, and installing missing dependencies
 	@echo "### Test if prerequisites are met, and installing missing dependencies"
+ifeq (, $(shell which golangci-lint))
 	GOFLAGS="" go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+endif
 
 .PHONY: vendors
 vendors: ## Refresh vendors directory.
