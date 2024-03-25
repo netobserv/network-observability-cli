@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"net"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,13 +13,11 @@ const (
 )
 
 var (
-	log       = logrus.New()
-	logLevel  string
-	host      string
-	nodes     []string
-	ports     []int
-	addresses []string
-	filter    string
+	log      = logrus.New()
+	logLevel string
+	ports    []int
+	nodes    []string
+	filter   string
 
 	startupTime = time.Now()
 	lastRefresh = startupTime
@@ -47,10 +41,9 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", "info", "Log level")
-	rootCmd.PersistentFlags().StringVarP(&host, "host", "", "localhost", "Agent IP")
-	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{"node"}, "node names to monitor")
 	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
-	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter")
+	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
+	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter(s)")
 
 	// IPFIX flow
 	rootCmd.AddCommand(flowCmd)
@@ -67,19 +60,5 @@ func initConfig() {
 		log.Fatalf("specified nodes names doesn't match ports length")
 	}
 
-	for _, port := range ports {
-		addresses = append(addresses, host+":"+fmt.Sprintf("%v", port))
-	}
-	log.Infof("Running network-observability-cli\nLog level: %s\nAddresses:\n%s\nFilter: %s", logLevel, strings.Join(addresses, "\n"), filter)
-}
-
-func CleanupCapture(c *net.TCPConn, f *os.File) {
-	log.Printf("Stopping Capture")
-
-	if c != nil {
-		c.Close()
-	}
-	if f != nil {
-		f.Close()
-	}
+	log.Infof("Running network-observability-cli\nLog level: %s\nFilter(s): %s", logLevel, filter)
 }

@@ -20,12 +20,16 @@ spec:
       containers:
       - name: netobserv-cli
         # image: quay.io/netobserv/netobserv-ebpf-agent:main
-        image: quay.io/jpinsonn/netobserv-ebpf-agent:1497-1
+        image: quay.io/jpinsonn/netobserv-ebpf-agent:grpc
         imagePullPolicy: Always
         securityContext:
           privileged: true
           runAsUser: 0
         env:
+          - name: METRICS_ENABLE
+            value: "false"
+          - name: LOG_LEVEL
+            value: trace
           - name: INTERFACES
             value: "{{FLOW_FILTER_VALUE}}"
           - name: EXCLUDE_INTERFACES
@@ -43,6 +47,10 @@ spec:
           - name: FLP_CONFIG
             value: >
               {
+                "log-level": "trace",
+                "metricsSettings":{
+                    "disableGlobalServer": true
+                },
                 "parameters":[
                     {
                       "name":"enrich",
@@ -94,9 +102,10 @@ spec:
                     {
                       "name":"send",
                       "write":{
-                          "type":"tcp",
-                          "tcp":{
-                            "port":"9999"
+                          "type":"grpc",
+                          "grpc":{
+                            "targetHost":"collector.netobserv-cli.svc.cluster.local",
+                            "targetPort":9999
                           }
                       }
                     }

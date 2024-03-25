@@ -19,15 +19,24 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: netobserv-cli
-        image: quay.io/netobserv/netobserv-ebpf-agent:main
+        # image: quay.io/netobserv/netobserv-ebpf-agent:main
+        image: quay.io/jpinsonn/netobserv-ebpf-agent:grpc
         imagePullPolicy: Always
         securityContext:
           privileged: true
           runAsUser: 0
         env:
+          - name: METRICS_ENABLE
+            value: "false"
+          - name: LOG_LEVEL
+            value: trace
           - name: ENABLE_PCA
             value: "true"
           - name: PCA_FILTER
             value: "{{PCA_FILTER_VALUE}}"
-          - name: PCA_SERVER_PORT
+          - name: FLOWS_TARGET_HOST
+            value: "collector.netobserv-cli.svc.cluster.local"
+          - name: FLOWS_TARGET_PORT
             value: "9999"
+          - name: EXPORT
+            value: "grpc"

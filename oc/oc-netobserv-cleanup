@@ -1,4 +1,4 @@
 #!/bin/bash
-source "${BASH_SOURCE%/*}/network-observability-cli-resources/functions.sh"
+source "./scripts/functions.sh"
 
 cleanup
