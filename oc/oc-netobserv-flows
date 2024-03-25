@@ -12,6 +12,9 @@ else
   filter=$1
 fi
 
+# CLI image to use
+img="quay.io/jpinsonn/network-observability-cli:dev"
+
 trap cleanup EXIT
 
 setup flows $filter
@@ -20,7 +23,7 @@ echo "\nRunning network-observability-cli get-flows... "
 oc run \
   -n netobserv-cli \
   collector \
-  --image=quay.io/jpinsonn/network-observability-cli:dev \
+  --image=$img\
   --image-pull-policy='Always' \
   --restart='Never' \
   --command -- sleep infinity

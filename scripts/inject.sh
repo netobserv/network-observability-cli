@@ -14,6 +14,14 @@ sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/oc-netobserv-flows
 sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/oc-netobserv-packets
 sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/oc-netobserv-cleanup
 
+if [ -z "$2" ]; then
+  echo "image not provided, keeping current ones"
+else 
+  echo "updating CLI images to $2"
+  sed -i "/img=/c\img=\"$2\"" ./tmp/oc-netobserv-flows
+  sed -i "/img=/c\img=\"$2\"" ./tmp/oc-netobserv-packets
+fi
+
 rm ./tmp/functions.sh
 
 if [ -z "$1" ]; then

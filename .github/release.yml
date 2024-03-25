@@ -1,0 +1,8 @@
+changelog:
+  categories:
+    - title: Breaking changes 🛠
+      labels:
+        - breaking-change
+    - title: Non-breaking changes
+      labels:
+        - "*"

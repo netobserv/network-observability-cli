@@ -1,0 +1,59 @@
+name: Build and push PR image to quay.io
+on:
+  pull_request_target:
+    types: [labeled]
+
+env:
+  WF_REGISTRY_USER: netobserv+github_ci
+  WF_REGISTRY: quay.io/netobserv
+  WF_IMAGE: network-observability-cli
+  WF_ORG: netobserv
+
+jobs:
+  push-pr-image:
+    if: ${{ github.event.label.name == 'ok-to-test' }}
+    name: push PR image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.21']
+    steps:
+      - name: install make
+        run: sudo apt-get install make
+      - name: set up go 1.x
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          ref: "refs/pull/${{ github.event.number }}/merge"
+      - name: docker login to quay.io
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.WF_REGISTRY_USER }}
+          password: ${{ secrets.QUAY_SECRET }}
+          registry: quay.io
+      - name: get short sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: build and push manifest with images
+        run: OCI_BUILD_OPTS="--label quay.expires-after=2w" IMAGE_ORG=${{ env.WF_ORG }} IMAGE=${{ env.WF_REGISTRY }}/${{ env.WF_IMAGE }}:${{ env.short_sha }} make images
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `New image:
+            ${{ env.WF_REGISTRY }}/${{ env.WF_IMAGE }}:${{ env.short_sha }}
+
+            It will expire after two weeks.
+
+            To use this build, update your oc commands using:
+            \`\`\`bash
+            USER=netobserv VERSION=${{ env.short_sha }} make oc-commands
+            \`\`\`
+            `
+            })
