@@ -19,13 +19,16 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: netobserv-cli
-        # image: quay.io/netobserv/netobserv-ebpf-agent:main
-        image: quay.io/jpinsonn/netobserv-ebpf-agent:1497-1
+        image: quay.io/netobserv/netobserv-ebpf-agent:main
         imagePullPolicy: Always
         securityContext:
           privileged: true
           runAsUser: 0
         env:
+          - name: METRICS_ENABLE
+            value: "false"
+          - name: LOG_LEVEL
+            value: trace
           - name: INTERFACES
             value: "{{FLOW_FILTER_VALUE}}"
           - name: EXCLUDE_INTERFACES
@@ -43,6 +46,10 @@ spec:
           - name: FLP_CONFIG
             value: >
               {
+                "log-level": "trace",
+                "metricsSettings":{
+                    "disableGlobalServer": true
+                },
                 "parameters":[
                     {
                       "name":"enrich",
@@ -51,42 +58,30 @@ spec:
                           "network":{
                             "rules":[
                                 {
-                                  "input":"SrcAddr",
-                                  "output":"SrcK8S",
                                   "type":"add_kubernetes",
                                   "kubernetes":{
-                                      "add_zone": true
+                                      "add_zone": true,
+                                      "input":"SrcAddr",
+                                      "output":"SrcK8S"
                                   }
                                 },
                                 {
-                                  "input":"DstAddr",
-                                  "output":"DstK8S",
                                   "type":"add_kubernetes",
                                   "kubernetes":{
-                                      "add_zone": true
+                                      "add_zone": true,
+                                      "input":"DstAddr",
+                                      "output":"DstK8S"
                                   }
                                 },
                                 {
                                   "type":"reinterpret_direction"
-                                },
-                                {
-                                  "type":"add_kubernetes_infra",
-                                  "kubernetes_infra":{
-                                      "inputs":[
-                                        "SrcAddr",
-                                        "DstAddr"
-                                      ],
-                                      "output":"K8S_FlowLayer",
-                                      "infra_prefixes":"netobserv"
-                                  }
                                 }
                             ],
                             "directionInfo":{
                                 "reporterIPField":"AgentIP",
                                 "srcHostField":"SrcK8S_HostIP",
                                 "dstHostField":"DstK8S_HostIP",
-                                "flowDirectionField":"FlowDirection",
-                                "ifDirectionField":"IfDirection"
+                                "flowDirectionField":"FlowDirection"
                             }
                           }
                       }
@@ -94,9 +89,10 @@ spec:
                     {
                       "name":"send",
                       "write":{
-                          "type":"tcp",
-                          "tcp":{
-                            "port":"9999"
+                          "type":"grpc",
+                          "grpc":{
+                            "targetHost":"collector.netobserv-cli.svc.cluster.local",
+                            "targetPort":9999
                           }
                       }
                     }

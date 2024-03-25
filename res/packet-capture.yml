@@ -25,9 +25,17 @@ spec:
           privileged: true
           runAsUser: 0
         env:
+          - name: METRICS_ENABLE
+            value: "false"
+          - name: LOG_LEVEL
+            value: trace
           - name: ENABLE_PCA
             value: "true"
           - name: PCA_FILTER
             value: "{{PCA_FILTER_VALUE}}"
-          - name: PCA_SERVER_PORT
+          - name: TARGET_HOST
+            value: "collector.netobserv-cli.svc.cluster.local"
+          - name: TARGET_PORT
             value: "9999"
+          - name: EXPORT
+            value: "grpc"

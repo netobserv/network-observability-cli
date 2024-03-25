@@ -34,6 +34,9 @@ type Options struct {
 	Profile         Profile
 }
 
+// (nolint => needs refactoring)
+//
+//nolint:revive
 type ConfigFileStruct struct {
 	LogLevel        string          `yaml:"log-level,omitempty" json:"log-level,omitempty"`
 	MetricsSettings MetricsSettings `yaml:"metricsSettings,omitempty" json:"metricsSettings,omitempty"`
@@ -55,12 +58,11 @@ type Profile struct {
 // Also, currently FLP doesn't support defining more than one PromEncode stage. If this feature is added later, these global settings
 // will help configuring common setting for all PromEncode stages - PromEncode settings would then act as overrides.
 type MetricsSettings struct {
-	Address           string           `yaml:"address,omitempty" json:"address,omitempty" doc:"address to expose \"/metrics\" endpoint"`
-	Port              int              `yaml:"port,omitempty" json:"port,omitempty" doc:"port number to expose \"/metrics\" endpoint"`
-	TLS               *api.PromTLSConf `yaml:"tls,omitempty" json:"tls,omitempty" doc:"TLS configuration for the prometheus endpoint"`
-	Prefix            string           `yaml:"prefix,omitempty" json:"prefix,omitempty" doc:"prefix for names of the operational metrics"`
-	NoPanic           bool             `yaml:"noPanic,omitempty" json:"noPanic,omitempty"`
-	SuppressGoMetrics bool             `yaml:"suppressGoMetrics,omitempty" json:"suppressGoMetrics,omitempty" doc:"filter out Go and process metrics"`
+	api.PromConnectionInfo `yaml:",inline"`
+	DisableGlobalServer    bool   `yaml:"disableGlobalServer,omitempty" json:"disableGlobalServer,omitempty" doc:"disabling the global metrics server makes operational metrics unavailable. If prometheus-encoding stages are defined, they need to contain their own metrics server parameters."`
+	Prefix                 string `yaml:"prefix,omitempty" json:"prefix,omitempty" doc:"prefix for names of the operational metrics"`
+	NoPanic                bool   `yaml:"noPanic,omitempty" json:"noPanic,omitempty"`
+	SuppressGoMetrics      bool   `yaml:"suppressGoMetrics,omitempty" json:"suppressGoMetrics,omitempty" doc:"filter out Go and process metrics"`
 }
 
 // PerfSettings allows setting some internal configuration parameters
@@ -91,6 +93,7 @@ type Ingest struct {
 	Kafka     *api.IngestKafka     `yaml:"kafka,omitempty" json:"kafka,omitempty"`
 	GRPC      *api.IngestGRPCProto `yaml:"grpc,omitempty" json:"grpc,omitempty"`
 	Synthetic *api.IngestSynthetic `yaml:"synthetic,omitempty" json:"synthetic,omitempty"`
+	Stdin     *api.IngestStdin     `yaml:"stdin,omitempty" json:"stdin,omitempty"`
 }
 
 type File struct {
@@ -115,10 +118,13 @@ type Extract struct {
 }
 
 type Encode struct {
-	Type  string           `yaml:"type" json:"type"`
-	Prom  *api.PromEncode  `yaml:"prom,omitempty" json:"prom,omitempty"`
-	Kafka *api.EncodeKafka `yaml:"kafka,omitempty" json:"kafka,omitempty"`
-	S3    *api.EncodeS3    `yaml:"s3,omitempty" json:"s3,omitempty"`
+	Type        string                 `yaml:"type" json:"type"`
+	Prom        *api.PromEncode        `yaml:"prom,omitempty" json:"prom,omitempty"`
+	Kafka       *api.EncodeKafka       `yaml:"kafka,omitempty" json:"kafka,omitempty"`
+	S3          *api.EncodeS3          `yaml:"s3,omitempty" json:"s3,omitempty"`
+	OtlpLogs    *api.EncodeOtlpLogs    `yaml:"otlplogs,omitempty" json:"otlplogs,omitempty"`
+	OtlpMetrics *api.EncodeOtlpMetrics `yaml:"otlpmetrics,omitempty" json:"otlpmetrics,omitempty"`
+	OtlpTraces  *api.EncodeOtlpTraces  `yaml:"otlptraces,omitempty" json:"otlptraces,omitempty"`
 }
 
 type Write struct {
@@ -126,21 +132,22 @@ type Write struct {
 	Loki   *api.WriteLoki   `yaml:"loki,omitempty" json:"loki,omitempty"`
 	Stdout *api.WriteStdout `yaml:"stdout,omitempty" json:"stdout,omitempty"`
 	Ipfix  *api.WriteIpfix  `yaml:"ipfix,omitempty" json:"ipfix,omitempty"`
+	GRPC   *api.WriteGRPC   `yaml:"grpc,omitempty" json:"grpc,omitempty"`
 }
 
 // ParseConfig creates the internal unmarshalled representation from the Pipeline and Parameters json
-func ParseConfig(opts Options) (ConfigFileStruct, error) {
+func ParseConfig(opts *Options) (ConfigFileStruct, error) {
 	out := ConfigFileStruct{}
 
 	logrus.Debugf("opts.PipeLine = %v ", opts.PipeLine)
-	err := JsonUnmarshalStrict([]byte(opts.PipeLine), &out.Pipeline)
+	err := JSONUnmarshalStrict([]byte(opts.PipeLine), &out.Pipeline)
 	if err != nil {
 		logrus.Errorf("error when parsing pipeline: %v", err)
 		return out, err
 	}
 	logrus.Debugf("stages = %v ", out.Pipeline)
 
-	err = JsonUnmarshalStrict([]byte(opts.Parameters), &out.Parameters)
+	err = JSONUnmarshalStrict([]byte(opts.Parameters), &out.Parameters)
 	if err != nil {
 		logrus.Errorf("error when parsing pipeline parameters: %v", err)
 		return out, err
@@ -148,14 +155,14 @@ func ParseConfig(opts Options) (ConfigFileStruct, error) {
 	logrus.Debugf("params = %v ", out.Parameters)
 
 	if opts.MetricsSettings != "" {
-		err = JsonUnmarshalStrict([]byte(opts.MetricsSettings), &out.MetricsSettings)
+		err = JSONUnmarshalStrict([]byte(opts.MetricsSettings), &out.MetricsSettings)
 		if err != nil {
 			logrus.Errorf("error when parsing global metrics settings: %v", err)
 			return out, err
 		}
 		logrus.Debugf("metrics settings = %v ", out.MetricsSettings)
 	} else {
-		logrus.Errorf("metrics settings missing")
+		logrus.Infof("using default metrics settings")
 	}
 
 	return out, nil
@@ -164,7 +171,7 @@ func ParseConfig(opts Options) (ConfigFileStruct, error) {
 // JsonUnmarshalStrict is like Unmarshal except that any fields that are found
 // in the data that do not have corresponding struct members, or mapping
 // keys that are duplicates, will result in an error.
-func JsonUnmarshalStrict(data []byte, v interface{}) error {
+func JSONUnmarshalStrict(data []byte, v interface{}) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)

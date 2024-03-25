@@ -38,34 +38,64 @@ func (tn *TransformNetwork) GetServiceFiles() (string, string) {
 	return p, s
 }
 
+type TransformNetworkOperationEnum string
+
 const (
-	OpAddSubnet            = "add_subnet"
-	OpAddLocation          = "add_location"
-	OpAddService           = "add_service"
-	OpAddKubernetes        = "add_kubernetes"
-	OpReinterpretDirection = "reinterpret_direction"
-	OpAddIPCategory        = "add_ip_category"
+	// For doc generation, enum definitions must match format `Constant Type = "value" // doc`
+	NetworkAddSubnet            TransformNetworkOperationEnum = "add_subnet"            // add output subnet field from input field and prefix length from parameters field
+	NetworkAddLocation          TransformNetworkOperationEnum = "add_location"          // add output location fields from input
+	NetworkAddService           TransformNetworkOperationEnum = "add_service"           // add output network service field from input port and parameters protocol field
+	NetworkAddKubernetes        TransformNetworkOperationEnum = "add_kubernetes"        // add output kubernetes fields from input
+	NetworkAddKubernetesInfra   TransformNetworkOperationEnum = "add_kubernetes_infra"  // add output kubernetes isInfra field from input
+	NetworkReinterpretDirection TransformNetworkOperationEnum = "reinterpret_direction" // reinterpret flow direction at the node level (instead of net interface), to ease the deduplication process
+	NetworkAddIPCategory        TransformNetworkOperationEnum = "add_ip_category"       // categorize IPs based on known subnets configuration
 )
 
-type TransformNetworkOperationEnum struct {
-	AddSubnet            string `yaml:"add_subnet" json:"add_subnet" doc:"add output subnet field from input field and prefix length from parameters field"`
-	AddLocation          string `yaml:"add_location" json:"add_location" doc:"add output location fields from input"`
-	AddService           string `yaml:"add_service" json:"add_service" doc:"add output network service field from input port and parameters protocol field"`
-	AddKubernetes        string `yaml:"add_kubernetes" json:"add_kubernetes" doc:"add output kubernetes fields from input"`
-	ReinterpretDirection string `yaml:"reinterpret_direction" json:"reinterpret_direction" doc:"reinterpret flow direction at the node level (instead of net interface), to ease the deduplication process"`
-	AddIPCategory        string `yaml:"add_ip_category" json:"add_ip_category" doc:"categorize IPs based on known subnets configuration"`
-}
-
-func TransformNetworkOperationName(operation string) string {
-	return GetEnumName(TransformNetworkOperationEnum{}, operation)
-}
-
 type NetworkTransformRule struct {
+	Type            TransformNetworkOperationEnum `yaml:"type,omitempty" json:"type,omitempty" doc:"(enum) one of the following:"`
+	KubernetesInfra *K8sInfraRule                 `yaml:"kubernetes_infra,omitempty" json:"kubernetes_infra,omitempty" doc:"Kubernetes infra rule configuration"`
+	Kubernetes      *K8sRule                      `yaml:"kubernetes,omitempty" json:"kubernetes,omitempty" doc:"Kubernetes rule configuration"`
+	AddSubnet       *NetworkAddSubnetRule         `yaml:"add_subnet,omitempty" json:"add_subnet,omitempty" doc:"Add subnet rule configuration"`
+	AddLocation     *NetworkGenericRule           `yaml:"add_location,omitempty" json:"add_location,omitempty" doc:"Add location rule configuration"`
+	AddIPCategory   *NetworkGenericRule           `yaml:"add_ip_category,omitempty" json:"add_ip_category,omitempty" doc:"Add ip category rule configuration"`
+	AddService      *NetworkAddServiceRule        `yaml:"add_service,omitempty" json:"add_service,omitempty" doc:"Add service rule configuration"`
+}
+
+type K8sInfraRule struct {
+	Inputs        []string       `yaml:"inputs,omitempty" json:"inputs,omitempty" doc:"entry inputs fields"`
+	Output        string         `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
+	InfraPrefixes []string       `yaml:"infra_prefixes,omitempty" json:"infra_prefixes,omitempty" doc:"Namespace prefixes that will be tagged as infra"`
+	InfraRefs     []K8sReference `yaml:"infra_refs,omitempty" json:"infra_refs,omitempty" doc:"Additional object references to be tagged as infra"`
+}
+
+type K8sReference struct {
+	Name      string `yaml:"name,omitempty" json:"name,omitempty" doc:"name of the object"`
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" doc:"namespace of the object"`
+}
+
+type K8sRule struct {
+	Input        string `yaml:"input,omitempty" json:"input,omitempty" doc:"entry input field"`
+	Output       string `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
+	Assignee     string `yaml:"assignee,omitempty" json:"assignee,omitempty" doc:"value needs to assign to output field"`
+	LabelsPrefix string `yaml:"labels_prefix,omitempty" json:"labels_prefix,omitempty" doc:"labels prefix to use to copy input lables, if empty labels will not be copied"`
+	AddZone      bool   `yaml:"add_zone,omitempty" json:"add_zone,omitempty" doc:"If true the rule will add the zone"`
+}
+
+type NetworkGenericRule struct {
+	Input  string `yaml:"input,omitempty" json:"input,omitempty" doc:"entry input field"`
+	Output string `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
+}
+
+type NetworkAddSubnetRule struct {
 	Input      string `yaml:"input,omitempty" json:"input,omitempty" doc:"entry input field"`
 	Output     string `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
-	Type       string `yaml:"type,omitempty" json:"type,omitempty" enum:"TransformNetworkOperationEnum" doc:"one of the following:"`
-	Parameters string `yaml:"parameters,omitempty" json:"parameters,omitempty" doc:"parameters specific to type"`
-	Assignee   string `yaml:"assignee,omitempty" json:"assignee,omitempty" doc:"value needs to assign to output field"`
+	SubnetMask string `yaml:"subnet_mask,omitempty" json:"subnet_mask,omitempty" doc:"subnet mask field"`
+}
+
+type NetworkAddServiceRule struct {
+	Input    string `yaml:"input,omitempty" json:"input,omitempty" doc:"entry input field"`
+	Output   string `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
+	Protocol string `yaml:"protocol,omitempty" json:"protocol,omitempty" doc:"entry protocol field"`
 }
 
 type NetworkTransformDirectionInfo struct {
