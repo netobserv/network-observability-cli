@@ -19,8 +19,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: netobserv-cli
-        # image: quay.io/netobserv/netobserv-ebpf-agent:main
-        image: quay.io/jpinsonn/netobserv-ebpf-agent:grpc
+        image: quay.io/netobserv/netobserv-ebpf-agent:main
         imagePullPolicy: Always
         securityContext:
           privileged: true
@@ -59,42 +58,30 @@ spec:
                           "network":{
                             "rules":[
                                 {
-                                  "input":"SrcAddr",
-                                  "output":"SrcK8S",
                                   "type":"add_kubernetes",
                                   "kubernetes":{
-                                      "add_zone": true
+                                      "add_zone": true,
+                                      "input":"SrcAddr",
+                                      "output":"SrcK8S"
                                   }
                                 },
                                 {
-                                  "input":"DstAddr",
-                                  "output":"DstK8S",
                                   "type":"add_kubernetes",
                                   "kubernetes":{
-                                      "add_zone": true
+                                      "add_zone": true,
+                                      "input":"DstAddr",
+                                      "output":"DstK8S"
                                   }
                                 },
                                 {
                                   "type":"reinterpret_direction"
-                                },
-                                {
-                                  "type":"add_kubernetes_infra",
-                                  "kubernetes_infra":{
-                                      "inputs":[
-                                        "SrcAddr",
-                                        "DstAddr"
-                                      ],
-                                      "output":"K8S_FlowLayer",
-                                      "infra_prefixes":"netobserv"
-                                  }
                                 }
                             ],
                             "directionInfo":{
                                 "reporterIPField":"AgentIP",
                                 "srcHostField":"SrcK8S_HostIP",
                                 "dstHostField":"DstK8S_HostIP",
-                                "flowDirectionField":"FlowDirection",
-                                "ifDirectionField":"IfDirection"
+                                "flowDirectionField":"FlowDirection"
                             }
                           }
                       }
