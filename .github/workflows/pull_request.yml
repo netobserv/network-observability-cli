@@ -1,0 +1,32 @@
+name: pull request checks
+
+on:
+  pull_request:
+    branches: ['*']
+
+jobs:
+  build-test:
+    name: Build, lint, test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.21', '1.22']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Install make
+      run: sudo apt -y install make
+    - name: run build
+      run: make build && git diff --exit-code
+    - name: run unit tests
+      run: make test coverage-report
+    - name: Report coverage
+      uses: codecov/codecov-action@v2.1.0
+      with:
+        files: ./cover.out
+        flags: unittests
+        fail_ci_if_error: true

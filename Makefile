@@ -40,7 +40,7 @@ OCI_BUILD_OPTS ?=
 OCI_BIN_PATH := $(shell which docker 2>/dev/null || which podman)
 OCI_BIN ?= $(shell basename ${OCI_BIN_PATH})
 
-GOLANGCI_LINT_VERSION = v1.53.3
+GOLANGCI_LINT_VERSION = v1.54.2
 
 # build a single arch target provided as argument
 define build_target
@@ -84,6 +84,24 @@ compile: ## Build the binary
 	@echo "### Compiling project"
 	GOARCH=${GOARCH} go build -ldflags "-X main.version=${VERSION} -X 'main.buildVersion=${BUILD_VERSION}' -X 'main.buildDate=${BUILD_DATE}'" -mod vendor -a -o $(OUTPUT)
 
+.PHONY: build
+build: fmt lint compile ## Build project (fmt + lint + compile)
+
+.PHONY: test
+test: ## Test code using go test
+	@echo "### Testing code"
+	GOOS=$(GOOS) go test -mod vendor -a ./... -coverpkg=./... -coverprofile cover.out
+
+.PHONY: coverage-report
+coverage-report: ## Generate coverage report
+	@echo "### Generating coverage report"
+	go tool cover --func=./cover.out
+
+.PHONY: coverage-report-html
+coverage-report-html: ## Generate HTML coverage report
+	@echo "### Generating HTML coverage report"
+	go tool cover --html=./cover.out
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	@echo "### Formatting code"
@@ -92,7 +110,7 @@ fmt: ## Run go fmt against code.
 .PHONY: lint
 lint: prereqs ## Lint code
 	@echo "### Linting code"
-	golangci-lint run ./...
+	golangci-lint run ./... --timeout=3m
 ifeq (, $(shell which shellcheck))
 	@echo "### shellcheck could not be found, skipping shell lint"
 else
@@ -108,7 +126,7 @@ clean: ## Clean up build directory
 .PHONY: oc-commands
 oc-commands: ## Generate oc plugins and add them to /usr/bin/
 	@echo "### Generating oc-commands"
-	./scripts/inject.sh $(DIST_DIR)
+	./scripts/inject.sh $(DIST_DIR) $(IMAGE)
 	sudo cp -a ./build/. /usr/bin/
 
 ##@ Images

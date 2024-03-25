@@ -49,7 +49,7 @@ var (
 	enrichement        = []string{resourceEnrichment}
 )
 
-func runFlowCapture(cmd *cobra.Command, args []string) {
+func runFlowCapture(_ *cobra.Command, _ []string) {
 	go scanner()
 
 	wg := sync.WaitGroup{}

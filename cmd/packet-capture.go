@@ -37,7 +37,7 @@ var results = []PcapResult{}
 // Setting Snapshot length to 0 sets it to maximum packet size
 var snapshotlen uint32
 
-func runPacketCapture(cmd *cobra.Command, args []string) {
+func runPacketCapture(_ *cobra.Command, _ []string) {
 	go packetCaptureScanner()
 
 	wg := sync.WaitGroup{}
