@@ -24,7 +24,10 @@ jobs:
       run: make build && git diff --exit-code
     - name: run unit tests
       run: make test coverage-report
+    - name: check clean vendors
+      run: go mod vendor
     - name: Report coverage
+      if: ${{ matrix.go == '1.21' }}
       uses: codecov/codecov-action@v2.1.0
       with:
         files: ./cover.out
