@@ -52,7 +52,7 @@ This will also copy resources and oc commands to the `build` directory.
 Simply run the following command to start capturing flows:
 
 ```bash
-./build/oc-netobserv-flows
+./oc/oc-netobserv-flows
 ```
 
 ![flows](./img/flow-table.png)
@@ -65,13 +65,13 @@ To stop capturing press Ctrl-C.
 PCAP generated files are compatible with Wireshark
 
 ```bash
-./build/oc-netobserv-packets <filters>
+./oc/oc-netobserv-packets <filters>
 ```
 
 For example:
 
 ```bash
-./build/oc-netobserv-packets "tcp,8080"
+./oc/oc-netobserv-packets "tcp,8080"
 ```
 
 ![packets](./img/packet-table.png)
@@ -84,7 +84,7 @@ To stop capturing press Ctrl-C.
 The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if an error occurs.
 
 ```bash
-./build/oc-netobserv-cleanup
+./oc/oc-netobserv-cleanup
 ```
 
 ## Extending OpenShift CLI with plugin
