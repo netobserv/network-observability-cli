@@ -12,10 +12,10 @@ This project is still a WIP. The following list gives an overview of the current
 - [x] Capture flows
 - [x] Capture packets
 - [x] Basic filter capabilities
+- [X] Linting
+- [X] Dockerfile
 - [ ] Advanced filter capabilities
 - [ ] Testing
-- [ ] Linting
-- [ ] Dockerfile
 - [ ] Allow switching between `kubectl` / `oc` commands
 
 Feel free to contribute !
@@ -45,25 +45,60 @@ make build
 
 This will also copy resources and oc commands to the `build` directory.
 
+### Images
+
+To build your own images of CLI, run the following command replacing `USER` and `VERSION` accordingly:
+```bash
+USER=netobserv VERSION=dev make images
+```
+
 ## Run
 
 ### Flow Capture
 
-Simply run the following command to start capturing flows:
+Run the following command to start capturing flows, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-./oc/oc-netobserv-flows
+USER=netobserv VERSION=dev COMMAND_ARGS=br-ex make flows
 ```
 
 ![flows](./img/flow-table.png)
 
 It will display a table view with latest flows collected and write data under output/flow directory.
 To stop capturing press Ctrl-C.
-This will write flows to `./outputflows.db` file, and it can be inspected using `sqlite3` for example 
 
+This will write data into two separate files:
+- `./output/flow/<CAPTURE_DATE_TIME>.json` containing json array of received data such as:
+```json
+{
+  "AgentIP": "10.0.1.76",
+  "Bytes": 561,
+  "DnsErrno": 0,
+  "Dscp": 20,
+  "DstAddr": "f904:ece9:ba63:6ac7:8018:1e5:7130:0",
+  "DstMac": "0A:58:0A:80:00:37",
+  "DstPort": 9999,
+  "Duplicate": false,
+  "Etype": 2048,
+  "Flags": 16,
+  "FlowDirection": 0,
+  "IfDirection": 0,
+  "Interface": "ens5",
+  "K8S_FlowLayer": "infra",
+  "Packets": 1,
+  "Proto": 6,
+  "SrcAddr": "3e06:6c10:6440:2:a80:37:b756:270f",
+  "SrcMac": "0A:58:0A:80:00:01",
+  "SrcPort": 46934,
+  "TimeFlowEndMs": 1709741962111,
+  "TimeFlowRttNs": 121000,
+  "TimeFlowStartMs": 1709741962111,
+  "TimeReceived": 1709741964
+}
+```
+- `./output/flow/<CAPTURE_DATE_TIME>.db` database that can be inspected using `sqlite3` for example: 
 ```bash
-$ oc exec -it -n netobserv-cli collector -- bash
-bash-5.1$ sqlite3 flows.db 
+bash-5.1$ sqlite3 ./output/flow/<CAPTURE_DATE_TIME>.db 
 SQLite version 3.34.1 2021-01-20 14:10:07
 Enter ".help" for usage hints.
 sqlite> SELECT DnsLatencyMs, DnsFlagsResponseCode, DnsId, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets FROM flow WHERE DnsLatencyMs >10 LIMIT 10;
@@ -77,21 +112,17 @@ sqlite> SELECT DnsLatencyMs, DnsFlagsResponseCode, DnsId, DstAddr, DstPort, Inte
 32|NoError|37326|10.0.0.3|52718||17|169.254.169.254|53|169|1
 14|NoError|14530|10.0.0.3|58203||17|169.254.169.254|53|246|1
 15|NoError|40548|10.0.0.3|45933||17|169.254.169.254|53|174|1
-sqlite> .exit
-bash-5.1$ 
+```
+or `dbeaver`:
+![dbeaver](./img/dbeaver.png)
+
 
 ### Packet Capture
 
-PCAP generated files are compatible with Wireshark
+Run the following command to start capturing packets, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-./oc/oc-netobserv-packets <filters>
-```
-
-For example:
-
-```bash
-./oc/oc-netobserv-packets "tcp,8080"
+USER=netobserv VERSION=dev COMMAND_ARGS=tcp,80 make packets
 ```
 
 ![packets](./img/packet-table.png)
@@ -99,7 +130,10 @@ For example:
 It will display a table view with latest packets collected and write data under output/pcap directory.
 To stop capturing press Ctrl-C.
 
-```
+This will write pcap into a single file located in `./output/pcap/<CAPTURE_DATE_TIME>.pcap` that can be opened with Wireshark for example:
+
+![wireshark](./img/wireshark.png)
+
 ### Cleanup
 
 The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if an error occurs.
@@ -113,7 +147,7 @@ The `cleanup` function will automatically remove the eBPF programs when the CLI 
 You can add this plugin to your favorite oc commands using the following steps:
 
 ```bash
-make oc-commands
+make install-oc-commands
 ```
 
 This will add `oc netobserv flows` and `oc netobserv packets` commands to your CLI.

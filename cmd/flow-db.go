@@ -10,13 +10,13 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const flowsDB = "/output/flow/flows.db"
+var flowsDB = "/output/flow/flows.db"
 
-func initFLowDB() *sql.DB {
-	os.Remove(flowsDB) // I delete the file to avoid duplicated records.
+func initFLowDB(filename string) *sql.DB {
 	// SQLite is a file based database.
+	flowsDB = "./output/flow/" + filename + ".db"
 
-	log.Println("Creating flows.db...")
+	log.Println("Creating database...")
 	file, err := os.Create(flowsDB) // Create SQLite file
 	if err != nil {
 		log.Errorf("Failed to create flows db file: %v", err.Error())

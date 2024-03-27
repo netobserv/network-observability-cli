@@ -13,7 +13,7 @@ else
 fi
 
 # CLI image to use
-img="quay.io/mmahmoud/network-observability-cli:main-amd64"
+img="quay.io/netobserv/network-observability-cli:main"
 
 trap cleanup EXIT
 

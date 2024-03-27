@@ -29,6 +29,10 @@ DIST_DIR ?= build
 FILES_OUTPUT_DIR ?= output
 OUTPUT := $(DIST_DIR)/$(NAME)
 
+# Available commands for development with args
+COMMANDS = flows packets cleanup
+COMMAND_ARGS ?= 
+
 # IMAGE_TAG_BASE defines the namespace and part of the image name for remote images.
 IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/$(NAME)
 
@@ -126,9 +130,12 @@ clean: ## Clean up build directory
 	@rm -rf $(FILES_OUTPUT_DIR)
 
 .PHONY: oc-commands
-oc-commands: ## Generate oc plugins and add them to /usr/bin/
+oc-commands: ## Generate oc plugins and add them to build folder
 	@echo "### Generating oc-commands"
 	./scripts/inject.sh $(DIST_DIR) $(IMAGE)
+
+.PHONY: install-oc-commands
+install-oc-commands: oc-commands ## Generate oc plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
 
 .PHONY: create-kind-cluster
@@ -142,6 +149,11 @@ destroy-kind-cluster: ## Destroy the kind cluster.
 	oc delete -f ./res/namespace.yml --ignore-not-found
 	kind delete cluster --name netobserv-cli-cluster
 	rm ./kubeconfig
+
+.PHONY: $(COMMANDS)
+$(COMMANDS): oc-commands ## Run oc command using custom image
+	@echo "### Running oc-netobserv-$@ using $(IMAGE)"
+	./$(DIST_DIR)/oc-netobserv-$@ $(COMMAND_ARGS)
 
 ##@ Images
 

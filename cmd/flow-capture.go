@@ -93,7 +93,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Fatal(err)
 	}
 	// Initialize sqlite DB
-	db := initFLowDB()
+	db := initFLowDB(filename)
 	go func() {
 		<-utils.ExitChannel()
 		close(flowPackets)
