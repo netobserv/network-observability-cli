@@ -29,8 +29,7 @@ RUN mkdir -p output
 FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.3
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
-COPY --from=builder /opt/app-root/output /output
-RUN chown 65532 output
+COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 USER 65532:65532
 
 ENTRYPOINT ["/network-observability-cli"]
