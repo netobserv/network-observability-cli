@@ -27,8 +27,7 @@ RUN GOARCH=$TARGETARCH make compile
 FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.3
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
-RUN mkdir -p output
-RUN chown 65532 output
+RUN mkdir -p /output && chown 65532 /output
 USER 65532:65532
 
 ENTRYPOINT ["/network-observability-cli"]
