@@ -38,6 +38,14 @@ function loadYAMLs() {
   fi
 }
 
+function clusterIsReady() {
+    if oc whoami 2>&1 || oc cluster-info | grep -q "Kubernetes control plane"; then
+      return 0
+    else
+      return 1
+    fi
+}
+
 function setup {
   echo "Setting up... "
 
@@ -47,9 +55,8 @@ function setup {
     return
   fi
 
-  # check if cluster is reachable
-  if ! output=$(oc whoami 2>&1); then
-    printf 'You must be connected using oc login command first\n' >&2
+  if ! clusterIsReady; then
+    printf 'You must be connected to cluster\n' >&2
     exit 1
   fi
 
@@ -79,7 +86,7 @@ function setup {
 
 function cleanup {
   # shellcheck disable=SC2034
-  if output=$(oc whoami 2>&1); then
+  if clusterIsReady; then
     echo "Copying collector output files..."
     mkdir -p ./output
     oc cp -n netobserv-cli collector:output ./output

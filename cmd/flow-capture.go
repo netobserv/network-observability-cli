@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eiannone/keyboard"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap"
+
+	"github.com/eiannone/keyboard"
+	"github.com/fatih/color"
 	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
-
-	"github.com/fatih/color"
 )
 
 var flowCmd = &cobra.Command{
@@ -92,12 +92,17 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Error("StartCollector failed:", err.Error())
 		log.Fatal(err)
 	}
+	// Initialize sqlite DB
+	db := initFLowDB(filename)
 	go func() {
 		<-utils.ExitChannel()
 		close(flowPackets)
 		collector.Close()
+		db.Close()
 	}()
 	for fp := range flowPackets {
+		// Write flows to sqlite DB
+		queryFlowDB(fp.GenericMap.Value, db)
 		go manageFlowsDisplay(fp.GenericMap.Value)
 		// append new line between each record to read file easilly
 		_, err = f.Write(append(fp.GenericMap.Value, []byte(",\n")...))

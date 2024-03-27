@@ -14,7 +14,7 @@ else
 fi
 
 # CLI image to use
-img="quay.io/jpinsonn/network-observability-cli:dev"
+img="quay.io/netobserv/network-observability-cli:main"
 
 trap cleanup EXIT
 
