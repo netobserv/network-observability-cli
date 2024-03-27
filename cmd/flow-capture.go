@@ -92,12 +92,17 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Error("StartCollector failed:", err.Error())
 		log.Fatal(err)
 	}
+	// Initialize sqlite DB
+	db := initFLowDB()
 	go func() {
 		<-utils.ExitChannel()
 		close(flowPackets)
 		collector.Close()
+		db.Close()
 	}()
 	for fp := range flowPackets {
+		// Write flows to sqlite DB
+		queryFlowDB(fp.GenericMap.Value, db)
 		go manageFlowsDisplay(fp.GenericMap.Value)
 		// append new line between each record to read file easilly
 		_, err = f.Write(append(fp.GenericMap.Value, []byte(",\n")...))

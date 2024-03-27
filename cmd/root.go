@@ -50,9 +50,6 @@ func init() {
 
 	// packet
 	rootCmd.AddCommand(pktCmd)
-
-	// flows DB
-	rootCmd.AddCommand(flowsDBCmd)
 }
 
 func initConfig() {

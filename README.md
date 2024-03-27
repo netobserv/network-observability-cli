@@ -59,33 +59,7 @@ Simply run the following command to start capturing flows:
 
 It will display a table view with latest flows collected and write data under output/flow directory.
 To stop capturing press Ctrl-C.
-
-### Packet Capture
-
-PCAP generated files are compatible with Wireshark
-
-```bash
-./oc/oc-netobserv-packets <filters>
-```
-
-For example:
-
-```bash
-./oc/oc-netobserv-packets "tcp,8080"
-```
-
-![packets](./img/packet-table.png)
-
-It will display a table view with latest packets collected and write data under output/pcap directory.
-To stop capturing press Ctrl-C.
-
-### FLow Capture and write to Sqlite database
-
-```bash
-./oc/oc-netobserv-flows-db
-```
-
-This will write flows to `flows.db` file and it can be inspected using `sqlite3` for example 
+This will write flows to `./outputflows.db` file, and it can be inspected using `sqlite3` for example 
 
 ```bash
 $ oc exec -it -n netobserv-cli collector -- bash
@@ -105,6 +79,25 @@ sqlite> SELECT DnsLatencyMs, DnsFlagsResponseCode, DnsId, DstAddr, DstPort, Inte
 15|NoError|40548|10.0.0.3|45933||17|169.254.169.254|53|174|1
 sqlite> .exit
 bash-5.1$ 
+
+### Packet Capture
+
+PCAP generated files are compatible with Wireshark
+
+```bash
+./oc/oc-netobserv-packets <filters>
+```
+
+For example:
+
+```bash
+./oc/oc-netobserv-packets "tcp,8080"
+```
+
+![packets](./img/packet-table.png)
+
+It will display a table view with latest packets collected and write data under output/pcap directory.
+To stop capturing press Ctrl-C.
 
 ```
 ### Cleanup

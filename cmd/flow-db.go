@@ -4,54 +4,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
-	"sync"
 
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
-	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
-	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
-	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap"
-
 	// need to import the sqlite3 driver
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/spf13/cobra"
 )
 
-var flowsDBCmd = &cobra.Command{
-	Use:   "get-flows-db",
-	Short: "",
-	Long:  "",
-	Run:   runFlowDBQuery,
-}
+const flowsDB = "/output/flow/flows.db"
 
-const flowsDB = "/tmp/flows.db"
-
-func runFlowDBQuery(_ *cobra.Command, _ []string) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(ports))
-	for i := range ports {
-		go func(idx int) {
-			defer wg.Done()
-			queryFlowDB(ports[idx])
-		}(i)
-	}
-	wg.Wait()
-}
-
-func queryFlowDB(port int) {
+func initFLowDB() *sql.DB {
 	os.Remove(flowsDB) // I delete the file to avoid duplicated records.
 	// SQLite is a file based database.
-
-	flowPackets := make(chan *genericmap.Flow, 100)
-	collector, err := grpc.StartCollector(port, flowPackets)
-	if err != nil {
-		log.Error("StartCollector failed:", err.Error())
-		log.Fatal(err)
-	}
-	go func() {
-		<-utils.ExitChannel()
-		close(flowPackets)
-		collector.Close()
-	}()
 
 	log.Println("Creating flows.db...")
 	file, err := os.Create(flowsDB) // Create SQLite file
@@ -65,19 +28,20 @@ func queryFlowDB(port int) {
 	db, err := sql.Open("sqlite3", flowsDB)
 	if err != nil {
 		log.Errorf("Error opening database: %v", err.Error())
-		return
+		return nil
 	}
-	defer db.Close()
 
 	// Create messages table if not exists
 	err = createFlowsDBTable(db)
 	if err != nil {
 		log.Errorf("Error creating table: %v", err.Error())
-		log.Fatal(err)
+		return nil
 	}
-	for fp := range flowPackets {
-		handleFlowsDBConnection(db, fp.GenericMap.Value)
-	}
+	return db
+}
+
+func queryFlowDB(fp []byte, db *sql.DB) {
+	insertFlowToDB(db, fp)
 }
 
 func createFlowsDBTable(db *sql.DB) error {
@@ -123,7 +87,7 @@ func createFlowsDBTable(db *sql.DB) error {
 	return nil
 }
 
-func handleFlowsDBConnection(db *sql.DB, buf []byte) {
+func insertFlowToDB(db *sql.DB, buf []byte) {
 	flow := config.GenericMap{}
 
 	// Unmarshal the JSON string into the flow object
