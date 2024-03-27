@@ -49,7 +49,7 @@ This will also copy resources and oc commands to the `build` directory.
 
 To build your own images of CLI, run the following command replacing `USER` and `VERSION` accordingly:
 ```bash
-USER=netobserv VERSION=dev make images
+USER=netobserv VERSION=main make images
 ```
 
 ## Run
@@ -59,7 +59,7 @@ USER=netobserv VERSION=dev make images
 Run the following command to start capturing flows, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-USER=netobserv VERSION=dev COMMAND_ARGS=br-ex make flows
+USER=netobserv VERSION=main COMMAND_ARGS=br-ex make flows
 ```
 
 ![flows](./img/flow-table.png)
@@ -122,7 +122,7 @@ or `dbeaver`:
 Run the following command to start capturing packets, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-USER=netobserv VERSION=dev COMMAND_ARGS=tcp,80 make packets
+USER=netobserv VERSION=main COMMAND_ARGS=tcp,80 make packets
 ```
 
 ![packets](./img/packet-table.png)
