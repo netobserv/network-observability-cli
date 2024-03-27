@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -eux
 
-DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd ../ && pwd )
 
+KIND_CLUSTER_NAME="netobserv-cli-cluster"
 KIND_IMAGE="kindest/node:v1.27.3"
 
 # deploy_kind installs the kind cluster
 deploy_kind() {
-  cat <<EOF | kind create cluster --image ${KIND_IMAGE} --config=- --kubeconfig="${DIR}"/kubeconfig
+  cat <<EOF | kind create cluster --image ${KIND_IMAGE} --config=- --kubeconfig="${DIR}"/kubeconfig --name ${KIND_CLUSTER_NAME}
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
@@ -42,7 +43,6 @@ print_success() {
   set -x
 }
 
-KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-kind}"
 IP_FAMILY=${IP_FAMILY:-dual}
 NET_CIDR_IPV4=${NET_CIDR_IPV4:-10.244.0.0/16}
 SVC_CIDR_IPV4=${SVC_CIDR_IPV4:-10.96.0.0/16}
@@ -52,8 +52,8 @@ SVC_CIDR_IPV6=${SVC_CIDR_IPV6:-fd00:10:96::/112}
 # At the minimum, deploy the kind cluster
 deploy_kind
 export KUBECONFIG=${DIR}/kubeconfig
-oc label node kind-worker node-role.kubernetes.io/worker=
-oc label node kind-worker2 node-role.kubernetes.io/worker=
+oc label node ${KIND_CLUSTER_NAME}-worker node-role.kubernetes.io/worker=
+oc label node ${KIND_CLUSTER_NAME}-worker2 node-role.kubernetes.io/worker=
 
 # Print success at the end of this script
 print_success

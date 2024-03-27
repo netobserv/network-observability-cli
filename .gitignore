@@ -2,3 +2,4 @@ build
 output
 tmp
 cover.out
+kubeconfig

@@ -136,10 +136,12 @@ create-kind-cluster: prereqs ## Create a kind cluster
 	scripts/kind-cluster.sh
 
 .PHONY: destroy-kind-cluster
+destroy-kind-cluster: KUBECONFIG=./kubeconfig
 destroy-kind-cluster: ## Destroy the kind cluster.
-	oc delete -f ./res/flow-capture.yml --ignore-not-found
+	test -s ./kubeconfig || { echo "kubeconfig does not exist! Exiting..."; exit 1; }
 	oc delete -f ./res/namespace.yml --ignore-not-found
-	kind delete cluster
+	kind delete cluster --name netobserv-cli-cluster
+	rm ./kubeconfig
 
 ##@ Images
 
