@@ -22,12 +22,13 @@ COPY .mk/ .mk/
 
 # Build
 RUN GOARCH=$TARGETARCH make compile
+# Prepare output dir
+RUN mkdir -p output && chown 65532 output
 
 # Create final image from ubi + built binary
 FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.3
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
-RUN mkdir -p /output && chown 65532 /output
 USER 65532:65532
 
 ENTRYPOINT ["/network-observability-cli"]
