@@ -10,11 +10,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var flowsDB = "/output/flow/flows.db"
-
 func initFLowDB(filename string) *sql.DB {
 	// SQLite is a file based database.
-	flowsDB = "./output/flow/" + filename + ".db"
+	flowsDB := "./output/flow/" + filename + ".db"
 
 	log.Println("Creating database...")
 	file, err := os.Create(flowsDB) // Create SQLite file
@@ -150,8 +148,8 @@ func insertFlowToDB(db *sql.DB, buf []byte) {
 	}
 }
 
-func QueryFlowsDB(query string) ([]string, error) {
-	db, err := sql.Open("sqlite3", flowsDB)
+func QueryFlowsDB(query, fileName string) ([]string, error) {
+	db, err := sql.Open("sqlite3", fileName)
 	if err != nil {
 		log.Errorf("Error opening database: %v", err.Error())
 		return nil, err
