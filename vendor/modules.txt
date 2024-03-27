@@ -386,7 +386,7 @@ github.com/prometheus/prometheus/tsdb/errors
 github.com/prometheus/prometheus/tsdb/fileutil
 github.com/prometheus/prometheus/tsdb/tsdbutil
 github.com/prometheus/prometheus/util/strutil
-# github.com/rodaine/table v1.1.0
+# github.com/rodaine/table v1.1.1
 ## explicit; go 1.14
 github.com/rodaine/table
 # github.com/rs/xid v1.5.0

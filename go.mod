@@ -12,7 +12,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.11.0
 	github.com/netobserv/flowlogs-pipeline v0.1.12-0.20240325100124-fd783b283c7c
 	github.com/netobserv/netobserv-ebpf-agent v0.3.4-0.20240322201014-08030df2209f
-	github.com/rodaine/table v1.1.0
+	github.com/rodaine/table v1.1.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 )
