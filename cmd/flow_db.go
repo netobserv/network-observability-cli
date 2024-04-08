@@ -3,6 +3,7 @@ package cmd
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
@@ -10,7 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func initFLowDB(filename string) *sql.DB {
+func initFlowDB(filename string) *sql.DB {
 	// SQLite is a file based database.
 	flowsDB := "./output/flow/" + filename + ".db"
 
@@ -38,8 +39,8 @@ func initFLowDB(filename string) *sql.DB {
 	return db
 }
 
-func queryFlowDB(fp []byte, db *sql.DB) {
-	insertFlowToDB(db, fp)
+func queryFlowDB(fp []byte, db *sql.DB) error {
+	return insertFlowToDB(db, fp)
 }
 
 func createFlowsDBTable(db *sql.DB) error {
@@ -85,14 +86,13 @@ func createFlowsDBTable(db *sql.DB) error {
 	return nil
 }
 
-func insertFlowToDB(db *sql.DB, buf []byte) {
+func insertFlowToDB(db *sql.DB, buf []byte) error {
 	flow := config.GenericMap{}
 
 	// Unmarshal the JSON string into the flow object
 	err := json.Unmarshal(buf, &flow)
 	if err != nil {
-		log.Errorf("Error: %s", err)
-		return
+		return fmt.Errorf("error: %w", err)
 	}
 	// Insert message into database
 	var flowSQL string
@@ -113,8 +113,7 @@ func insertFlowToDB(db *sql.DB, buf []byte) {
 	statement, err := db.Prepare(flowSQL) // Prepare statement.
 	// This is good to avoid SQL injections
 	if err != nil {
-		log.Errorf("Error preparing SQL: %v", err.Error())
-		return
+		return fmt.Errorf("error preparing SQL: %v", err.Error())
 	}
 
 	if flow["PktDropLatestDropCause"] != 0 && flow["DnsId"] != 0 {
@@ -143,9 +142,9 @@ func insertFlowToDB(db *sql.DB, buf []byte) {
 			flow["TimeFlowRttNs"])
 	}
 	if err != nil {
-		log.Errorf("Error inserting into database: %v", err.Error())
-		return
+		return fmt.Errorf("error inserting into database: %v", err.Error())
 	}
+	return nil
 }
 
 func QueryFlowsDB(query, fileName string) ([]string, error) {
@@ -163,7 +162,7 @@ func QueryFlowsDB(query, fileName string) ([]string, error) {
 func queryDB(db *sql.DB, query string) ([]string, error) {
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error querying database: %v", err.Error())
 	}
 	defer rows.Close()
 
@@ -172,13 +171,13 @@ func queryDB(db *sql.DB, query string) ([]string, error) {
 	for rows.Next() {
 		var message string
 		if err := rows.Scan(&message); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error scanning row: %v", err.Error())
 		}
 		result = append(result, message)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error iterating rows: %v", err.Error())
 	}
 
 	return result, nil
