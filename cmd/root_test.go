@@ -88,6 +88,14 @@ func setup() {
 }
 
 func resetTime() {
+	// set timezone to Paris time for all tests
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		log.Fatal(err)
+	}
+	time.Local = loc
+
+	// reset all timers
 	currentTime = originalTime
 	lastRefresh = startupTime
 	simulatedTime = startupTime
