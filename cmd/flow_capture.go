@@ -69,7 +69,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 	} else {
 		log.Infof("Starting Flow Capture...")
 		filename = strings.Replace(
-			time.Now().UTC().Format(time.RFC3339),
+			currentTime().UTC().Format(time.RFC3339),
 			":", "", -1) // get rid of offensive colons
 	}
 
@@ -167,7 +167,7 @@ func toSize(fieldName string) int {
 		return 40
 	case "DropState":
 		return 20
-	case "Time", "Interface", "SrcZone", "DstZone":
+	case "Time", "Interfaces", "SrcZone", "DstZone":
 		return 16
 	case "DropBytes", "DropPackets", "SrcOwnerType", "DstOwnerType":
 		return 12
@@ -182,21 +182,19 @@ func toSize(fieldName string) int {
 
 func updateTable() {
 	// don't refresh terminal too often to avoid blinking
-	now := time.Now()
+	now := currentTime()
 	if int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
 		lastRefresh = now
+		resetTerminal()
 
-		// clear terminal to render table properly
-		fmt.Print("\x1bc")
-		// no wrap
-		fmt.Print("\033[?7l")
-
-		fmt.Print("Running network-observability-cli as Flow Capture\n")
-		fmt.Printf("Log level: %s\n", logLevel)
-		fmt.Printf("Collection filters: %s\n", filter)
-		fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
-		fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
-		fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+		if outputBuffer == nil {
+			fmt.Print("Running network-observability-cli as Flow Capture\n")
+			fmt.Printf("Log level: %s\n", logLevel)
+			fmt.Printf("Collection filters: %s\n", filter)
+			fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
+			fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
+			fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+		}
 
 		if slices.Contains(display, rawDisplay) {
 			fmt.Print("Raw flow logs:\n")
@@ -284,7 +282,7 @@ func updateTable() {
 			} else {
 				cols = append(cols,
 					"Dir",
-					"Interface",
+					"Interfaces",
 					"Proto",
 					"Dscp",
 					"Bytes",
@@ -297,6 +295,9 @@ func updateTable() {
 				colInterfaces[i] = c
 			}
 			tbl := table.New(colInterfaces...)
+			if outputBuffer != nil {
+				tbl.WithWriter(outputBuffer)
+			}
 			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 
 			// append most recent rows
@@ -315,10 +316,12 @@ func updateTable() {
 			tbl.Print()
 		}
 
-		if len(regexes) > 0 {
-			fmt.Printf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
-		} else {
-			fmt.Printf("Type anything to filter incoming flows in view\n")
+		if outputBuffer == nil {
+			if len(regexes) > 0 {
+				fmt.Printf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
+			} else {
+				fmt.Printf("Type anything to filter incoming flows in view\n")
+			}
 		}
 	}
 }

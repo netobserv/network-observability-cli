@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/jpillora/sizestr"
@@ -386,6 +388,13 @@ func toDSCP(genericMap config.GenericMap, fieldName string) interface{} {
 func toText(genericMap config.GenericMap, fieldName string) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
+		if reflect.TypeOf(v).Kind() == reflect.Slice {
+			arr := make([]string, len(v.([]interface{})))
+			for i, v := range v.([]interface{}) {
+				arr[i] = v.(string)
+			}
+			return strings.Join(arr, ",")
+		}
 		return v
 	}
 	return emptyText
@@ -445,6 +454,8 @@ func ToTableRow(genericMap config.GenericMap, cols []string) []interface{} {
 			row = append(row, toText(genericMap, "PktDropLatestDropCause"))
 		case "DnsLatency":
 			row = append(row, toDuration(genericMap, "DnsLatencyMs", time.Millisecond))
+		case "DnsRCode":
+			row = append(row, toText(genericMap, "DnsFlagsResponseCode"))
 		case "RTT":
 			row = append(row, toDuration(genericMap, "TimeFlowRttNs", time.Nanosecond))
 		default:
