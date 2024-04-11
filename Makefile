@@ -108,11 +108,11 @@ test: ## Test code using go test
 	@echo "### Testing code"
 	GOOS=$(GOOS) go test -mod vendor -a ./... -coverpkg=./... -coverprofile cover.out
 
-.PHONY: e2e
-e2e: IMAGE=localhost/netobserv-cli:test
-e2e: PULL_POLICY=Never
-e2e: DIST_DIR=e2e/commands
-e2e: oc-commands ## Test e2e using kind cluster
+.PHONY: tests-e2e
+tests-e2e: IMAGE=localhost/netobserv-cli:test
+tests-e2e: PULL_POLICY=Never
+tests-e2e: DIST_DIR=e2e/commands
+tests-e2e: oc-commands ## Run e2e tests using kind cluster
 	@rm -rf e2e/output
 	go clean -testcache
 	$(OCI_BIN) build . -t ${IMAGE}
