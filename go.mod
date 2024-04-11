@@ -10,12 +10,22 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/mattn/go-tty v0.0.5
 	github.com/netobserv/flowlogs-pipeline v0.1.12-0.20240325100124-fd783b283c7c
 	github.com/netobserv/netobserv-ebpf-agent v0.3.4-0.20240322201014-08030df2209f
 	github.com/rodaine/table v1.2.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
+	sigs.k8s.io/e2e-framework v0.3.0
+)
+
+require (
+	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/moby/spdystream v0.2.0 // indirect
+	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	sigs.k8s.io/controller-runtime v0.15.1 // indirect
 )
 
 require (
@@ -90,6 +100,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/vishvananda/netlink v1.1.0 // indirect
 	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/vladimirvivien/gexe v0.2.0
 	github.com/vmware/go-ipfix v0.9.0 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect

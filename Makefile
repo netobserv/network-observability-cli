@@ -108,6 +108,17 @@ test: ## Test code using go test
 	@echo "### Testing code"
 	GOOS=$(GOOS) go test -mod vendor -a ./... -coverpkg=./... -coverprofile cover.out
 
+.PHONY: e2e
+e2e: IMAGE=localhost/netobserv-cli:test
+e2e: PULL_POLICY=Never
+e2e: DIST_DIR=e2e/commands
+e2e: oc-commands ## Test e2e using kind cluster
+	@rm -rf e2e/output
+	go clean -testcache
+	$(OCI_BIN) build . -t ${IMAGE}
+	$(OCI_BIN) save -o cli-e2e-img.tar ${IMAGE}
+	GOOS=$(GOOS) go test -p 1 -timeout 30m -v -mod vendor -tags e2e ./e2e/...
+
 .PHONY: coverage-report
 coverage-report: ## Generate coverage report
 	@echo "### Generating coverage report"
@@ -189,7 +200,7 @@ $(COMMANDS): commands ## Run command using custom image
 
 ##@ Images
 
-# note: to build and push custom image tag use: IMAGE_ORG=myuser VERSION=dev s
+# note: to build and push custom image tag use: IMAGE_ORG=myuser VERSION=dev
 .PHONY: image-build
 image-build: ## Build MULTIARCH_TARGETS images
 	trap 'exit' INT; \

@@ -50,6 +50,14 @@ sed -i -e '/collectorServiceYAMLContent/{r ./res/collector-service.yml' -e 'd}' 
 # inject updated functions to commands
 sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/"$prefix"netobserv
 
+if [ -z "$3" ]; then
+  echo "pull policy not provided, keeping current ones"
+else 
+  echo "updating CLI pull policy to $3"
+  sed -i "/  --image-pull-policy/c\  --image-pull-policy='$3' \\\\" ./tmp/oc-netobserv-flows
+  sed -i "/  --image-pull-policy/c\  --image-pull-policy='$3' \\\\" ./tmp/oc-netobserv-packets
+fi
+
 rm ./tmp/functions.sh
 
 if [ -z "$DIST_DIR" ]; then

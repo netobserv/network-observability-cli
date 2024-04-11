@@ -101,6 +101,9 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		db.Close()
 	}()
 	for fp := range flowPackets {
+		if stopReceived {
+			return
+		}
 		// Write flows to sqlite DB
 		err = queryFlowDB(fp.GenericMap.Value, db)
 		if err != nil {
@@ -339,11 +342,11 @@ func scanner() {
 		if err != nil {
 			panic(err)
 		}
-		if key == keyboard.KeyCtrlC {
+		if key == keyboard.KeyCtrlC || stopReceived {
 			log.Info("Ctrl-C pressed, exiting program.")
 
 			// exit program
-			os.Exit(0)
+			os.Exit(1)
 		} else if key == keyboard.KeyArrowUp {
 			flowsToShow = flowsToShow + 1
 		} else if key == keyboard.KeyArrowDown {
