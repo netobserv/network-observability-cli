@@ -16,7 +16,7 @@ This project is still a WIP. The following list gives an overview of the current
 - [X] Dockerfile
 - [ ] Advanced filter capabilities
 - [ ] Testing
-- [ ] Allow switching between `kubectl` / `oc` commands
+- [X] Allow switching between `kubectl` / `oc` commands
 
 Feel free to contribute !
 
@@ -24,7 +24,7 @@ Feel free to contribute !
 
 To run this CLI, you will need:
 - A running kubernetes / OpenShift cluster
-- `oc` command installed and connected
+- either `oc` or `kubectl` command installed and connected to your cluster
 - Cluster admin rights
 
 ## Build
@@ -43,7 +43,7 @@ sudo dnf install -y shellcheck
 make build
 ```
 
-This will also copy resources and oc commands to the `build` directory.
+This will also copy resources and commands to the `build` directory.
 
 ### Images
 
@@ -139,18 +139,18 @@ This will write pcap into a single file located in `./output/pcap/<CAPTURE_DATE_
 The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if an error occurs.
 
 ```bash
-./oc/oc-netobserv-cleanup
+./commands/netobserv-cleanup
 ```
 
-## Extending OpenShift CLI with plugin
+## Extending OpenShift or Kubernetes CLI with plugins
 
-You can add this plugin to your favorite oc commands using the following steps:
+You can add this plugin to your favorite `oc` or `kubectl` commands using the following steps:
 
 ```bash
-make install-oc-commands
+K8S_CLI_BIN=oc make install-commands
 ```
 
-This will add `oc netobserv flows` and `oc netobserv packets` commands to your CLI.
+For `oc`, this will add `oc netobserv flows` and `oc netobserv packets` commands to your CLI.
 You can verify the commands are available using:
 
 ```bash
@@ -166,5 +166,7 @@ The following compatible plugins are available:
 /usr/bin/oc-netobserv-flows
 /usr/bin/oc-netobserv-packets
 ```
+
+Similar behavior works for `kubectl`.
 
 More info [on official OpenShift documentation](https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/extending-cli-plugins.html).

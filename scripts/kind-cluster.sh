@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eux
 
+# get either oc (favorite) or kubectl paths
+K8S_CLI_BIN_PATH=$( which oc 2>/dev/null || which kubectl 2>/dev/null )
+K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
+
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd ../ && pwd )
 
 KIND_CLUSTER_NAME="netobserv-cli-cluster"
@@ -52,8 +56,8 @@ SVC_CIDR_IPV6=${SVC_CIDR_IPV6:-fd00:10:96::/112}
 # At the minimum, deploy the kind cluster
 deploy_kind
 export KUBECONFIG=${DIR}/kubeconfig
-oc label node ${KIND_CLUSTER_NAME}-worker node-role.kubernetes.io/worker=
-oc label node ${KIND_CLUSTER_NAME}-worker2 node-role.kubernetes.io/worker=
+${K8S_CLI_BIN} label node ${KIND_CLUSTER_NAME}-worker node-role.kubernetes.io/worker=
+${K8S_CLI_BIN} label node ${KIND_CLUSTER_NAME}-worker2 node-role.kubernetes.io/worker=
 
 # Print success at the end of this script
 print_success

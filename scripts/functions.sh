@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -eu
 
+# get either oc (favorite) or kubectl paths
+# this is used only when calling commands directly
+# else it will be overridden by inject.sh
+K8S_CLI_BIN_PATH=$( which oc 2>/dev/null || which kubectl 2>/dev/null )
+K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
+
 function loadYAMLs() {
   namespaceYAML='
     namespaceYAMLContent
@@ -39,7 +45,12 @@ function loadYAMLs() {
 }
 
 function clusterIsReady() {
-    if oc whoami 2>&1 || oc cluster-info | grep -q "Kubernetes control plane"; then
+    # use oc whoami as connectivity check by default and fallback to kubectl get all if needed
+    K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} whoami"
+    if [ "${K8S_CLI_BIN}" = "kubectl" ]; then
+      K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} get all"
+    fi
+    if ${K8S_CLI_CONNECTIVITY} 2>&1 || ${K8S_CLI_BIN} cluster-info | grep -q "Kubernetes control plane"; then
       return 0
     else
       return 1
@@ -65,22 +76,22 @@ function setup {
 
   # apply yamls
   echo "creating netobserv-cli namespace"
-  echo "$namespaceYAML" | oc apply -f -
+  echo "$namespaceYAML" | ${K8S_CLI_BIN} apply -f -
 
   echo "creating service account"
-  echo "$saYAML" | oc apply -f -
+  echo "$saYAML" | ${K8S_CLI_BIN} apply -f -
 
   echo "creating collector service"
-  echo "$collectorServiceYAML" | oc apply -f -
+  echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
 
   if [ "$1" = "flows" ]; then
     echo "creating flow-capture agents"
-    echo "${flowAgentYAML/"{{FLOW_FILTER_VALUE}}"/${2:-}}" | oc apply -f -
-    oc rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
+    echo "${flowAgentYAML/"{{FLOW_FILTER_VALUE}}"/${2:-}}" | ${K8S_CLI_BIN} apply -f -
+    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
   elif [ "$1" = "packets" ]; then
     echo "creating packet-capture agents"
-    echo "${packetAgentYAML/"{{PCA_FILTER_VALUE}}"/${2:-}}" | oc apply -f -
-    oc rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
+    echo "${packetAgentYAML/"{{PCA_FILTER_VALUE}}"/${2:-}}" | ${K8S_CLI_BIN} apply -f -
+    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
   fi
 }
 
@@ -89,10 +100,10 @@ function cleanup {
   if clusterIsReady; then
     echo "Copying collector output files..."
     mkdir -p ./output
-    oc cp -n netobserv-cli collector:output ./output
+    ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
 
     printf "\nCleaning up... "
-    oc delete namespace netobserv-cli
+    ${K8S_CLI_BIN} delete namespace netobserv-cli
   else
     echo "Cleanup namespace skipped"
     return

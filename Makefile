@@ -33,11 +33,16 @@ OUTPUT := $(DIST_DIR)/$(NAME)
 COMMANDS = flows packets cleanup
 COMMAND_ARGS ?= 
 
+# Get either oc (favorite) or kubectl paths
+K8S_CLI_BIN_PATH = $(shell which oc 2>/dev/null || which kubectl)
+K8S_CLI_BIN ?= $(shell basename ${K8S_CLI_BIN_PATH})
+
 # IMAGE_TAG_BASE defines the namespace and part of the image name for remote images.
 IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/$(NAME)
 
 # Image URL to use all building/pushing image targets
 IMAGE ?= $(IMAGE_TAG_BASE):$(VERSION)
+PULL_POLICY ?=Always
 OCI_BUILD_OPTS ?=
 
 # Image building tool (docker / podman) - docker is preferred in CI
@@ -129,13 +134,25 @@ clean: ## Clean up build directory
 	@rm -rf $(DIST_DIR)
 	@rm -rf $(FILES_OUTPUT_DIR)
 
-.PHONY: oc-commands
-oc-commands: ## Generate oc plugins and add them to build folder
-	@echo "### Generating oc-commands"
-	./scripts/inject.sh $(DIST_DIR) $(IMAGE)
+.PHONY: commands
+commands: ## Generate either oc or kubectl plugins and add them to build folder
+	@echo "### Generating $(K8S_CLI_BIN) commands"
+	DIST_DIR=$(DIST_DIR) \
+	K8S_CLI_BIN=$(K8S_CLI_BIN) \
+	IMAGE=$(IMAGE) \
+	PULL_POLICY=$(PULL_POLICY) \
+	./scripts/inject.sh
 
-.PHONY: install-oc-commands
-install-oc-commands: oc-commands ## Generate oc plugins and add them to /usr/bin/
+.PHONY: kubectl-commands
+kubectl-commands: K8S_CLI_BIN=kubectl
+kubectl-commands: commands ## Generate kubectl plugins and add them to build folder
+
+.PHONY: oc-commands
+oc-commands: K8S_CLI_BIN=oc
+oc-commands: commands ## Generate oc plugins and add them to build folder
+
+.PHONY: install-commands
+install-commands: commands ## Generate plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
 
 .PHONY: create-kind-cluster
@@ -146,14 +163,14 @@ create-kind-cluster: prereqs ## Create a kind cluster
 destroy-kind-cluster: KUBECONFIG=./kubeconfig
 destroy-kind-cluster: ## Destroy the kind cluster.
 	test -s ./kubeconfig || { echo "kubeconfig does not exist! Exiting..."; exit 1; }
-	oc delete -f ./res/namespace.yml --ignore-not-found
+	$(K8S_CLI_BIN) delete -f ./res/namespace.yml --ignore-not-found
 	kind delete cluster --name netobserv-cli-cluster
 	rm ./kubeconfig
 
 .PHONY: $(COMMANDS)
-$(COMMANDS): oc-commands ## Run oc command using custom image
-	@echo "### Running oc-netobserv-$@ using $(IMAGE)"
-	./$(DIST_DIR)/oc-netobserv-$@ $(COMMAND_ARGS)
+$(COMMANDS): commands ## Run command using custom image
+	@echo "### Running ${K8S_CLI_BIN}-netobserv-$@ using $(IMAGE)"
+	./$(DIST_DIR)/${K8S_CLI_BIN}-netobserv-$@ $(COMMAND_ARGS)
 
 ##@ Images
 
