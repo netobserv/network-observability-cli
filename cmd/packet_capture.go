@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -32,7 +31,7 @@ type PcapResult struct {
 	ByteCount   int64
 }
 
-var results = []PcapResult{}
+var packets = []PcapResult{}
 
 // Setting Snapshot length to 0 sets it to maximum packet size
 var snapshotlen uint32
@@ -57,7 +56,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 	} else {
 		log.Infof("Starting Packet Capture...")
 		filename = strings.Replace(
-			time.Now().UTC().Format(time.RFC3339),
+			currentTime().UTC().Format(time.RFC3339),
 			":", "", -1) // get rid of offensive colons
 	}
 
@@ -91,7 +90,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		collector.Close()
 	}()
 	for fp := range flowPackets {
-		go managePcapTable(PcapResult{Name: filename, ByteCount: int64(len(fp.Pcap.Value)), PacketCount: 1})
+		go managePacketsDisplay(PcapResult{Name: filename, ByteCount: int64(len(fp.Pcap.Value)), PacketCount: 1})
 		// append new line between each record to read file easilly
 		_, err = f.Write(fp.Pcap.Value)
 		if err != nil {
@@ -100,36 +99,34 @@ func runPacketCaptureOnAddr(port int, filename string) {
 	}
 }
 
-func managePcapTable(result PcapResult) {
+func managePacketsDisplay(result PcapResult) {
 	// lock since we are updating results concurrently
 	mutex.Lock()
 
 	// find result in array
 	found := false
-	for i, r := range results {
+	for i, r := range packets {
 		if r.Name == result.Name {
 			found = true
 			// update existing result
-			results[i].PacketCount += result.PacketCount
-			results[i].ByteCount += result.ByteCount
+			packets[i].PacketCount += result.PacketCount
+			packets[i].ByteCount += result.ByteCount
 			break
 		}
 	}
 	if !found {
-		results = append(results, result)
+		packets = append(packets, result)
 	}
 
 	// don't refresh terminal too often to avoid blinking
-	now := time.Now()
+	now := currentTime()
 	if int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
 		lastRefresh = now
+		resetTerminal()
 
-		// clear terminal to render table properly
-		fmt.Print("\x1bc")
-		// no wrap
-		fmt.Print("\033[?7l")
-
-		log.Infof("Running network-observability-cli as Packet Capture\nLog level: %s\nFilters: %s\n", logLevel, filter)
+		if outputBuffer == nil {
+			log.Infof("Running network-observability-cli as Packet Capture\nLog level: %s\nFilters: %s\n", logLevel, filter)
+		}
 
 		// recreate table from scratch
 		headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
@@ -139,9 +136,12 @@ func managePcapTable(result PcapResult) {
 			"Packets",
 			"Bytes",
 		)
+		if outputBuffer != nil {
+			tbl.WithWriter(outputBuffer)
+		}
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt).WithPadding(10)
 
-		for _, result := range results {
+		for _, result := range packets {
 			tbl.AddRow(
 				result.Name,
 				result.PacketCount,

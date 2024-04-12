@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,9 +21,19 @@ var (
 	nodes    []string
 	filter   string
 
-	startupTime = time.Now()
+	currentTime = func() time.Time {
+		return time.Now()
+	}
+	startupTime = currentTime()
 	lastRefresh = startupTime
 	mutex       = sync.Mutex{}
+
+	resetTerminal = func() {
+		// clear terminal to render table properly
+		fmt.Print("\x1bc")
+		// no wrap
+		fmt.Print("\033[?7l")
+	}
 
 	rootCmd = &cobra.Command{
 		Use:   "network-observability-cli",
@@ -30,6 +42,8 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
+
+	outputBuffer *bytes.Buffer
 )
 
 // Execute executes the root command.
