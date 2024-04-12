@@ -114,6 +114,7 @@ tests-e2e: PULL_POLICY=Never
 tests-e2e: DIST_DIR=e2e/commands
 tests-e2e: oc-commands ## Run e2e tests using kind cluster
 	@rm -rf e2e/output
+	@rm -f cli-e2e-img.tar
 	go clean -testcache
 	$(OCI_BIN) build . -t ${IMAGE}
 	$(OCI_BIN) save -o cli-e2e-img.tar ${IMAGE}
