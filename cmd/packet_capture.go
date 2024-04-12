@@ -183,7 +183,7 @@ func packetCaptureScanner() {
 			log.Info("Ctrl-C pressed, exiting program.")
 
 			// exit program
-			os.Exit(1)
+			os.Exit(0)
 		}
 	}
 }

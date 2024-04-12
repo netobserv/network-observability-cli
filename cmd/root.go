@@ -71,7 +71,7 @@ func init() {
 		log.Info("Received SIGTERM; cleaning up...")
 		stopReceived = true
 
-		os.Exit(1)
+		os.Exit(0)
 	}()
 
 	// IPFIX flow

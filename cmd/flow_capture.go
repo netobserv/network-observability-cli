@@ -350,7 +350,7 @@ func scanner() {
 			log.Info("Ctrl-C pressed, exiting program.")
 
 			// exit program
-			os.Exit(1)
+			os.Exit(0)
 		} else if key == keyboard.KeyArrowUp {
 			flowsToShow = flowsToShow + 1
 		} else if key == keyboard.KeyArrowDown {
