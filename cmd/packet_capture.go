@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -156,13 +157,18 @@ func managePacketsDisplay(result PcapResult) {
 		tbl.Print()
 	}
 
+	if len(keyboardError) > 0 {
+		fmt.Println(keyboardError)
+	}
+
 	// unlock
 	mutex.Unlock()
 }
 
 func packetCaptureScanner() {
 	if err := keyboard.Open(); err != nil {
-		panic(err)
+		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
+		return
 	}
 	defer func() {
 		_ = keyboard.Close()

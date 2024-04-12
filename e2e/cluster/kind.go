@@ -96,7 +96,7 @@ func (k *Kind) deleteNamespace() env.Func {
 	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
 		exe := gexe.New()
 		out := exe.Run("kubectl delete namespace netobserv-cli")
-		klog.WithField("out", out).Debug("deleted namespace")
+		klog.WithField("out", out).Info("deleted namespace")
 		return ctx, nil
 	}
 }
@@ -109,8 +109,6 @@ func (k *Kind) TestEnv() env.Environment {
 // methods, which will selectively work depending on the container backend type
 func (k *Kind) loadLocalImage() env.Func {
 	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
-		// TODO: find why this is not working
-
 		klog.Info("trying to load docker image from local registry")
 		ctx, err := envfuncs.LoadDockerImageToCluster(
 			k.clusterName, cliContainerName)(ctx, config)

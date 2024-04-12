@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mattn/go-tty"
 	"github.com/netobserv/network-observability-cli/e2e/cluster"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -74,7 +73,6 @@ func TestFlowCapture(t *testing.T) {
 			assert.Contains(t, str, "SrcType")
 			assert.Contains(t, str, "DstName")
 			assert.Contains(t, str, "DstType")
-			assert.Contains(t, str, "Type anything to filter incoming flows in view")
 			// check that script terminated
 			assert.Contains(t, str, "command terminated")
 			return ctx
@@ -188,16 +186,8 @@ func runCommand(commandName string, arg ...string) ([]byte, error) {
 	cmdStr := path.Join("commands", commandName)
 	log.WithFields(logrus.Fields{"cmd": cmdStr, "arg": arg}).Info("running command")
 
-	log.Print("Opening tty...")
-	t, err := tty.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer t.Close()
-
 	log.Print("Executing command...")
 	cmd := exec.Command(cmdStr, arg...)
-	cmd.Stdin = t.Input()
 
 	timer := time.AfterFunc(commandTimeout, func() {
 		log.Print("Terminating command...")

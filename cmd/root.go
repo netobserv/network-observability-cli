@@ -46,8 +46,9 @@ var (
 		},
 	}
 
-	outputBuffer *bytes.Buffer
-	stopReceived = false
+	outputBuffer  *bytes.Buffer
+	stopReceived  = false
+	keyboardError = ""
 )
 
 // Execute executes the root command.

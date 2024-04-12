@@ -319,19 +319,23 @@ func updateTable() {
 			tbl.Print()
 		}
 
-		if outputBuffer == nil {
+		if len(keyboardError) > 0 {
+			fmt.Println(keyboardError)
+		} else if outputBuffer == nil {
 			if len(regexes) > 0 {
 				fmt.Printf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
 			} else {
 				fmt.Printf("Type anything to filter incoming flows in view\n")
 			}
 		}
+
 	}
 }
 
 func scanner() {
 	if err := keyboard.Open(); err != nil {
-		panic(err)
+		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
+		return
 	}
 	defer func() {
 		_ = keyboard.Close()
