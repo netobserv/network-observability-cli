@@ -48,6 +48,7 @@ OCI_BUILD_OPTS ?=
 # Image building tool (docker / podman) - docker is preferred in CI
 OCI_BIN_PATH := $(shell which docker 2>/dev/null || which podman)
 OCI_BIN ?= $(shell basename ${OCI_BIN_PATH})
+KREW_PLUGIN ?=false
 
 GOLANGCI_LINT_VERSION = v1.54.2
 
@@ -155,6 +156,12 @@ oc-commands: commands ## Generate oc plugins and add them to build folder
 install-commands: commands ## Generate plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
 
+.PHONY: tar-commands
+tar-commands: clean ## Generate tar.gz containing krew plugin
+	$(MAKE) KREW_PLUGIN=true kubectl-commands
+	tar -czf netobserv-cli.tar.gz LICENSE ./build/netobserv
+	sha256sum netobserv-cli.tar.gz
+
 .PHONY: create-kind-cluster
 create-kind-cluster: prereqs ## Create a kind cluster
 	scripts/kind-cluster.sh
@@ -169,8 +176,8 @@ destroy-kind-cluster: ## Destroy the kind cluster.
 
 .PHONY: $(COMMANDS)
 $(COMMANDS): commands ## Run command using custom image
-	@echo "### Running ${K8S_CLI_BIN}-netobserv-$@ using $(IMAGE)"
-	./$(DIST_DIR)/${K8S_CLI_BIN}-netobserv-$@ $(COMMAND_ARGS)
+	@echo "### Running ${K8S_CLI_BIN}-netobserv $@ using $(IMAGE)"
+	./$(DIST_DIR)/${K8S_CLI_BIN}-netobserv $@ $(COMMAND_ARGS)
 
 ##@ Images
 

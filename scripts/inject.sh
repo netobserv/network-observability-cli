@@ -6,16 +6,14 @@ if [ -z "$IMAGE" ]; then
   echo "image not provided, keeping current ones"
 else 
   echo "updating CLI images to $IMAGE"
-  sed -i "/img=/c\img=\"$IMAGE\"" ./tmp/netobserv-flows
-  sed -i "/img=/c\img=\"$IMAGE\"" ./tmp/netobserv-packets
+  sed -i "/img=/c\img=\"$IMAGE\"" ./tmp/netobserv
 fi
 
 if [ -z "$PULL_POLICY" ]; then
   echo "pull policy not provided, keeping current ones"
 else 
   echo "updating CLI pull policy to $PULL_POLICY"
-  sed -i "/  --image-pull-policy/c\  --image-pull-policy='$PULL_POLICY' \\\\" ./tmp/netobserv-flows
-  sed -i "/  --image-pull-policy/c\  --image-pull-policy='$PULL_POLICY' \\\\" ./tmp/netobserv-packets
+  sed -i "/  --image-pull-policy/c\  --image-pull-policy='$PULL_POLICY' \\\\" ./tmp/netobserv
 fi
 
 if [ -z "$K8S_CLI_BIN" ]; then
@@ -25,10 +23,6 @@ else
   echo "updating K8S CLI to $K8S_CLI_BIN"
   sed -i "/K8S_CLI_BIN_PATH=/d" ./tmp/functions.sh
   sed -i "/K8S_CLI_BIN=/c\K8S_CLI_BIN=$K8S_CLI_BIN" ./tmp/functions.sh
-
-  mv ./tmp/netobserv-flows ./tmp/"$K8S_CLI_BIN"-netobserv-flows
-  mv ./tmp/netobserv-packets ./tmp/"$K8S_CLI_BIN"-netobserv-packets
-  mv ./tmp/netobserv-cleanup ./tmp/"$K8S_CLI_BIN"-netobserv-cleanup
 fi
 
 # inject YAML files to functions.sh
@@ -39,11 +33,15 @@ sed -i -e '/packetAgentYAMLContent/{r ./res/packet-capture.yml' -e 'd}' ./tmp/fu
 sed -i -e '/collectorServiceYAMLContent/{r ./res/collector-service.yml' -e 'd}' ./tmp/functions.sh
 
 # inject updated functions to commands
-sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/"$K8S_CLI_BIN"-netobserv-flows
-sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/"$K8S_CLI_BIN"-netobserv-packets
-sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/"$K8S_CLI_BIN"-netobserv-cleanup
+sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/netobserv
 
 rm ./tmp/functions.sh
+
+# prefix with oc / kubectl for local install
+if [ -z "$KREW_PLUGIN" ] || [ "$KREW_PLUGIN" = "false" ]; then
+  echo "prefixing with $K8S_CLI_BIN"
+  mv ./tmp/netobserv ./tmp/"$K8S_CLI_BIN"-netobserv
+fi
 
 if [ -z "$DIST_DIR" ]; then
   echo "output generated in tmp folder"
