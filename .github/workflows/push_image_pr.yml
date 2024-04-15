@@ -51,9 +51,9 @@ jobs:
 
             It will expire after two weeks.
 
-            To use this build, update your oc commands using:
+            To use this build, update your commands using:
             \`\`\`bash
-            USER=netobserv VERSION=${{ env.short_sha }} make oc-commands
+            USER=netobserv VERSION=${{ env.short_sha }} make commands
             \`\`\`
             `
             })

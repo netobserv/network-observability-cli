@@ -1,13 +1,12 @@
 #!/bin/bash
 source "./scripts/functions.sh"
 
-# pcap filter such as 'tcp,80'
+# interface filter such as 'br-ex'
 filter=""
 
 if [ -z "${1:-}" ]
 then
-  echo "Specify a valid filter as first argument such as 'oc get-packets tcp,80'"
-  exit 1
+  echo "Filters not set"
 else
   echo "Filters set as $1"
   filter=$1
@@ -18,22 +17,22 @@ img="quay.io/netobserv/network-observability-cli:main"
 
 trap cleanup EXIT
 
-setup packets $filter
+setup flows $filter
 
-echo "\nRunning network-observability-cli get-packets... "
-oc run \
+echo "Running network-observability-cli get-flows... "
+${K8S_CLI_BIN} run \
   -n netobserv-cli \
   collector \
-  --image=$img \
+  --image=$img\
   --image-pull-policy='Always' \
   --restart='Never' \
   --command -- sleep infinity
 
-oc wait \
+${K8S_CLI_BIN} wait \
   -n netobserv-cli \
   --for=condition=Ready pod/collector
 
-oc exec -i --tty \
+${K8S_CLI_BIN} exec -i --tty \
   -n netobserv-cli \
   collector \
-  -- /network-observability-cli get-packets --filter "$filter"
+  -- /network-observability-cli get-flows ${filter:+"--filter" "$filter"}
