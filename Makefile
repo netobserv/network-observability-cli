@@ -157,11 +157,13 @@ oc-commands: commands ## Generate oc plugins and add them to build folder
 install-commands: commands ## Generate plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
 
-.PHONY: tar-commands
-tar-commands: clean ## Generate tar.gz containing krew plugin
+.PHONY: release
+release: clean ## Generate tar.gz containing krew plugin and display krew updated index
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
 	tar -czf netobserv-cli.tar.gz LICENSE ./build/netobserv
-	sha256sum netobserv-cli.tar.gz
+	@echo "### Generating krew index yaml"
+	VERSION=$(VERSION) \
+	./scripts/krew.sh
 
 .PHONY: create-kind-cluster
 create-kind-cluster: prereqs ## Create a kind cluster
