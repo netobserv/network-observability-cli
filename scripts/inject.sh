@@ -16,13 +16,21 @@ else
   sed -i "/  --image-pull-policy/c\  --image-pull-policy='$PULL_POLICY' \\\\" ./tmp/netobserv
 fi
 
-if [ -z "$K8S_CLI_BIN" ]; then
-  echo "ERROR: K8S CLI not provided"
-  exit 1
-else 
+prefix=
+if [ -z "$KREW_PLUGIN" ] || [ "$KREW_PLUGIN" = "false" ]; then
+  if [ -z "$K8S_CLI_BIN" ]; then
+    echo "ERROR: K8S CLI not provided"
+    exit 1
+  fi 
   echo "updating K8S CLI to $K8S_CLI_BIN"
+  # remove unecessary call
   sed -i "/K8S_CLI_BIN_PATH=/d" ./tmp/functions.sh
-  sed -i "/K8S_CLI_BIN=/c\K8S_CLI_BIN=$K8S_CLI_BIN" ./tmp/functions.sh
+  # replace only first match to force default
+  sed -i "0,/K8S_CLI_BIN=/c\K8S_CLI_BIN=$K8S_CLI_BIN" ./tmp/functions.sh
+  # prefix with oc / kubectl for local install
+  prefix="$K8S_CLI_BIN-"
+  echo "prefixing with $prefix"
+  mv ./tmp/netobserv ./tmp/"$prefix"netobserv
 fi
 
 # inject YAML files to functions.sh
@@ -33,15 +41,9 @@ sed -i -e '/packetAgentYAMLContent/{r ./res/packet-capture.yml' -e 'd}' ./tmp/fu
 sed -i -e '/collectorServiceYAMLContent/{r ./res/collector-service.yml' -e 'd}' ./tmp/functions.sh
 
 # inject updated functions to commands
-sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/netobserv
+sed -i -e '/source.*/{r ./tmp/functions.sh' -e 'd}' ./tmp/"$prefix"netobserv
 
 rm ./tmp/functions.sh
-
-# prefix with oc / kubectl for local install
-if [ -z "$KREW_PLUGIN" ] || [ "$KREW_PLUGIN" = "false" ]; then
-  echo "prefixing with $K8S_CLI_BIN"
-  mv ./tmp/netobserv ./tmp/"$K8S_CLI_BIN"-netobserv
-fi
 
 if [ -z "$DIST_DIR" ]; then
   echo "output generated in tmp folder"
