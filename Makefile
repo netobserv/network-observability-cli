@@ -1,7 +1,7 @@
-# VERSION defines the project version for the bundle.
+# VERSION defines the project version.
 # Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
+# To re-generate a tar.gz for another specific version without changing the standard setup, you can:
+# - use the VERSION as arg of the bundle target (e.g make tar-commands VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= main
 BUILD_DATE := $(shell date +%Y-%m-%d\ %H:%M)
@@ -142,6 +142,7 @@ commands: ## Generate either oc or kubectl plugins and add them to build folder
 	K8S_CLI_BIN=$(K8S_CLI_BIN) \
 	IMAGE=$(IMAGE) \
 	PULL_POLICY=$(PULL_POLICY) \
+	VERSION=$(VERSION) \
 	./scripts/inject.sh
 
 .PHONY: kubectl-commands

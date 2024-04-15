@@ -3,17 +3,24 @@ cp -a ./commands/. ./tmp
 cp ./scripts/functions.sh ./tmp/functions.sh
 
 if [ -z "$IMAGE" ]; then
-  echo "image not provided, keeping current ones"
+  echo "image not provided, keeping current one"
 else 
   echo "updating CLI images to $IMAGE"
   sed -i "/img=/c\img=\"$IMAGE\"" ./tmp/netobserv
 fi
 
 if [ -z "$PULL_POLICY" ]; then
-  echo "pull policy not provided, keeping current ones"
+  echo "pull policy not provided, keeping current one"
 else 
   echo "updating CLI pull policy to $PULL_POLICY"
   sed -i "/  --image-pull-policy/c\  --image-pull-policy='$PULL_POLICY' \\\\" ./tmp/netobserv
+fi
+
+if [ -z "$VERSION" ]; then
+  echo "version not provided, keeping current one"
+else 
+  echo "updating CLI version to $VERSION"
+  sed -i "/version=/c\version=\"$VERSION\"" ./tmp/netobserv
 fi
 
 prefix=
