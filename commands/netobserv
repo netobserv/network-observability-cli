@@ -13,7 +13,8 @@ version="0.0.1"
 # command to run
 command=""
 
-if [ -z "${1:-}" ] || [ "$1" = "help" ]; then
+case "$1" in  
+"help")
     # display Help
     echo
     echo "Netobserv allows you to capture flow and packets from your cluster."
@@ -27,11 +28,12 @@ if [ -z "${1:-}" ] || [ "$1" = "help" ]; then
     echo "  cleanup    Remove netobserv components."
     echo "  version    Print software version."
     echo
-    exit 0
-elif [ "$1" = "version" ]; then
+    exit 0 ;;
+"version")
+    # display version
     echo "Netobserv CLI version $version"
-    exit 0
-elif [ "$1" = "flows" ]; then
+    exit 0 ;;
+"flows")
     if [ -z "${2:-}" ]
     then
       echo "Filters not set"
@@ -40,8 +42,8 @@ elif [ "$1" = "flows" ]; then
       filter=$2
     fi
     # run flows command
-    command="flows"
-elif [ "$1" = "packets" ]; then
+    command="flows" ;;
+"packets")
     if [ -z "${2:-}" ]; then
       echo "Specify a valid filter as first argument such as 'tcp,80'"
       exit 1
@@ -50,15 +52,15 @@ elif [ "$1" = "packets" ]; then
       filter=$2
     fi
     # run packets command
-    command="packets"
-elif [ "$1" = "cleanup" ]; then
+    command="packets" ;;
+"cleanup")
     # run cleanup command
     cleanup
-    exit 0
-else
+    exit 0 ;;
+*)
     echo "Unknown command $1. Use 'netobserv help' to display options"
     exit 1
-fi
+esac
 
 trap cleanup EXIT
 
