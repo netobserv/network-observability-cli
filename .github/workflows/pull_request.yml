@@ -28,7 +28,7 @@ jobs:
       run: go mod vendor
     - name: Report coverage
       if: ${{ matrix.go == '1.21' }}
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v4.3.0
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
@@ -36,3 +36,4 @@ jobs:
         flags: unittests
         fail_ci_if_error: true
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
