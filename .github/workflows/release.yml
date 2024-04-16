@@ -43,3 +43,25 @@ jobs:
           registry: quay.io
       - name: build and push manifest with images
         run: MULTIARCH_TARGETS="${{ env.WF_MULTIARCH_TARGETS }}" IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} make images
+      - name: create github release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: true
+          prerelease: false
+          release_name: ${{ env.tag }}
+          tag_name: ${{ env.tag }}
+          body_path: ./tmp/release.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: build plugin artifact
+        run: IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} make release
+      - name: push plugin artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: netobserv-cli.tar.gz
+          asset_name: netobserv-cli.tar.gz
+          asset_content_type: application/gzip

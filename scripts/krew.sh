@@ -41,3 +41,11 @@ spec:
 
 echo "Copy the following YAML and submit it to https://github.com/kubernetes-sigs/krew-index for release:" 
 echo "${indexYaml}"
+
+# github todo release notes
+# check .github/workflows/release.yml for usage
+mkdir -p ./tmp
+echo "TODO: 
+- Submit updated index to https://github.com/kubernetes-sigs/krew-index to update plugin:
+\`\`\`yaml${indexYaml}\`\`\`
+- Click on 'generate release notes' above and publish" > ./tmp/release.md
