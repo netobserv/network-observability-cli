@@ -30,17 +30,45 @@ spec:
           - name: LOG_LEVEL
             value: trace
           - name: INTERFACES
-            value: "{{FLOW_FILTER_VALUE}}"
+            value: ""
           - name: EXCLUDE_INTERFACES
             value: "lo"
           - name: SAMPLING
             value: "1"
           - name: ENABLE_RTT
-            value: "true"
+            value: ""
           - name: ENABLE_PKT_DROPS
-            value: "true"
+            value: ""
           - name: ENABLE_DNS_TRACKING
-            value: "true"
+            value: ""
+          - name: ENABLE_FLOW_FILTER
+            value: ""
+          - name: FLOW_FILTER_DIRECTION
+            value: ""
+          - name: FLOW_FILTER_IP_CIDR
+            value: ""
+          - name: FLOW_FILTER_PROTOCOL
+            value: ""
+          - name: FLOW_FILTER_SOURCE_PORT
+            value: ""
+          - name: FLOW_FILTER_DESTINATION_PORT
+            value: ""
+          - name: FLOW_FILTER_PORT
+            value: ""
+          - name:  FLOW_FILTER_SOURCE_PORT_RANGE
+            value: ""
+          - name: FLOW_FILTER_DESTINATION_PORT_RANGE
+            value: ""
+          - name: FLOW_FILTER_PORT_RANGE
+            value: ""
+          - name: FLOW_FILTER_ICMP_TYPE
+            value: ""
+          - name: FLOW_FILTER_ICMP_CODE
+            value: ""
+          - name: FLOW_FILTER_PEER_IP
+            value: ""
+          - name: FLOW_FILTER_ACTION
+            value: ""
           - name: EXPORT
             value: "direct-flp"
           - name: FLP_CONFIG

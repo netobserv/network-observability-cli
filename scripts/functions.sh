@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -eu
 
 # get either oc (favorite) or kubectl paths
@@ -57,6 +58,9 @@ function clusterIsReady() {
     fi
 }
 
+MANIFEST_FILE="flow-capture.yml"
+MANIFEST_OUTPUT_PATH="tmp"
+
 function setup {
   echo "Setting up... "
 
@@ -85,9 +89,111 @@ function setup {
   echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
 
   if [ "$1" = "flows" ]; then
-    echo "creating flow-capture agents"
-    echo "${flowAgentYAML/"{{FLOW_FILTER_VALUE}}"/${2:-}}" | ${K8S_CLI_BIN} apply -f -
+    shift
+    echo "creating flow-capture agents:"
+    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
+      mkdir -p ${MANIFEST_OUTPUT_PATH} > /dev/null
+    fi
+    manifest="${MANIFEST_OUTPUT_PATH}/${MANIFEST_FILE}"
+    echo "${flowAgentYAML}" > ${manifest}
+    options="$*"
+    # Iterate through the command-line arguments
+    for option in $options; do
+        key="${option%%=*}"
+        value="${option#*=}"
+        case "$key" in
+            --interfaces) # Interfaces
+                edit_manifest "interfaces" "$value" "$manifest"
+                ;;
+            --enable_pktdrop) # Enable packet drop
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                  edit_manifest "pktdrop_enable" "$value" "$manifest"
+                else
+                  echo "invalid value for --enable_pktdrop"
+                fi
+                ;;
+            --enable_dns) # Enable DNS
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                  edit_manifest "dns_enable" "$value" "$manifest"
+                else
+                  echo "invalid value for --enable_dns"
+                fi
+                ;;
+            --enable_rtt) # Enable RTT
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                  edit_manifest "rtt_enable" "$value" "$manifest"
+                else
+                  echo "invalid value for --enable_rtt"
+                fi
+                ;;
+            --enable_filter) # Enable flow filter
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                  edit_manifest "filter_enable" "$value" "$manifest"
+                else
+                  echo "invalid value for --enable_filter"
+                fi
+                ;;
+            --direction) # Configure flow filter direction
+                if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
+                  edit_manifest "filter_direction" "$value" "$manifest"
+                else
+                  echo "invalid value for --direction"
+                fi
+                ;;
+            --cidr) # Configure flow filter CIDR
+                edit_manifest "filter_cidr" "$value" "$manifest"
+                ;;
+            --protocol) # Configure flow filter protocol
+                if [[ "$value" == "TCP" || "$value" == "UDP" || "$value" == "SCTP" || "$value" == "ICMP" || "$value" == "ICMPv6" ]]; then
+                  edit_manifest "filter_protocol" "$value" "$manifest"
+                else
+                  echo "invalid value for --protocol"
+                fi
+                ;;
+            --sport) # Configure flow filter source port
+                edit_manifest "filter_sport" "$value" "$manifest"
+                ;;
+            --dport) # Configure flow filter destination port
+                edit_manifest "filter_dport" "$value" "$manifest"
+                ;;
+            --port) # Configure flow filter port
+                edit_manifest "filter_port" "$value" "$manifest"
+                ;;
+            --sport-range) # Configure flow filter source port range
+                edit_manifest "filter_sport_range" "$value" "$manifest"
+                ;;
+            --dport-range) # Configure flow filter destination port range
+                edit_manifest "filter_dport_range" "$value" "$manifest"
+                ;;
+            --port-range) # Configure flow filter port range
+                edit_manifest "filter_port_range" "$value" "$manifest"
+                ;;
+            --icmp-type) # ICMP type
+                edit_manifest "filter_icmp_type" "$value" "$manifest"
+                ;;
+            --icmp-code) # ICMP code
+                edit_manifest "filter_icmp_code" "$value" "$manifest"
+                ;;
+            --peer-ip) # Peer IP
+                edit_manifest "filter_peer_ip" "$value" "$manifest"
+                ;;
+            --action) # Filter action
+                if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
+                  edit_manifest "filter_action" "$value" "$manifest"
+                else
+                  echo "invalid value for --action"
+                fi
+                ;;
+            *) # Invalid option
+                echo "Invalid option: $key" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    ${K8S_CLI_BIN} apply -f "${manifest}"
     ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
+    rm -rf ${MANIFEST_OUTPUT_PATH}
   elif [ "$1" = "packets" ]; then
     echo "creating packet-capture agents"
     echo "${packetAgentYAML/"{{PCA_FILTER_VALUE}}"/${2:-}}" | ${K8S_CLI_BIN} apply -f -
@@ -108,4 +214,65 @@ function cleanup {
     echo "Cleanup namespace skipped"
     return
   fi
+}
+
+function edit_manifest() {
+  ## replace the env variable in the manifest file
+  echo "env: $1, env_value: $2"
+  case "$1" in
+  "interfaces")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
+    ;;
+  "pktdrop_enable")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$3"
+    ;;
+  "dns_enable")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_DNS_TRACKING\").value|=\"$2\"" "$3"
+    ;;
+  "rtt_enable")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$3"
+    ;;
+  "filter_enable")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
+    ;;
+  "filter_direction")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_DIRECTION\").value|=\"$2\"" "$3"
+    ;;
+  "filter_cidr")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_IP_CIDR\").value|=\"$2\"" "$3"
+    ;;
+  "filter_protocol")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_PROTOCOL\").value|=\"$2\"" "$3"
+    ;;
+  "filter_sport")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_SOURCE_PORT\").value|=\"$2\"" "$3"
+    ;;
+  "filter_dport")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_DESTINATION_PORT\").value|=\"$2\"" "$3"
+    ;;
+  "filter_port")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_PORT\").value|=\"$2\"" "$3"
+    ;;
+  "filter_sport_range")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_SOURCE_PORT_RANGE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_dport_range")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_DESTINATION_PORT_RANGE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_port_range")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_PORT_RANGE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_icmp_type")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_ICMP_TYPE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_icmp_code")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_ICMP_CODE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_peer_ip")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_PEER_IP\").value|=\"$2\"" "$3"
+    ;;
+  "filter_action")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLOW_FILTER_ACTION\").value|=\"$2\"" "$3"
+    ;;
+  esac
 }
