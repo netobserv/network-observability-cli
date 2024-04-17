@@ -1,7 +1,7 @@
-# VERSION defines the project version for the bundle.
+# VERSION defines the project version.
 # Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
+# To re-generate a tar.gz for another specific version without changing the standard setup, you can:
+# - use the VERSION as arg of the bundle target (e.g make tar-commands VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= main
 BUILD_DATE := $(shell date +%Y-%m-%d\ %H:%M)
@@ -48,6 +48,7 @@ OCI_BUILD_OPTS ?=
 # Image building tool (docker / podman) - docker is preferred in CI
 OCI_BIN_PATH := $(shell which docker 2>/dev/null || which podman)
 OCI_BIN ?= $(shell basename ${OCI_BIN_PATH})
+KREW_PLUGIN ?=false
 
 GOLANGCI_LINT_VERSION = v1.54.2
 
@@ -141,6 +142,7 @@ commands: ## Generate either oc or kubectl plugins and add them to build folder
 	K8S_CLI_BIN=$(K8S_CLI_BIN) \
 	IMAGE=$(IMAGE) \
 	PULL_POLICY=$(PULL_POLICY) \
+	VERSION=$(VERSION) \
 	./scripts/inject.sh
 
 .PHONY: kubectl-commands
@@ -154,6 +156,14 @@ oc-commands: commands ## Generate oc plugins and add them to build folder
 .PHONY: install-commands
 install-commands: commands ## Generate plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
+
+.PHONY: release
+release: clean ## Generate tar.gz containing krew plugin and display krew updated index
+	$(MAKE) KREW_PLUGIN=true kubectl-commands
+	tar -czf netobserv-cli.tar.gz LICENSE ./build/netobserv
+	@echo "### Generating krew index yaml"
+	VERSION=$(VERSION) \
+	./scripts/krew.sh
 
 .PHONY: create-kind-cluster
 create-kind-cluster: prereqs ## Create a kind cluster
@@ -169,8 +179,8 @@ destroy-kind-cluster: ## Destroy the kind cluster.
 
 .PHONY: $(COMMANDS)
 $(COMMANDS): commands ## Run command using custom image
-	@echo "### Running ${K8S_CLI_BIN}-netobserv-$@ using $(IMAGE)"
-	./$(DIST_DIR)/${K8S_CLI_BIN}-netobserv-$@ $(COMMAND_ARGS)
+	@echo "### Running ${K8S_CLI_BIN}-netobserv $@ using $(IMAGE)"
+	./$(DIST_DIR)/${K8S_CLI_BIN}-netobserv $@ $(COMMAND_ARGS)
 
 ##@ Images
 

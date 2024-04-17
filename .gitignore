@@ -3,3 +3,4 @@ output
 tmp
 cover.out
 kubeconfig
+netobserv-cli.tar.gz

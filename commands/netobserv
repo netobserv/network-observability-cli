@@ -1,0 +1,85 @@
+#!/bin/bash
+source "./scripts/functions.sh"
+
+# interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
+filter=""
+
+# CLI image to use
+img="quay.io/netobserv/network-observability-cli:main"
+
+# version to display
+version="0.0.1"
+
+# command to run
+command=""
+
+case "$1" in  
+"help")
+    # display Help
+    echo
+    echo "Netobserv allows you to capture flow and packets from your cluster."
+    echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
+    echo
+    echo "Syntax: netobserv [flows|packets|cleanup] [filters]"
+    echo
+    echo "options:"
+    echo "  flows      Capture flows information. You can specify an optionnal interface name as filter such as 'netobserv flows br-ex'."
+    echo "  packets    Capture packets from a specific protocol/port pair such as 'netobserv packets tcp,80'"
+    echo "  cleanup    Remove netobserv components."
+    echo "  version    Print software version."
+    echo
+    exit 0 ;;
+"version")
+    # display version
+    echo "Netobserv CLI version $version"
+    exit 0 ;;
+"flows")
+    if [ -z "${2:-}" ]
+    then
+      echo "Filters not set"
+    else
+      echo "Filters set as $2"
+      filter=$2
+    fi
+    # run flows command
+    command="flows" ;;
+"packets")
+    if [ -z "${2:-}" ]; then
+      echo "Specify a valid filter as first argument such as 'tcp,80'"
+      exit 1
+    else
+      echo "Filters set as $2"
+      filter=$2
+    fi
+    # run packets command
+    command="packets" ;;
+"cleanup")
+    # run cleanup command
+    cleanup
+    exit 0 ;;
+*)
+    echo "Unknown command $1. Use 'netobserv help' to display options"
+    exit 1
+esac
+
+trap cleanup EXIT
+
+setup $command $filter
+
+echo "Running network-observability-cli get-$command... "
+${K8S_CLI_BIN} run \
+  -n netobserv-cli \
+  collector \
+  --image=$img\
+  --image-pull-policy='Always' \
+  --restart='Never' \
+  --command -- sleep infinity
+
+${K8S_CLI_BIN} wait \
+  -n netobserv-cli \
+  --for=condition=Ready pod/collector
+
+${K8S_CLI_BIN} exec -i --tty \
+  -n netobserv-cli \
+  collector \
+  -- /network-observability-cli get-$command ${filter:+"--filter" "$filter"}

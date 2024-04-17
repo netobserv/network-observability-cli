@@ -149,24 +149,28 @@ You can add this plugin to your favorite `oc` or `kubectl` commands using the fo
 ```bash
 K8S_CLI_BIN=oc make install-commands
 ```
+OR 
+```bash
+K8S_CLI_BIN=kubectl make install-commands
+```
 
-For `oc`, this will add `oc netobserv flows` and `oc netobserv packets` commands to your CLI.
+This will add `netobserv` commands to your CLI.
 You can verify the commands are available using:
 
 ```bash
 oc plugin list
 ```
+OR
+```bash
+kubectl plugin list
+```
 
 It will display as result:
 
-```
+```bash
 The following compatible plugins are available:
 ...
-/usr/bin/oc-netobserv-cleanup
-/usr/bin/oc-netobserv-flows
-/usr/bin/oc-netobserv-packets
+/usr/bin/<oc|kubectl>-netobserv
 ```
-
-Similar behavior works for `kubectl`.
 
 More info [on official OpenShift documentation](https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/extending-cli-plugins.html).
