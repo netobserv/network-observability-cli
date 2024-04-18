@@ -225,13 +225,13 @@ function usage {
   echo "Options:"
   echo "  --help: show this help message"
   echo "  --interfaces: interfaces to monitor"
-  echo "  --enable_pktdrop: enable packet drop"
-  echo "  --enable_dns: enable DNS tracking"
-  echo "  --enable_rtt: enable RTT tracking"
-  echo "  --enable_filter: enable flow filter"
+  echo "  --enable_pktdrop: enable packet drop (default: true)"
+  echo "  --enable_dns: enable DNS tracking (default: true)"
+  echo "  --enable_rtt: enable RTT tracking (default: true)"
+  echo "  --enable_filter: enable flow filter (default: false)"
   echo "  --direction: flow filter direction"
-  echo "  --cidr: flow filter CIDR"
-  echo "  --protocol: flow filter protocol"
+  echo "  --cidr: flow filter CIDR (default: 0.0.0.0/0)"
+  echo "  --protocol: flow filter protocol (default: TCP)"
   echo "  --sport: flow filter source port"
   echo "  --dport: flow filter destination port"
   echo "  --port: flow filter port"
@@ -241,7 +241,7 @@ function usage {
   echo "  --icmp_type: ICMP type"
   echo "  --icmp_code: ICMP code"
   echo "  --peer_ip: peer IP"
-  echo "  --action: flow filter action"
+  echo "  --action: flow filter action (default: Accept)"
 }
 
 function edit_manifest() {
