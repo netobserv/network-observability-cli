@@ -102,6 +102,10 @@ function setup {
         key="${option%%=*}"
         value="${option#*=}"
         case "$key" in
+            --help) # show help
+                usage
+                exit
+                ;;
             --interfaces) # Interfaces
                 edit_manifest "interfaces" "$value" "$manifest"
                 ;;
@@ -159,22 +163,22 @@ function setup {
             --port) # Configure flow filter port
                 edit_manifest "filter_port" "$value" "$manifest"
                 ;;
-            --sport-range) # Configure flow filter source port range
+            --sport_range) # Configure flow filter source port range
                 edit_manifest "filter_sport_range" "$value" "$manifest"
                 ;;
-            --dport-range) # Configure flow filter destination port range
+            --dport_range) # Configure flow filter destination port range
                 edit_manifest "filter_dport_range" "$value" "$manifest"
                 ;;
-            --port-range) # Configure flow filter port range
+            --port_range) # Configure flow filter port range
                 edit_manifest "filter_port_range" "$value" "$manifest"
                 ;;
-            --icmp-type) # ICMP type
+            --icmp_type) # ICMP type
                 edit_manifest "filter_icmp_type" "$value" "$manifest"
                 ;;
-            --icmp-code) # ICMP code
+            --icmp_code) # ICMP code
                 edit_manifest "filter_icmp_code" "$value" "$manifest"
                 ;;
-            --peer-ip) # Peer IP
+            --peer_ip) # Peer IP
                 edit_manifest "filter_peer_ip" "$value" "$manifest"
                 ;;
             --action) # Filter action
@@ -214,6 +218,30 @@ function cleanup {
     echo "Cleanup namespace skipped"
     return
   fi
+}
+
+function usage {
+  echo "Usage: [OPTIONS]"
+  echo "Options:"
+  echo "  --help: show this help message"
+  echo "  --interfaces: interfaces to monitor"
+  echo "  --enable_pktdrop: enable packet drop"
+  echo "  --enable_dns: enable DNS tracking"
+  echo "  --enable_rtt: enable RTT tracking"
+  echo "  --enable_filter: enable flow filter"
+  echo "  --direction: flow filter direction"
+  echo "  --cidr: flow filter CIDR"
+  echo "  --protocol: flow filter protocol"
+  echo "  --sport: flow filter source port"
+  echo "  --dport: flow filter destination port"
+  echo "  --port: flow filter port"
+  echo "  --sport_range: flow filter source port range"
+  echo "  --dport_range: flow filter destination port range"
+  echo "  --port_range: flow filter port range"
+  echo "  --icmp_type: ICMP type"
+  echo "  --icmp_code: ICMP code"
+  echo "  --peer_ip: peer IP"
+  echo "  --action: flow filter action"
 }
 
 function edit_manifest() {
