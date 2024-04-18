@@ -162,6 +162,7 @@ release: clean ## Generate tar.gz containing krew plugin and display krew update
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
 	tar -czf netobserv-cli.tar.gz LICENSE ./build/netobserv
 	@echo "### Generating krew index yaml"
+	IMAGE_ORG=${IMAGE_ORG} \
 	VERSION=$(VERSION) \
 	./scripts/krew.sh
 

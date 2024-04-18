@@ -3,10 +3,9 @@
 SHA=$(sha256sum netobserv-cli.tar.gz | awk '{print $1}')
 
 URL="<URL>"
-if [[ $VERSION = +([[:digit:]]).+([[:digit:]]).+([[:digit:]]) ]]; then
-  URL="https://github.com/netobserv/network-observability-cli/releases/download/v${VERSION}/netobserv-cli.tar.gz"
+if [[ $VERSION = v+([[:digit:]]).+([[:digit:]]).+([[:digit:]]) ]]; then
+  URL="https://github.com/${IMAGE_ORG}/network-observability-cli/releases/download/${VERSION}/netobserv-cli.tar.gz"
 fi
-
 
 indexYaml='
 apiVersion: krew.googlecontainertools.github.com/v1alpha2
