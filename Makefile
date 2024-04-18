@@ -51,6 +51,7 @@ OCI_BIN ?= $(shell basename ${OCI_BIN_PATH})
 KREW_PLUGIN ?=false
 
 GOLANGCI_LINT_VERSION = v1.54.2
+YQ_VERSION = v4.43.1
 
 # build a single arch target provided as argument
 define build_target
@@ -82,6 +83,9 @@ prereqs: ## Test if prerequisites are met, and installing missing dependencies
 	@echo "### Test if prerequisites are met, and installing missing dependencies"
 ifeq (, $(shell which golangci-lint))
 	GOFLAGS="" go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+endif
+ifeq (, $(shell which yq))
+	GOFLAGS="" go install github.com/mikefarah/yq/v4@${YQ_VERSION}
 endif
 
 .PHONY: vendors

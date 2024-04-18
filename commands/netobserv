@@ -34,13 +34,8 @@ case "$1" in
     echo "Netobserv CLI version $version"
     exit 0 ;;
 "flows")
-    if [ -z "${2:-}" ]
-    then
-      echo "Filters not set"
-    else
-      echo "Filters set as $2"
-      filter=$2
-    fi
+    shift # remove first argument
+    filter="$*"
     # run flows command
     command="flows" ;;
 "packets")
