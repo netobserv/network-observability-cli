@@ -6,12 +6,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
-	"syscall"
 	"testing"
-	"time"
 
 	"github.com/netobserv/network-observability-cli/e2e/cluster"
 	"github.com/stretchr/testify/assert"
@@ -23,17 +20,12 @@ import (
 
 const (
 	clusterNamePrefix = "netobserv-cli-e2e-test-cluster"
-	commandTimeout    = 30 * time.Second
 	namespace         = "default"
 )
 
 var (
-	startupDate = time.Now().Format("20060102-150405")
-)
-
-var (
 	testCluster *cluster.Kind
-	log         = logrus.WithField("component", "capture_test")
+	clog        = logrus.WithField("component", "capture_test")
 )
 
 func TestMain(m *testing.M) {
@@ -50,7 +42,7 @@ func TestMain(m *testing.M) {
 func TestFlowCapture(t *testing.T) {
 	f1 := features.New("flow capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := runCommand("oc-netobserv-flows")
+			output, err := runCommand(clog, "oc-netobserv", "flows")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
@@ -121,7 +113,7 @@ func TestFlowCapture(t *testing.T) {
 func TestPacketCapture(t *testing.T) {
 	f1 := features.New("packet capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := runCommand("oc-netobserv-packets", "tcp,443")
+			output, err := runCommand(clog, "oc-netobserv", "packets", "tcp,443")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
@@ -179,23 +171,6 @@ func TestPacketCapture(t *testing.T) {
 		},
 	).Feature()
 	testCluster.TestEnv().Test(t, f1)
-}
-
-// run command with tty support
-func runCommand(commandName string, arg ...string) ([]byte, error) {
-	cmdStr := path.Join("commands", commandName)
-	log.WithFields(logrus.Fields{"cmd": cmdStr, "arg": arg}).Info("running command")
-
-	log.Print("Executing command...")
-	cmd := exec.Command(cmdStr, arg...)
-
-	timer := time.AfterFunc(commandTimeout, func() {
-		log.Print("Terminating command...")
-		cmd.Process.Signal(syscall.SIGTERM)
-	})
-	defer timer.Stop()
-
-	return cmd.CombinedOutput()
 }
 
 func outputDirExists() bool {

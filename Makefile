@@ -109,6 +109,7 @@ test: ## Test code using go test
 	GOOS=$(GOOS) go test -mod vendor -a ./... -coverpkg=./... -coverprofile cover.out
 
 .PHONY: tests-e2e
+tests-e2e: VERSION=test
 tests-e2e: IMAGE=localhost/netobserv-cli:test
 tests-e2e: PULL_POLICY=Never
 tests-e2e: DIST_DIR=e2e/commands
