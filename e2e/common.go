@@ -10,22 +10,22 @@ import (
 )
 
 const (
-	commandTimeout = 30 * time.Second
+	CommandTimeout = 30 * time.Second
 )
 
 var (
-	startupDate = time.Now().Format("20060102-150405")
+	StartupDate = time.Now().Format("20060102-150405")
 )
 
 // run command with tty support
-func runCommand(log *logrus.Entry, commandName string, arg ...string) ([]byte, error) {
+func RunCommand(log *logrus.Entry, commandName string, arg ...string) ([]byte, error) {
 	cmdStr := path.Join("commands", commandName)
 	log.WithFields(logrus.Fields{"cmd": cmdStr, "arg": arg}).Info("running command")
 
 	log.Print("Executing command...")
 	cmd := exec.Command(cmdStr, arg...)
 
-	timer := time.AfterFunc(commandTimeout, func() {
+	timer := time.AfterFunc(CommandTimeout, func() {
 		log.Print("Terminating command...")
 		err := cmd.Process.Signal(syscall.SIGTERM)
 		if err != nil {

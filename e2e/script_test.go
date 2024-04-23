@@ -17,10 +17,10 @@ var (
 
 func TestHelpCommand(t *testing.T) {
 	t.Run("help command", func(t *testing.T) {
-		output, err := runCommand(slog, "oc-netobserv", "help")
+		output, err := RunCommand(slog, "oc-netobserv", "help")
 		assert.Nil(t, err)
 
-		err = os.WriteFile(path.Join("output", startupDate+"-helpOutput"), output, 0666)
+		err = os.WriteFile(path.Join("output", StartupDate+"-helpOutput"), output, 0666)
 		assert.Nil(t, err)
 
 		str := string(output)
@@ -39,10 +39,10 @@ func TestHelpCommand(t *testing.T) {
 
 func TestVersionCommand(t *testing.T) {
 	t.Run("version command", func(t *testing.T) {
-		output, err := runCommand(slog, "oc-netobserv", "version")
+		output, err := RunCommand(slog, "oc-netobserv", "version")
 		assert.Nil(t, err)
 
-		err = os.WriteFile(path.Join("output", startupDate+"-versionOutput"), output, 0666)
+		err = os.WriteFile(path.Join("output", StartupDate+"-versionOutput"), output, 0666)
 		assert.Nil(t, err)
 
 		str := string(output)

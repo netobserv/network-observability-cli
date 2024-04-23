@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 		logrus.StandardLogger().SetLevel(logrus.DebugLevel)
 	}
 	testCluster = cluster.NewKind(
-		clusterNamePrefix+startupDate,
+		clusterNamePrefix+StartupDate,
 		path.Join(".."),
 	)
 	testCluster.Run(m)
@@ -42,11 +42,11 @@ func TestMain(m *testing.M) {
 func TestFlowCapture(t *testing.T) {
 	f1 := features.New("flow capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := runCommand(clog, "oc-netobserv", "flows")
+			output, err := RunCommand(clog, "oc-netobserv", "flows")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", startupDate+"-flowOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-flowOutput"), output, 0666)
 			assert.Nil(t, err)
 
 			str := string(output)
@@ -113,11 +113,11 @@ func TestFlowCapture(t *testing.T) {
 func TestPacketCapture(t *testing.T) {
 	f1 := features.New("packet capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := runCommand(clog, "oc-netobserv", "packets", "tcp,443")
+			output, err := RunCommand(clog, "oc-netobserv", "packets", "tcp,443")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", startupDate+"-packetOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-packetOutput"), output, 0666)
 			assert.Nil(t, err)
 
 			str := string(output)

@@ -83,7 +83,10 @@ func (k *Kind) exportLogs() env.Func {
 		klog.WithField("out", out).Info("exported cluster logs")
 
 		//move output files to cluster logs folder
-		os.Rename(path.Join(k.baseDir, "e2e", "tmp"), path.Join(logsDir, "output"))
+		err := os.Rename(path.Join(k.baseDir, "e2e", "tmp"), path.Join(logsDir, "output"))
+		if err != nil {
+			klog.Error(err)
+		}
 
 		return ctx, nil
 	}
