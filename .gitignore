@@ -4,3 +4,7 @@ tmp
 cover.out
 kubeconfig
 netobserv-cli.tar.gz
+cli-e2e-img.tar
+e2e/commands
+e2e/output
+e2e-logs

@@ -24,7 +24,7 @@ case "$1" in
     echo
     echo "options:"
     echo "  flows      Capture flows information. You can specify an optionnal interface name as filter such as 'netobserv flows br-ex'."
-    echo "  packets    Capture packets from a specific protocol/port pair such as 'netobserv packets tcp,80'"
+    echo "  packets    Capture packets from a specific protocol/port pair such as 'netobserv packets tcp,80'."
     echo "  cleanup    Remove netobserv components."
     echo "  version    Print software version."
     echo
@@ -40,7 +40,7 @@ case "$1" in
     command="flows" ;;
 "packets")
     if [ -z "${2:-}" ]; then
-      echo "Specify a valid filter as first argument such as 'tcp,80'"
+      echo "Specify a valid filter as first argument such as 'tcp,80'."
       exit 1
     else
       echo "Filters set as $2"

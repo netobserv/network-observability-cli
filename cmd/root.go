@@ -3,7 +3,10 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -43,7 +46,9 @@ var (
 		},
 	}
 
-	outputBuffer *bytes.Buffer
+	outputBuffer  *bytes.Buffer
+	stopReceived  = false
+	keyboardError = ""
 )
 
 // Execute executes the root command.
@@ -58,6 +63,16 @@ func init() {
 	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
 	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
 	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter(s)")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Info("Received SIGTERM; cleaning up...")
+		stopReceived = true
+
+		os.Exit(0)
+	}()
 
 	// IPFIX flow
 	rootCmd.AddCommand(flowCmd)

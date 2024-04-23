@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -90,6 +91,9 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		collector.Close()
 	}()
 	for fp := range flowPackets {
+		if stopReceived {
+			return
+		}
 		go managePacketsDisplay(PcapResult{Name: filename, ByteCount: int64(len(fp.Pcap.Value)), PacketCount: 1})
 		// append new line between each record to read file easilly
 		_, err = f.Write(fp.Pcap.Value)
@@ -153,13 +157,18 @@ func managePacketsDisplay(result PcapResult) {
 		tbl.Print()
 	}
 
+	if len(keyboardError) > 0 {
+		fmt.Println(keyboardError)
+	}
+
 	// unlock
 	mutex.Unlock()
 }
 
 func packetCaptureScanner() {
 	if err := keyboard.Open(); err != nil {
-		panic(err)
+		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
+		return
 	}
 	defer func() {
 		_ = keyboard.Close()
@@ -170,7 +179,7 @@ func packetCaptureScanner() {
 		if err != nil {
 			panic(err)
 		}
-		if key == keyboard.KeyCtrlC {
+		if key == keyboard.KeyCtrlC || stopReceived {
 			log.Info("Ctrl-C pressed, exiting program.")
 
 			// exit program
