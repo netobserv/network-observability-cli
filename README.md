@@ -5,21 +5,6 @@ It deploys [NetObserv eBPF agent](https://github.com/netobserv/netobserv-ebpf-ag
 and streams data to a local collector for analysis and visualization.
 Output files are generated under `output/flow` and `output/pcap` directories per host name
 
-## Work In Progress
-
-This project is still a WIP. The following list gives an overview of the current progression:
-
-- [X] Capture flows
-- [X] Capture packets
-- [X] Basic filter capabilities
-- [X] Linting
-- [X] Dockerfile
-- [X] Advanced filter capabilities (flows capture)
-- [X] Testing
-- [X] Allow switching between `kubectl` / `oc` commands
-
-Feel free to contribute !
-
 ## Prerequisites
 
 To run this CLI, you will need:
