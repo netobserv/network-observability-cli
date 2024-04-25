@@ -9,13 +9,13 @@ Output files are generated under `output/flow` and `output/pcap` directories per
 
 This project is still a WIP. The following list gives an overview of the current progression:
 
-- [x] Capture flows
-- [x] Capture packets
-- [x] Basic filter capabilities
+- [X] Capture flows
+- [X] Capture packets
+- [X] Basic filter capabilities
 - [X] Linting
 - [X] Dockerfile
-- [ ] Advanced filter capabilities
-- [ ] Testing
+- [X] Advanced filter capabilities (flows capture)
+- [X] Testing
 - [X] Allow switching between `kubectl` / `oc` commands
 
 Feel free to contribute !
