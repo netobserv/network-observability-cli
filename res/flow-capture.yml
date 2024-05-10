@@ -36,11 +36,11 @@ spec:
           - name: SAMPLING
             value: "1"
           - name: ENABLE_RTT
-            value: "true"
+            value: "false"
           - name: ENABLE_PKT_DROPS
-            value: "true"
+            value: "false"
           - name: ENABLE_DNS_TRACKING
-            value: "true"
+            value: "false"
           - name: ENABLE_FLOW_FILTER
             value: "false"
           - name: FLOW_FILTER_DIRECTION
@@ -48,7 +48,7 @@ spec:
           - name: FLOW_FILTER_IP_CIDR
             value: "0.0.0.0/0"
           - name: FLOW_FILTER_PROTOCOL
-            value: "TCP"
+            value: ""
           - name: FLOW_FILTER_SOURCE_PORT
             value: ""
           - name: FLOW_FILTER_DESTINATION_PORT
