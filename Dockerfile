@@ -26,7 +26,7 @@ RUN GOARCH=$TARGETARCH make compile
 RUN mkdir -p output
 
 # Create final image from ubi + built binary
-FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.3
+FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.4
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
