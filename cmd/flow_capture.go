@@ -35,12 +35,13 @@ var (
 	regexes     = []string{}
 	lastFlows   = []config.GenericMap{}
 
-	rawDisplay      = "Raw"
-	standardDisplay = "Standard"
-	pktDropDisplay  = "PktDrop"
-	dnsDisplay      = "DNS"
-	rttDisplay      = "RTT"
-	display         = []string{pktDropDisplay, dnsDisplay, rttDisplay}
+	rawDisplay           = "Raw"
+	standardDisplay      = "Standard"
+	pktDropDisplay       = "PktDrop"
+	dnsDisplay           = "DNS"
+	rttDisplay           = "RTT"
+	networkEventsDisplay = "NetworkEvents"
+	display              = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 
 	noEnrichment       = "None"
 	zoneEnrichment     = "Zone"
@@ -196,7 +197,7 @@ func toSize(fieldName string) int {
 		return 40
 	case "DropState":
 		return 20
-	case "Time", "Interfaces", "SrcZone", "DstZone":
+	case "Time", "Interfaces", "SrcZone", "DstZone", "NetworkEvents":
 		return 16
 	case "DropBytes", "DropPackets", "SrcOwnerType", "DstOwnerType":
 		return 12
@@ -313,6 +314,11 @@ func updateTable() {
 						"RTT",
 					)
 				}
+				if slices.Contains(display, networkEventsDisplay) {
+					cols = append(cols,
+						"NetworkEvents",
+					)
+				}
 			} else {
 				cols = append(cols,
 					"Dir",
@@ -389,7 +395,8 @@ func scanner() {
 				flowsToShow = flowsToShow - 1
 			}
 		} else if key == keyboard.KeyArrowRight {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) {
+			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
+				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay) {
 				display = []string{rawDisplay}
 			} else if slices.Contains(display, rawDisplay) {
 				display = []string{standardDisplay}
@@ -398,23 +405,30 @@ func scanner() {
 			} else if slices.Contains(display, pktDropDisplay) {
 				display = []string{dnsDisplay}
 			} else if slices.Contains(display, dnsDisplay) {
+				display = []string{networkEventsDisplay}
+			} else if slices.Contains(display, networkEventsDisplay) {
 				display = []string{rttDisplay}
+			} else if slices.Contains(display, rttDisplay) {
+				display = []string{rawDisplay}
 			} else {
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay}
+				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 			}
 		} else if key == keyboard.KeyArrowLeft {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) {
+			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) &&
+				slices.Contains(display, networkEventsDisplay) {
 				display = []string{rttDisplay}
 			} else if slices.Contains(display, rttDisplay) {
 				display = []string{dnsDisplay}
 			} else if slices.Contains(display, dnsDisplay) {
 				display = []string{pktDropDisplay}
 			} else if slices.Contains(display, pktDropDisplay) {
+				display = []string{networkEventsDisplay}
+			} else if slices.Contains(display, networkEventsDisplay) {
 				display = []string{standardDisplay}
 			} else if slices.Contains(display, standardDisplay) {
 				display = []string{rawDisplay}
 			} else {
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay}
+				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 			}
 		} else if key == keyboard.KeyPgup {
 			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
