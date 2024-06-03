@@ -1,11 +1,18 @@
 #!/bin/bash
 source "./scripts/functions.sh"
 
+set +u
+
 # interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
 filter=""
 
 # CLI image to use
 img="quay.io/netobserv/network-observability-cli:main"
+
+if [ ! -z "$NETOBSERV_COLLECTOR_IMAGE" ]; then
+  echo "using custom collector image $NETOBSERV_COLLECTOR_IMAGE"
+  img="$NETOBSERV_COLLECTOR_IMAGE"
+fi
 
 # version to display
 version="0.0.1"
