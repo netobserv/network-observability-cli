@@ -28,12 +28,13 @@ USER=netobserv make commands
 
 - The following table shows all supported features options.
 
-| Option           | Description                      | Possible values            | Default  |
-|------------------|----------------------------------|----------------------------|----------|
-| --enable_pktdrop | Enable packet drop               | true, false                | false    |
-| --enable_rtt     | Enable round trip time           | true, false                | false    |
-| --enable_dns     | Enable DNS tracking              | true, false                | false    |
-| --interfaces     | Interfaces to match on the flow  | e.g., "eth0,eth1"          | ""       |
+| Option                             | Description                      | Possible values   | Default |
+|------------------------------------|----------------------------------|-------------------|---------|
+| --enable_pktdrop                   | Enable packet drop               | true, false       | false   |
+| --enable_rtt                       | Enable round trip time           | true, false       | false   |
+| --enable_dns                       | Enable DNS tracking              | true, false       | false   |
+| --interfaces                       | Interfaces to match on the flow  | e.g., "eth0,eth1" | ""      |
+| --enable_network_events_monitoring | Enable Network events Monitoring | true, false       | false   |
 
 - The following table shows flow filter configuration options.
 

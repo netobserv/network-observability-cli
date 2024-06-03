@@ -191,6 +191,7 @@ function flows_usage {
   echo "          --enable_pktdrop: enable packet drop (default: false)"
   echo "          --enable_dns: enable DNS tracking (default: false)"
   echo "          --enable_rtt: enable RTT tracking (default: false)"
+  echo "          --enable_network_events_monitoring: enable Network events Monitoring (default: false)"
   echo "          --enable_filter: enable flow filter (default: false)"
   # common
   common_usage
@@ -220,6 +221,9 @@ function edit_manifest() {
     ;;
   "rtt_enable")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$3"
+    ;;
+  "network_events_monitoring_enable")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
     ;;
   "filter_enable")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
@@ -326,6 +330,18 @@ function check_args_and_apply() {
                   fi
                 else
                   echo "--enable_rtt is invalid option for packets"
+                  exit 1
+                fi
+                ;;
+            --enable_network_events_monitoring) # Enable Network events monitoring
+                if [[ "$3" == "flows" ]]; then
+                  if [[ "$value" == "true" || "$value" == "false" ]]; then
+                    edit_manifest "network_events_monitoring_enable" "$value" "$2"
+                  else
+                    echo "invalid value for --enable_network_events_monitoring"
+                  fi
+                else
+                  echo "--enable_network_events_monitoring is invalid option for packets"
                   exit 1
                 fi
                 ;;
