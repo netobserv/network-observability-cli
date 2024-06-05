@@ -16,6 +16,13 @@ else
   sed -i.bak "s/--image-pull-policy=.*/--image-pull-policy='$PULL_POLICY' \\\\/" ./tmp/netobserv
 fi
 
+if [ -z "$AGENT_IMAGE" ]; then
+  echo "eBPF agent image not provided, keeping current one"
+else
+  echo "updating eBPF agent images to $AGENT_IMAGE"
+  sed -i.bak "s|^agentImg=.*|agentImg=\"$AGENT_IMAGE\"|" ./tmp/functions.sh
+fi
+
 if [ -z "$VERSION" ]; then
   echo "version not provided, keeping current one"
 else
