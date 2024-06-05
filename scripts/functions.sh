@@ -8,6 +8,14 @@ set -eu
 K8S_CLI_BIN_PATH=$( which oc 2>/dev/null || which kubectl 2>/dev/null )
 K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
 
+# eBPF agent image to use
+agentImg="quay.io/netobserv/netobserv-ebpf-agent:main"
+
+if [ -n "$NETOBSERV_AGENT_IMAGE" ]; then
+  echo "using custom agent image $NETOBSERV_AGENT_IMAGE"
+  agentImg="$NETOBSERV_AGENT_IMAGE"
+fi
+
 function loadYAMLs() {
   namespaceYAML='
     namespaceYAMLContent
@@ -29,6 +37,7 @@ function loadYAMLs() {
   if [ -f ./res/flow-capture.yml ]; then
     flowAgentYAML="$(cat ./res/flow-capture.yml)"
   fi
+  flowAgentYAML="${flowAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   packetAgentYAML='
     packetAgentYAMLContent
@@ -36,6 +45,7 @@ function loadYAMLs() {
   if [ -f ./res/packet-capture.yml ]; then
     packetAgentYAML="$(cat ./res/packet-capture.yml)"
   fi
+  packetAgentYAML="${packetAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   collectorServiceYAML='
     collectorServiceYAMLContent
