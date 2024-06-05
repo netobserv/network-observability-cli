@@ -19,7 +19,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
       - name: netobserv-cli
-        image: quay.io/netobserv/netobserv-ebpf-agent:main
+        image: "{{AGENT_IMAGE_URL}}"
         imagePullPolicy: Always
         securityContext:
           privileged: true

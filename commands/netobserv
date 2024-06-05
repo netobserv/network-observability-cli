@@ -9,7 +9,7 @@ filter=""
 # CLI image to use
 img="quay.io/netobserv/network-observability-cli:main"
 
-if [ ! -z "$NETOBSERV_COLLECTOR_IMAGE" ]; then
+if [ -n "$NETOBSERV_COLLECTOR_IMAGE" ]; then
   echo "using custom collector image $NETOBSERV_COLLECTOR_IMAGE"
   img="$NETOBSERV_COLLECTOR_IMAGE"
 fi
