@@ -43,6 +43,8 @@ IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/$(NAME)
 # Image URL to use all building/pushing image targets
 IMAGE ?= $(IMAGE_TAG_BASE):$(VERSION)
 PULL_POLICY ?=Always
+# Agent image URL to deploy
+AGENT_IMAGE ?= quay.io/netobserv/netobserv-ebpf-agent:main
 OCI_BUILD_OPTS ?=
 
 # Image building tool (docker / podman) - docker is preferred in CI
@@ -159,6 +161,7 @@ commands: ## Generate either oc or kubectl plugins and add them to build folder
 	K8S_CLI_BIN=$(K8S_CLI_BIN) \
 	IMAGE=$(IMAGE) \
 	PULL_POLICY=$(PULL_POLICY) \
+	AGENT_IMAGE=$(AGENT_IMAGE) \
 	VERSION=$(VERSION) \
 	./scripts/inject.sh
 
