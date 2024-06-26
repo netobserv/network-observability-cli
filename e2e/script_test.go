@@ -30,8 +30,8 @@ func TestHelpCommand(t *testing.T) {
 		assert.Contains(t, str, "Find more information at: https://github.com/netobserv/network-observability-cli/")
 		// ensure help to display proper options
 		assert.Contains(t, str, "Syntax: netobserv [flows|packets|cleanup] [filters]")
-		assert.Contains(t, str, "flows      Capture flows information. You can specify an optionnal interface name as filter such as 'netobserv flows br-ex'.")
-		assert.Contains(t, str, "packets    Capture packets from a specific protocol/port pair such as 'netobserv packets tcp,80'.")
+		assert.Contains(t, str, "flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'.")
+		assert.Contains(t, str, "packets    Capture packets information in pcap format.")
 		assert.Contains(t, str, "cleanup    Remove netobserv components.")
 		assert.Contains(t, str, "version    Print software version.")
 	})
