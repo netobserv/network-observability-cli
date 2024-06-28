@@ -43,31 +43,31 @@ spec:
             value: "false"
           - name: ENABLE_FLOW_FILTER
             value: "false"
-          - name: FLOW_FILTER_DIRECTION
+          - name: FILTER_DIRECTION
             value: ""
-          - name: FLOW_FILTER_IP_CIDR
+          - name: FILTER_IP_CIDR
             value: "0.0.0.0/0"
-          - name: FLOW_FILTER_PROTOCOL
+          - name: FILTER_PROTOCOL
             value: ""
-          - name: FLOW_FILTER_SOURCE_PORT
+          - name: FILTER_SOURCE_PORT
             value: ""
-          - name: FLOW_FILTER_DESTINATION_PORT
+          - name: FILTER_DESTINATION_PORT
             value: ""
-          - name: FLOW_FILTER_PORT
+          - name: FILTER_PORT
             value: ""
-          - name:  FLOW_FILTER_SOURCE_PORT_RANGE
+          - name:  FILTER_SOURCE_PORT_RANGE
             value: ""
-          - name: FLOW_FILTER_DESTINATION_PORT_RANGE
+          - name: FILTER_DESTINATION_PORT_RANGE
             value: ""
-          - name: FLOW_FILTER_PORT_RANGE
+          - name: FILTER_PORT_RANGE
             value: ""
-          - name: FLOW_FILTER_ICMP_TYPE
+          - name: FILTER_ICMP_TYPE
             value: ""
-          - name: FLOW_FILTER_ICMP_CODE
+          - name: FILTER_ICMP_CODE
             value: ""
-          - name: FLOW_FILTER_PEER_IP
+          - name: FILTER_PEER_IP
             value: ""
-          - name: FLOW_FILTER_ACTION
+          - name: FILTER_ACTION
             value: "Accept"
           - name: EXPORT
             value: "direct-flp"

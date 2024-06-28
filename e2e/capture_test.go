@@ -113,7 +113,7 @@ func TestFlowCapture(t *testing.T) {
 func TestPacketCapture(t *testing.T) {
 	f1 := features.New("packet capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(clog, "oc-netobserv", "packets", "tcp,443")
+			output, err := RunCommand(clog, "oc-netobserv", "packets", "--protocol=TCP", "--port=443")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 

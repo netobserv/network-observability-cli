@@ -31,8 +31,32 @@ spec:
             value: trace
           - name: ENABLE_PCA
             value: "true"
-          - name: PCA_FILTER
-            value: "{{PCA_FILTER_VALUE}}"
+          - name: FILTER_DIRECTION
+            value: ""
+          - name: FILTER_IP_CIDR
+            value: "0.0.0.0/0"
+          - name: FILTER_PROTOCOL
+            value: ""
+          - name: FILTER_SOURCE_PORT
+            value: ""
+          - name: FILTER_DESTINATION_PORT
+            value: ""
+          - name: FILTER_PORT
+            value: ""
+          - name:  FILTER_SOURCE_PORT_RANGE
+            value: ""
+          - name: FILTER_DESTINATION_PORT_RANGE
+            value: ""
+          - name: FILTER_PORT_RANGE
+            value: ""
+          - name: FILTER_ICMP_TYPE
+            value: ""
+          - name: FILTER_ICMP_CODE
+            value: ""
+          - name: FILTER_PEER_IP
+            value: ""
+          - name: FILTER_ACTION
+            value: "Accept"
           - name: TARGET_HOST
             value: "collector.netobserv-cli.svc.cluster.local"
           - name: TARGET_PORT
