@@ -1,8 +1,8 @@
 module github.com/netobserv/network-observability-cli
 
-go 1.21.0
+go 1.22.3
 
-toolchain go1.21.4
+toolchain go1.22.4
 
 require (
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
