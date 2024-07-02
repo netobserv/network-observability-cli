@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/netobserv/netobserv-ebpf-agent/pkg/ifaces"
@@ -25,6 +23,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 // $BPF_CLANG and $BPF_CFLAGS are set by the Makefile.
@@ -42,9 +41,10 @@ const (
 	constEnableDNSTracking   = "enable_dns_tracking"
 	constEnableFlowFiltering = "enable_flows_filtering"
 	pktDropHook              = "kfree_skb"
-	constPcaPort             = "pca_port"
-	constPcaProto            = "pca_proto"
+	constPcaEnable           = "enable_pca"
 	pcaRecordsMap            = "packet_record"
+	tcEgressFilterName       = "tc/tc_egress_flow_parse"
+	tcIngressFilterName      = "tc/tc_ingress_flow_parse"
 )
 
 var log = logrus.WithField("component", "ebpf.FlowFetcher")
@@ -81,7 +81,8 @@ type FlowFetcherConfig struct {
 	DNSTracker       bool
 	EnableRTT        bool
 	EnableFlowFilter bool
-	FlowFilterConfig *FlowFilterConfig
+	EnablePCA        bool
+	FilterConfig     *FilterConfig
 }
 
 func NewFlowFetcher(cfg *FlowFetcherConfig) (*FlowFetcher, error) {
@@ -142,8 +143,8 @@ func NewFlowFetcher(cfg *FlowFetcherConfig) (*FlowFetcher, error) {
 	}
 
 	if cfg.EnableFlowFilter {
-		f := NewFlowFilter(&objects, cfg.FlowFilterConfig)
-		if err := f.ProgramFlowFilter(); err != nil {
+		f := NewFilter(&objects, cfg.FilterConfig)
+		if err := f.ProgramFilter(); err != nil {
 			return nil, fmt.Errorf("programming flow filter: %w", err)
 		}
 	}
@@ -155,8 +156,7 @@ func NewFlowFetcher(cfg *FlowFetcherConfig) (*FlowFetcher, error) {
 
 	objects.TcxEgressPcaParse = nil
 	objects.TcIngressPcaParse = nil
-	delete(spec.Programs, constPcaPort)
-	delete(spec.Programs, constPcaProto)
+	delete(spec.Programs, constPcaEnable)
 
 	var pktDropsLink link.Link
 	if cfg.PktDrops && !oldKernel {
@@ -208,6 +208,16 @@ func NewFlowFetcher(cfg *FlowFetcherConfig) (*FlowFetcher, error) {
 func (m *FlowFetcher) AttachTCX(iface ifaces.Interface) error {
 	ilog := log.WithField("iface", iface)
 	if iface.NetNS != netns.None() {
+		originalNs, err := netns.Get()
+		if err != nil {
+			return fmt.Errorf("failed to get current netns: %w", err)
+		}
+		defer func() {
+			if err := netns.Set(originalNs); err != nil {
+				ilog.WithError(err).Error("failed to set netns back")
+			}
+			originalNs.Close()
+		}()
 		if err := unix.Setns(int(iface.NetNS), unix.CLONE_NEWNET); err != nil {
 			return fmt.Errorf("failed to setns to %s: %w", iface.NetNS, err)
 		}
@@ -237,6 +247,84 @@ func (m *FlowFetcher) AttachTCX(iface ifaces.Interface) error {
 		}
 		m.ingressTCXLink[iface] = ingLink
 		ilog.WithField("interface", iface.Name).Debug("successfully attach ingressTCX hook")
+	}
+
+	return nil
+}
+
+func removeTCFilters(ifName string, tcDir uint32) error {
+	link, err := netlink.LinkByName(ifName)
+	if err != nil {
+		return err
+	}
+
+	filters, err := netlink.FilterList(link, tcDir)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, f := range filters {
+		if err := netlink.FilterDel(f); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return kerrors.NewAggregate(errs)
+}
+
+func (m *FlowFetcher) removePreviousFilters(iface ifaces.Interface) error {
+	ilog := log.WithField("iface", iface)
+	ilog.Debugf("looking for previously installed TC filters on %s", iface.Name)
+	links, err := netlink.LinkList()
+	if err != nil {
+		return fmt.Errorf("retrieving all netlink devices: %w", err)
+	}
+
+	egressDevs := []netlink.Link{}
+	ingressDevs := []netlink.Link{}
+	for _, l := range links {
+		if l.Attrs().Name != iface.Name {
+			continue
+		}
+		ingressFilters, err := netlink.FilterList(l, netlink.HANDLE_MIN_INGRESS)
+		if err != nil {
+			return fmt.Errorf("listing ingress filters: %w", err)
+		}
+		for _, filter := range ingressFilters {
+			if bpfFilter, ok := filter.(*netlink.BpfFilter); ok {
+				if strings.HasPrefix(bpfFilter.Name, tcIngressFilterName) {
+					ingressDevs = append(ingressDevs, l)
+				}
+			}
+		}
+
+		egressFilters, err := netlink.FilterList(l, netlink.HANDLE_MIN_EGRESS)
+		if err != nil {
+			return fmt.Errorf("listing egress filters: %w", err)
+		}
+		for _, filter := range egressFilters {
+			if bpfFilter, ok := filter.(*netlink.BpfFilter); ok {
+				if strings.HasPrefix(bpfFilter.Name, tcEgressFilterName) {
+					egressDevs = append(egressDevs, l)
+				}
+			}
+		}
+	}
+
+	for _, dev := range ingressDevs {
+		ilog.Debugf("removing ingress stale tc filters from %s", dev.Attrs().Name)
+		err = removeTCFilters(dev.Attrs().Name, netlink.HANDLE_MIN_INGRESS)
+		if err != nil {
+			ilog.WithError(err).Errorf("couldn't remove ingress tc filters from %s", dev.Attrs().Name)
+		}
+	}
+
+	for _, dev := range egressDevs {
+		ilog.Debugf("removing egress stale tc filters from %s", dev.Attrs().Name)
+		err = removeTCFilters(dev.Attrs().Name, netlink.HANDLE_MIN_EGRESS)
+		if err != nil {
+			ilog.WithError(err).Errorf("couldn't remove egress tc filters from %s", dev.Attrs().Name)
+		}
 	}
 
 	return nil
@@ -278,6 +366,11 @@ func (m *FlowFetcher) Register(iface ifaces.Interface) error {
 	}
 	m.qdiscs[iface] = qdisc
 
+	// Remove previously installed filters
+	if err := m.removePreviousFilters(iface); err != nil {
+		return fmt.Errorf("failed to remove previous filters: %w", err)
+	}
+
 	if err := m.registerEgress(iface, ipvlan, handle); err != nil {
 		return err
 	}
@@ -302,7 +395,7 @@ func (m *FlowFetcher) registerEgress(iface ifaces.Interface, ipvlan netlink.Link
 	egressFilter := &netlink.BpfFilter{
 		FilterAttrs:  egressAttrs,
 		Fd:           m.objects.TcEgressFlowParse.FD(),
-		Name:         "tc/tc_egress_flow_parse",
+		Name:         tcEgressFilterName,
 		DirectAction: true,
 	}
 	if err := handle.FilterDel(egressFilter); err == nil {
@@ -336,7 +429,7 @@ func (m *FlowFetcher) registerIngress(iface ifaces.Interface, ipvlan netlink.Lin
 	ingressFilter := &netlink.BpfFilter{
 		FilterAttrs:  ingressAttrs,
 		Fd:           m.objects.TcIngressFlowParse.FD(),
-		Name:         "tc/tc_ingress_flow_parse",
+		Name:         tcIngressFilterName,
 		DirectAction: true,
 	}
 	if err := handle.FilterDel(ingressFilter); err == nil {
@@ -540,9 +633,9 @@ func (m *FlowFetcher) ReadGlobalCounter(met *metrics.Metrics) {
 	var allCPUValue []uint32
 	reasons := []string{
 		"CannotUpdateHashMapCounter",
-		"FlowFilterRejectCounter",
-		"FlowFilterAcceptCounter",
-		"FlowFilterNoMatchCounter",
+		"FilterRejectCounter",
+		"FilterAcceptCounter",
+		"FilterNoMatchCounter",
 	}
 	zeroCounters := make([]uint32, ebpf.MustPossibleCPU())
 	for key := BpfGlobalCountersKeyTHASHMAP_FLOWS_DROPPED_KEY; key < BpfGlobalCountersKeyTMAX_DROPPED_FLOWS_KEY; key++ {
@@ -558,7 +651,7 @@ func (m *FlowFetcher) ReadGlobalCounter(met *metrics.Metrics) {
 				met.FilteredFlowsCounter.WithSourceAndReason("flow-fetcher", reasons[key]).Add(float64(counter))
 			}
 		}
-		// reset the global counter map entry
+		// reset the global counter-map entry
 		if err := m.objects.GlobalCounters.Put(key, zeroCounters); err != nil {
 			log.WithError(err).Warnf("coudn't reset global counter")
 			return
@@ -688,11 +781,7 @@ type PacketFetcher struct {
 	lookupAndDeleteSupported bool
 }
 
-func NewPacketFetcher(
-	cacheMaxSize int,
-	pcaFilters string,
-	ingress, egress bool,
-) (*PacketFetcher, error) {
+func NewPacketFetcher(cfg *FlowFetcherConfig) (*PacketFetcher, error) {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.WithError(err).
 			Warn("can't remove mem lock. The agent could not be able to start eBPF programs")
@@ -704,7 +793,7 @@ func NewPacketFetcher(
 		return nil, err
 	}
 
-	// Removing Specs for flows agent
+	// Removing Specs for flow agent
 	objects.TcEgressFlowParse = nil
 	objects.TcIngressFlowParse = nil
 	objects.TcxEgressFlowParse = nil
@@ -717,28 +806,17 @@ func NewPacketFetcher(
 	delete(spec.Programs, constEnableDNSTracking)
 	delete(spec.Programs, constEnableFlowFiltering)
 
-	pcaPort := 0
-	pcaProto := 0
-	filters := strings.Split(strings.ToLower(pcaFilters), ",")
-	if filters[0] == "tcp" {
-		pcaProto = syscall.IPPROTO_TCP
-	} else if filters[0] == "udp" {
-		pcaProto = syscall.IPPROTO_UDP
-	} else {
-		return nil, fmt.Errorf("pca protocol %s not supported. Please use tcp or udp", filters[0])
-	}
-	pcaPort, err = strconv.Atoi(filters[1])
-	if err != nil {
-		return nil, err
+	pcaEnable := 0
+	if cfg.EnablePCA {
+		pcaEnable = 1
 	}
 
 	if err := spec.RewriteConstants(map[string]interface{}{
-		constPcaPort:  uint16(pcaPort),
-		constPcaProto: uint8(pcaProto),
+		constSampling:  uint32(cfg.Sampling),
+		constPcaEnable: uint8(pcaEnable),
 	}); err != nil {
 		return nil, fmt.Errorf("rewriting BPF constants definition: %w", err)
 	}
-	plog.Infof("PCA Filter- Protocol: %d, Port: %d", pcaProto, pcaPort)
 
 	if err := spec.LoadAndAssign(&objects, nil); err != nil {
 		var ve *ebpf.VerifierError
@@ -748,6 +826,11 @@ func NewPacketFetcher(
 			plog.Infof("Verifier error: %+v", ve)
 		}
 		return nil, fmt.Errorf("loading and assigning BPF objects: %w", err)
+	}
+
+	f := NewFilter(&objects, cfg.FilterConfig)
+	if err := f.ProgramFilter(); err != nil {
+		return nil, fmt.Errorf("programming flow filter: %w", err)
 	}
 
 	// read packets from igress+egress perf array
@@ -762,9 +845,9 @@ func NewPacketFetcher(
 		egressFilters:            map[ifaces.Interface]*netlink.BpfFilter{},
 		ingressFilters:           map[ifaces.Interface]*netlink.BpfFilter{},
 		qdiscs:                   map[ifaces.Interface]*netlink.GenericQdisc{},
-		cacheMaxSize:             cacheMaxSize,
-		enableIngress:            ingress,
-		enableEgress:             egress,
+		cacheMaxSize:             cfg.CacheMaxSize,
+		enableIngress:            cfg.EnableIngress,
+		enableEgress:             cfg.EnableEgress,
 		egressTCXLink:            map[ifaces.Interface]link.Link{},
 		ingressTCXLink:           map[ifaces.Interface]link.Link{},
 		lookupAndDeleteSupported: true, // this will be turned off later if found to be not supported
@@ -823,6 +906,16 @@ func (p *PacketFetcher) Register(iface ifaces.Interface) error {
 func (p *PacketFetcher) AttachTCX(iface ifaces.Interface) error {
 	ilog := log.WithField("iface", iface)
 	if iface.NetNS != netns.None() {
+		originalNs, err := netns.Get()
+		if err != nil {
+			return fmt.Errorf("PCA failed to get current netns: %w", err)
+		}
+		defer func() {
+			if err := netns.Set(originalNs); err != nil {
+				ilog.WithError(err).Error("PCA failed to set netns back")
+			}
+			originalNs.Close()
+		}()
 		if err := unix.Setns(int(iface.NetNS), unix.CLONE_NEWNET); err != nil {
 			return fmt.Errorf("PCA failed to setns to %s: %w", iface.NetNS, err)
 		}
