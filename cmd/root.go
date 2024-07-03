@@ -23,13 +23,17 @@ var (
 	ports    []int
 	nodes    []string
 	filter   string
+	maxTime  time.Duration
+	maxBytes int64
 
 	currentTime = func() time.Time {
 		return time.Now()
 	}
 	startupTime = currentTime()
 	lastRefresh = startupTime
-	mutex       = sync.Mutex{}
+	totalBytes  = int64(0)
+
+	mutex = sync.Mutex{}
 
 	resetTerminal = func() {
 		// clear terminal to render table properly
@@ -63,6 +67,8 @@ func init() {
 	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
 	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
 	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter(s)")
+	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
+	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM)

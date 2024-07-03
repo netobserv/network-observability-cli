@@ -28,7 +28,7 @@ spec:
           - name: METRICS_ENABLE
             value: "false"
           - name: LOG_LEVEL
-            value: trace
+            value: info
           - name: INTERFACES
             value: ""
           - name: EXCLUDE_INTERFACES

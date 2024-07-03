@@ -94,11 +94,27 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		if stopReceived {
 			return
 		}
+
 		go managePacketsDisplay(PcapResult{Name: filename, ByteCount: int64(len(fp.Pcap.Value)), PacketCount: 1})
 		// append new line between each record to read file easilly
-		_, err = f.Write(fp.Pcap.Value)
+		bytes, err := f.Write(fp.Pcap.Value)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		// terminate capture if max bytes reached
+		totalBytes = totalBytes + int64(bytes)
+		if totalBytes > maxBytes {
+			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+			return
+		}
+
+		// terminate capture if max time reached
+		now := currentTime()
+		duration := now.Sub(startupTime)
+		if int(duration) > int(maxTime) {
+			log.Infof("Capture reached %s, exiting now...", maxTime)
+			return
 		}
 	}
 }
@@ -128,8 +144,15 @@ func managePacketsDisplay(result PcapResult) {
 		lastRefresh = now
 		resetTerminal()
 
+		duration := now.Sub(startupTime)
 		if outputBuffer == nil {
-			log.Infof("Running network-observability-cli as Packet Capture\nLog level: %s\nFilters: %s\n", logLevel, filter)
+			fmt.Print("Running network-observability-cli as Packet Capture\n")
+			fmt.Printf("Log level: %s ", logLevel)
+			fmt.Printf("Duration: %s ", duration.Round(time.Second))
+			fmt.Printf("Capture size: %s\n", sizestr.ToString(totalBytes))
+			if len(strings.TrimSpace(filter)) > 0 {
+				fmt.Printf("Filters: %s\n", filter)
+			}
 		}
 
 		// recreate table from scratch
