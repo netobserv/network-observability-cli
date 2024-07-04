@@ -3,6 +3,11 @@ source "./scripts/functions.sh"
 
 set +u
 
+# e2e skips inputs
+if [ -z "${isE2E+x}" ]; then isE2E=false; fi
+# keep capture state
+if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
+
 # interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
 filter=""
 
@@ -76,7 +81,9 @@ ${K8S_CLI_BIN} run \
 
 ${K8S_CLI_BIN} wait \
   -n netobserv-cli \
-  --for=condition=Ready pod/collector
+  --for=condition=Ready pod/collector || exit 1
+
+captureStarted=true
 
 ${K8S_CLI_BIN} exec -i --tty \
   -n netobserv-cli \

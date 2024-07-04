@@ -24,6 +24,7 @@ func RunCommand(log *logrus.Entry, commandName string, arg ...string) ([]byte, e
 
 	log.Print("Executing command...")
 	cmd := exec.Command(cmdStr, arg...)
+	cmd.Env = append(cmd.Environ(), "isE2E=true")
 
 	timer := time.AfterFunc(CommandTimeout, func() {
 		log.Print("Terminating command...")
