@@ -108,7 +108,7 @@ function setup {
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
     echo "${flowAgentYAML}" > ${manifest}
     options="$*"
-    check_args_and_apply "$options" "$manifest" "$1"
+    check_args_and_apply "$options" "$manifest" "flows"
   elif [ "$1" = "packets" ]; then
     shift
     echo "creating packet-capture agents"
@@ -118,7 +118,7 @@ function setup {
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
     echo "${packetAgentYAML}" > ${manifest}
     options="$*"
-    check_args_and_apply "$options" "$manifest" "$1"
+    check_args_and_apply "$options" "$manifest" "packets"
   fi
 }
 
