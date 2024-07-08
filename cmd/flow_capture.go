@@ -53,6 +53,7 @@ var (
 func runFlowCapture(_ *cobra.Command, _ []string) {
 	go scanner()
 
+	captureType = "Flow"
 	wg := sync.WaitGroup{}
 	wg.Add(len(ports))
 	for i := range ports {
@@ -105,12 +106,14 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		if stopReceived {
 			return
 		}
+		// parse and display flow async
+		go parseGenericMapAndDisplay(fp.GenericMap.Value)
+
 		// Write flows to sqlite DB
 		err = queryFlowDB(fp.GenericMap.Value, db)
 		if err != nil {
 			log.Error("Error while writing to DB:", err.Error())
 		}
-		go manageFlowsDisplay(fp.GenericMap.Value)
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
@@ -134,20 +137,27 @@ func runFlowCaptureOnAddr(port int, filename string) {
 	}
 }
 
-func manageFlowsDisplay(line []byte) {
+func parseGenericMapAndDisplay(bytes []byte) {
 	genericMap := config.GenericMap{}
-	err := json.Unmarshal(line, &genericMap)
+	err := json.Unmarshal(bytes, &genericMap)
 	if err != nil {
 		log.Error("Error while parsing json", err)
 		return
 	}
 
+	manageFlowsDisplay(genericMap)
+}
+
+func manageFlowsDisplay(genericMap config.GenericMap) {
 	// lock since we are updating lastFlows concurrently
 	mutex.Lock()
 
 	lastFlows = append(lastFlows, genericMap)
 	sort.Slice(lastFlows, func(i, j int) bool {
-		return lastFlows[i]["TimeFlowEndMs"].(float64) < lastFlows[j]["TimeFlowEndMs"].(float64)
+		if captureType == "Flow" {
+			return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
+		}
+		return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
 	})
 	if len(regexes) > 0 {
 		// regexes may change during the render so we make a copy first
@@ -208,7 +218,7 @@ func updateTable() {
 
 		duration := now.Sub(startupTime)
 		if outputBuffer == nil {
-			fmt.Print("Running network-observability-cli as Flow Capture\n")
+			fmt.Printf("Running network-observability-cli as %s Capture\n", captureType)
 			fmt.Printf("Log level: %s ", logLevel)
 			fmt.Printf("Duration: %s ", duration.Round(time.Second))
 			fmt.Printf("Capture size: %s\n", sizestr.ToString(totalBytes))

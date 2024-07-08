@@ -82,9 +82,6 @@ func setup() {
 	// clear filters and previous flows
 	regexes = []string{}
 	lastFlows = []config.GenericMap{}
-
-	// clear packets
-	packets = []PcapResult{}
 }
 
 func resetTime() {
