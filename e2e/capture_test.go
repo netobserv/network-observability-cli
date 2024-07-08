@@ -147,7 +147,7 @@ func TestPacketCapture(t *testing.T) {
 				}
 
 				if !info.IsDir() {
-					if filepath.Ext(path) == ".pcap" {
+					if filepath.Ext(path) == ".pcapng" {
 						pcaps = append(pcaps, path)
 					}
 				}
@@ -162,10 +162,7 @@ func TestPacketCapture(t *testing.T) {
 			assert.Nil(t, err)
 
 			// check pcap magic number
-			assert.Equal(t, uint8(0xd4), pcapBytes[0])
-			assert.Equal(t, uint8(0xc3), pcapBytes[1])
-			assert.Equal(t, uint8(0xb2), pcapBytes[2])
-			assert.Equal(t, uint8(0xa1), pcapBytes[3])
+			assert.Equal(t, []byte{0x4d, 0x3c, 0x2b, 0x1a}, pcapBytes[8:12])
 
 			return ctx
 		},
