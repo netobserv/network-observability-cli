@@ -2,6 +2,11 @@
 
 set -eu
 
+# e2e skips inputs
+if [ -z "${isE2E+x}" ]; then isE2E=false; fi
+# keep capture state
+if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
+
 # get either oc (favorite) or kubectl paths
 # this is used only when calling commands directly
 # else it will be overridden by inject.sh
@@ -122,12 +127,27 @@ function setup {
   fi
 }
 
+function copyOutput {
+  echo "Copying collector output files..."
+  mkdir -p ./output
+  ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
+}
+
 function cleanup {
   # shellcheck disable=SC2034
   if clusterIsReady; then
-    echo "Copying collector output files..."
-    mkdir -p ./output
-    ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
+    if [ "$isE2E" = true ]; then
+      copyOutput
+    elif [ "$captureStarted" = true ]; then
+      while true; do
+          read -rp "Copy the capture output locally ?" yn
+          case $yn in
+              [Yy]* ) copyOutput; break;;
+              [Nn]* ) echo "copy skipped"; break;;
+              * ) echo "Please answer yes or no.";;
+          esac
+      done
+    fi
 
     printf "\nCleaning up... "
     ${K8S_CLI_BIN} delete namespace netobserv-cli
