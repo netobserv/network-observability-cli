@@ -6,6 +6,8 @@ set -eu
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
+# prompt copy by default
+if [ -z "${copy+x}" ]; then copy="prompt"; fi
 
 # get either oc (favorite) or kubectl paths
 # this is used only when calling commands directly
@@ -136,9 +138,11 @@ function copyOutput {
 function cleanup {
   # shellcheck disable=SC2034
   if clusterIsReady; then
-    if [ "$isE2E" = true ]; then
+    if [ "$captureStarted" = false ]; then
+      echo "Can't copy since capture didn't start"
+    elif [[ "$isE2E" = true || "$copy" = true ]]; then
       copyOutput
-    elif [ "$captureStarted" = true ]; then
+    elif [ "$copy" = "prompt" ]; then
       while true; do
           read -rp "Copy the capture output locally ?" yn
           case $yn in
@@ -266,6 +270,13 @@ function check_args_and_apply() {
         key="${option%%=*}"
         value="${option#*=}"
         case "$key" in
+            --copy) # Copy or skip without prompt
+                if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
+                  copy="$value"
+                else
+                  echo "invalid value for --copy"
+                fi
+                ;;
             --interfaces) # Interfaces
                 edit_manifest "interfaces" "$value" "$2"
                 ;;
