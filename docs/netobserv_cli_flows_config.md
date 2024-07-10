@@ -17,6 +17,15 @@ USER=netobserv make commands
 ./build/oc-netobserv flows --enable_pktdrop=true  --enable_rtt=true --enable_filter=true --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
 ```
 
+- The following table show general options.
+
+| Option          | Description                                 | Possible values                                  | Default   |
+|-----------------|---------------------------------------------|--------------------------------------------------|-----------|
+| --log-level     | Components logs                             | for example debug or trace                       | info      |
+| --max-time      | Maximum capture time                        | for example 10m or 30s                           | 5m        |
+| --max-bytes     | Maximum capture bytes                       | for example 10000000 (1MB)                       | 50000000  |
+| --copy          | Copy the output files locally               | for example prompt, yes or no                    | prompt    |
+
 - The following table shows all supported features options.
 
 | Option           | Description                     | Possible values   | Default |
@@ -44,6 +53,3 @@ USER=netobserv make commands
 | --icmp_type     | ICMP type to match on the flow              | for example 8 or 13                              | no        |           |
 | --icmp_code     | ICMP code to match on the flow              | for example 0 or 1                               | no        |           |
 | --peer_ip       | Peer IP to match on the flow                | for example 1.1.1.1 or 1::1                      | no        |           |
-| --log-level     | Components logs                             | for example debug or trace                       | no        | info      |
-| --max-time      | Maximum capture time                        | for example 10m or 30s                           | no        | 5m        |
-| --max-bytes     | max-bytes: maximum capture bytes            | for example 10000000 (1MB)                       | no        | 50000000  |

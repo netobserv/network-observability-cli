@@ -162,6 +162,12 @@ function cleanup {
 }
 
 function common_usage {
+  # general options
+  echo "          --log-level: components logs (default: info)"
+  echo "          --max-time: maximum capture time (default: 5m)"
+  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
+  echo "          --copy: copy the output files locally (default: prompt)"
+  # filters
   echo "          --direction: flow filter direction"
   echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
   echo "          --protocol: flow filter protocol"
@@ -175,24 +181,26 @@ function common_usage {
   echo "          --icmp_code: ICMP code"
   echo "          --peer_ip: peer IP"
   echo "          --action: flow filter action (default: Accept)"
-  echo "          --log-level: components logs (default: info)"
-  echo "          --max-time: maximum capture time (default: 5m)"
-  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
 
 }
 
 function flows_usage {
   echo "        Options:"
-  echo "          --interfaces: interfaces to monitor"
+  # features
   echo "          --enable_pktdrop: enable packet drop (default: false)"
   echo "          --enable_dns: enable DNS tracking (default: false)"
   echo "          --enable_rtt: enable RTT tracking (default: false)"
   echo "          --enable_filter: enable flow filter (default: false)"
+  # common
   common_usage
+  # specific filters
+  echo "          --interfaces: interfaces to monitor"
+
 }
 
 function packets_usage {
   echo "        Options:"
+  # common
   common_usage
 }
 
@@ -272,6 +280,7 @@ function check_args_and_apply() {
         case "$key" in
             --copy) # Copy or skip without prompt
                 if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
+                  echo "param: $key, param_value: $value"
                   copy="$value"
                 else
                   echo "invalid value for --copy"
@@ -389,10 +398,12 @@ function check_args_and_apply() {
                 fi
                 ;;
             --max-time) # Max time
+                echo "param: $key, param_value: $value"
                 maxTime=$value
                 filter=${filter/$key=$maxTime/}
                 ;;
             --max-bytes) # Max bytes
+                echo "param: $key, param_value: $value"
                 maxBytes=$value
                 filter=${filter/$key=$maxBytes/}
                 ;;
