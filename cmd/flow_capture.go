@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
@@ -111,9 +112,24 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		}
 		go manageFlowsDisplay(fp.GenericMap.Value)
 		// append new line between each record to read file easilly
-		_, err = f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
+		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		// terminate capture if max bytes reached
+		totalBytes = totalBytes + int64(bytes)
+		if totalBytes > maxBytes {
+			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+			return
+		}
+
+		// terminate capture if max time reached
+		now := currentTime()
+		duration := now.Sub(startupTime)
+		if int(duration) > int(maxTime) {
+			log.Infof("Capture reached %s, exiting now...", maxTime)
+			return
 		}
 	}
 }
@@ -190,10 +206,15 @@ func updateTable() {
 		lastRefresh = now
 		resetTerminal()
 
+		duration := now.Sub(startupTime)
 		if outputBuffer == nil {
 			fmt.Print("Running network-observability-cli as Flow Capture\n")
-			fmt.Printf("Log level: %s\n", logLevel)
-			fmt.Printf("Collection filters: %s\n", filter)
+			fmt.Printf("Log level: %s ", logLevel)
+			fmt.Printf("Duration: %s ", duration.Round(time.Second))
+			fmt.Printf("Capture size: %s\n", sizestr.ToString(totalBytes))
+			if len(strings.TrimSpace(filter)) > 0 {
+				fmt.Printf("Filters: %s\n", filter)
+			}
 			fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
 			fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
 			fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))

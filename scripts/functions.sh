@@ -157,6 +157,26 @@ function cleanup {
   fi
 }
 
+function common_usage {
+  echo "          --direction: flow filter direction"
+  echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
+  echo "          --protocol: flow filter protocol"
+  echo "          --sport: flow filter source port"
+  echo "          --dport: flow filter destination port"
+  echo "          --port: flow filter port"
+  echo "          --sport_range: flow filter source port range"
+  echo "          --dport_range: flow filter destination port range"
+  echo "          --port_range: flow filter port range"
+  echo "          --icmp_type: ICMP type"
+  echo "          --icmp_code: ICMP code"
+  echo "          --peer_ip: peer IP"
+  echo "          --action: flow filter action (default: Accept)"
+  echo "          --log-level: components logs (default: info)"
+  echo "          --max-time: maximum capture time (default: 5m)"
+  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
+
+}
+
 function flows_usage {
   echo "        Options:"
   echo "          --interfaces: interfaces to monitor"
@@ -164,36 +184,12 @@ function flows_usage {
   echo "          --enable_dns: enable DNS tracking (default: false)"
   echo "          --enable_rtt: enable RTT tracking (default: false)"
   echo "          --enable_filter: enable flow filter (default: false)"
-  echo "          --direction: flow filter direction"
-  echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
-  echo "          --protocol: flow filter protocol"
-  echo "          --sport: flow filter source port"
-  echo "          --dport: flow filter destination port"
-  echo "          --port: flow filter port"
-  echo "          --sport_range: flow filter source port range"
-  echo "          --dport_range: flow filter destination port range"
-  echo "          --port_range: flow filter port range"
-  echo "          --icmp_type: ICMP type"
-  echo "          --icmp_code: ICMP code"
-  echo "          --peer_ip: peer IP"
-  echo "          --action: flow filter action (default: Accept)"
+  common_usage
 }
 
 function packets_usage {
   echo "        Options:"
-  echo "          --direction: flow filter direction"
-  echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
-  echo "          --protocol: flow filter protocol"
-  echo "          --sport: flow filter source port"
-  echo "          --dport: flow filter destination port"
-  echo "          --port: flow filter port"
-  echo "          --sport_range: flow filter source port range"
-  echo "          --dport_range: flow filter destination port range"
-  echo "          --port_range: flow filter port range"
-  echo "          --icmp_type: ICMP type"
-  echo "          --icmp_code: ICMP code"
-  echo "          --peer_ip: peer IP"
-  echo "          --action: flow filter action (default: Accept)"
+  common_usage
 }
 
 function edit_manifest() {
@@ -253,6 +249,9 @@ function edit_manifest() {
     ;;
   "filter_action")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ACTION\").value|=\"$2\"" "$3"
+    ;;
+  "log_level")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
     ;;
   esac
 }
@@ -368,6 +367,23 @@ function check_args_and_apply() {
                 else
                   echo "invalid value for --action"
                 fi
+                ;;
+            --log-level) # Log level
+                if [[ "$value" == "trace" || "$value" == "debug" || "$value" == "info" || "$value" == "warn" || "$value" == "error" || "$value" == "fatal" || "$value" == "panic" ]]; then
+                  edit_manifest "log_level" "$value" "$2"
+                  logLevel=$value
+                  filter=${filter/$key=$logLevel/}
+                else
+                  echo "invalid value for --action"
+                fi
+                ;;
+            --max-time) # Max time
+                maxTime=$value
+                filter=${filter/$key=$maxTime/}
+                ;;
+            --max-bytes) # Max bytes
+                maxBytes=$value
+                filter=${filter/$key=$maxBytes/}
                 ;;
             *) # Invalid option
                 echo "Invalid option: $key" >&2

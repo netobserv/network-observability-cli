@@ -25,6 +25,15 @@ version="0.0.1"
 # command to run
 command=""
 
+# log level (default: info)
+logLevel="info"
+
+# max time (default: 5min)
+maxTime="5m" 
+
+# max bytes (default: 50MB)
+maxBytes=50000000
+
 case "$1" in  
 "help")
     # display Help
@@ -32,7 +41,7 @@ case "$1" in
     echo "Netobserv allows you to capture flow and packets from your cluster."
     echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
     echo
-    echo "Syntax: netobserv [flows|packets|cleanup] [filters]"
+    echo "Syntax: netobserv [flows|packets|cleanup] [options]"
     echo
     echo "options:"
     echo "  flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'."
@@ -88,4 +97,4 @@ captureStarted=true
 ${K8S_CLI_BIN} exec -i --tty \
   -n netobserv-cli \
   collector \
-  -- /network-observability-cli get-$command ${filter:+"--filter" "$filter"}
+  -- /network-observability-cli get-$command ${filter:+"--filter" "${filter//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes
