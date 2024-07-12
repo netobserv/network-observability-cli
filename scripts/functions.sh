@@ -6,6 +6,8 @@ set -eu
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
+# prompt copy by default
+if [ -z "${copy+x}" ]; then copy="prompt"; fi
 
 # get either oc (favorite) or kubectl paths
 # this is used only when calling commands directly
@@ -136,9 +138,11 @@ function copyOutput {
 function cleanup {
   # shellcheck disable=SC2034
   if clusterIsReady; then
-    if [ "$isE2E" = true ]; then
+    if [ "$captureStarted" = false ]; then
+      echo "Can't copy since capture didn't start"
+    elif [[ "$isE2E" = true || "$copy" = true ]]; then
       copyOutput
-    elif [ "$captureStarted" = true ]; then
+    elif [ "$copy" = "prompt" ]; then
       while true; do
           read -rp "Copy the capture output locally ?" yn
           case $yn in
@@ -158,6 +162,12 @@ function cleanup {
 }
 
 function common_usage {
+  # general options
+  echo "          --log-level: components logs (default: info)"
+  echo "          --max-time: maximum capture time (default: 5m)"
+  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
+  echo "          --copy: copy the output files locally (default: prompt)"
+  # filters
   echo "          --direction: flow filter direction"
   echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
   echo "          --protocol: flow filter protocol"
@@ -171,24 +181,26 @@ function common_usage {
   echo "          --icmp_code: ICMP code"
   echo "          --peer_ip: peer IP"
   echo "          --action: flow filter action (default: Accept)"
-  echo "          --log-level: components logs (default: info)"
-  echo "          --max-time: maximum capture time (default: 5m)"
-  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
 
 }
 
 function flows_usage {
   echo "        Options:"
-  echo "          --interfaces: interfaces to monitor"
+  # features
   echo "          --enable_pktdrop: enable packet drop (default: false)"
   echo "          --enable_dns: enable DNS tracking (default: false)"
   echo "          --enable_rtt: enable RTT tracking (default: false)"
   echo "          --enable_filter: enable flow filter (default: false)"
+  # common
   common_usage
+  # specific filters
+  echo "          --interfaces: interfaces to monitor"
+
 }
 
 function packets_usage {
   echo "        Options:"
+  # common
   common_usage
 }
 
@@ -266,6 +278,14 @@ function check_args_and_apply() {
         key="${option%%=*}"
         value="${option#*=}"
         case "$key" in
+            --copy) # Copy or skip without prompt
+                if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
+                  echo "param: $key, param_value: $value"
+                  copy="$value"
+                else
+                  echo "invalid value for --copy"
+                fi
+                ;;
             --interfaces) # Interfaces
                 edit_manifest "interfaces" "$value" "$2"
                 ;;
@@ -378,10 +398,12 @@ function check_args_and_apply() {
                 fi
                 ;;
             --max-time) # Max time
+                echo "param: $key, param_value: $value"
                 maxTime=$value
                 filter=${filter/$key=$maxTime/}
                 ;;
             --max-bytes) # Max bytes
+                echo "param: $key, param_value: $value"
                 maxBytes=$value
                 filter=${filter/$key=$maxBytes/}
                 ;;

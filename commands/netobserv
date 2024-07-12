@@ -7,6 +7,8 @@ set +u
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
+# prompt copy by default
+if [ -z "${copy+x}" ]; then copy="prompt"; fi
 
 # interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
 filter=""
