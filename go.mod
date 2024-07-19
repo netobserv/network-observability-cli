@@ -11,7 +11,7 @@ require (
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/netobserv/flowlogs-pipeline v1.6.1-crc0
-	github.com/netobserv/netobserv-ebpf-agent v1.6.1-crc1
+	github.com/netobserv/netobserv-ebpf-agent v1.6.1-crc2
 	github.com/rodaine/table v1.2.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
