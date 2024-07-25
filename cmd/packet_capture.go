@@ -1,21 +1,22 @@
 package cmd
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/eiannone/keyboard"
-	"github.com/fatih/color"
 	"github.com/google/gopacket/layers"
 	"github.com/jpillora/sizestr"
+	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
-	"github.com/netobserv/netobserv-ebpf-agent/pkg/exporter"
-	grpc "github.com/netobserv/netobserv-ebpf-agent/pkg/grpc/packet"
-	"github.com/netobserv/netobserv-ebpf-agent/pkg/pbpacket"
-	"github.com/rodaine/table"
+	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
+	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap"
+	"github.com/ryankurte/go-pcapng"
+	"github.com/ryankurte/go-pcapng/types"
 	"github.com/spf13/cobra"
 )
 
@@ -32,14 +33,10 @@ type PcapResult struct {
 	ByteCount   int64
 }
 
-var packets = []PcapResult{}
-
-// Setting Snapshot length to 0 sets it to maximum packet size
-var snapshotlen uint32
-
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	go packetCaptureScanner()
+	go scanner()
 
+	captureType = "Packet"
 	wg := sync.WaitGroup{}
 	wg.Add(len(ports))
 	for i := range ports {
@@ -67,19 +64,23 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
-	f, err = os.Create("./output/pcap/" + filename + ".pcap")
+	pw, err := pcapng.NewFileWriter("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
 	// write pcap file header
-	_, err = f.Write(exporter.GetPCAPFileHeader(snapshotlen, layers.LinkTypeEthernet))
+	so := types.SectionHeaderOptions{
+		Comment:     filename,
+		Application: "netobserv-cli",
+	}
+	err = pw.WriteSectionHeader(so)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
 
-	flowPackets := make(chan *pbpacket.Packet, 100)
+	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
 		log.Error("StartCollector failed:", err.Error())
@@ -94,16 +95,46 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		if stopReceived {
 			return
 		}
-
-		go managePacketsDisplay(PcapResult{Name: filename, ByteCount: int64(len(fp.Pcap.Value)), PacketCount: 1})
-		// append new line between each record to read file easilly
-		bytes, err := f.Write(fp.Pcap.Value)
+		genericMap := config.GenericMap{}
+		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
-			log.Fatal(err)
+			log.Error("Error while parsing json", err)
+			return
+		}
+
+		data, ok := genericMap["Data"]
+		if ok {
+			// clear generic map data
+			delete(genericMap, "Data")
+
+			// display as flow async
+			go manageFlowsDisplay(genericMap)
+
+			// Get capture timestamp
+			ts := time.Unix(int64(genericMap["Time"].(float64)), 0)
+
+			// Decode b64 encoded data
+			b, err := base64.StdEncoding.DecodeString(data.(string))
+			if err != nil {
+				log.Error("Error while decoding data", err)
+				return
+			}
+
+			// write enriched data as interface
+			writeEnrichedData(pw, &genericMap)
+
+			// then append packet to file
+			err = pw.WriteEnhancedPacketBlock(0, ts, b, types.EnhancedPacketOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			// display as flow async
+			go manageFlowsDisplay(genericMap)
 		}
 
 		// terminate capture if max bytes reached
-		totalBytes = totalBytes + int64(bytes)
+		totalBytes = totalBytes + int64(len(fp.GenericMap.Value))
 		if totalBytes > maxBytes {
 			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
 			return
@@ -119,94 +150,35 @@ func runPacketCaptureOnAddr(port int, filename string) {
 	}
 }
 
-func managePacketsDisplay(result PcapResult) {
-	// lock since we are updating results concurrently
-	mutex.Lock()
-
-	// find result in array
-	found := false
-	for i, r := range packets {
-		if r.Name == result.Name {
-			found = true
-			// update existing result
-			packets[i].PacketCount += result.PacketCount
-			packets[i].ByteCount += result.ByteCount
-			break
+func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {
+	var io types.InterfaceOptions
+	srcType := toText(*genericMap, "SrcK8S_Type").(string)
+	if srcType != emptyText {
+		io = types.InterfaceOptions{
+			Name: fmt.Sprintf(
+				"%s: %s -> %s: %s",
+				srcType,
+				toText(*genericMap, "SrcK8S_Name"),
+				toText(*genericMap, "DstK8S_Type"),
+				toText(*genericMap, "DstK8S_Name")),
+			Description: fmt.Sprintf(
+				"%s: %s Namespace: %s -> %s: %s Namespace: %s",
+				toText(*genericMap, "SrcK8S_OwnerType"),
+				toText(*genericMap, "SrcK8S_OwnerName"),
+				toText(*genericMap, "SrcK8S_Namespace"),
+				toText(*genericMap, "DstK8S_OwnerType"),
+				toText(*genericMap, "DstK8S_OwnerName"),
+				toText(*genericMap, "DstK8S_Namespace"),
+			),
+		}
+	} else {
+		io.Name = "Unknown resource"
+		io = types.InterfaceOptions{
+			Name: "Unknown kubernetes resource",
 		}
 	}
-	if !found {
-		packets = append(packets, result)
-	}
-
-	// don't refresh terminal too often to avoid blinking
-	now := currentTime()
-	if int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
-		lastRefresh = now
-		resetTerminal()
-
-		duration := now.Sub(startupTime)
-		if outputBuffer == nil {
-			fmt.Print("Running network-observability-cli as Packet Capture\n")
-			fmt.Printf("Log level: %s ", logLevel)
-			fmt.Printf("Duration: %s ", duration.Round(time.Second))
-			fmt.Printf("Capture size: %s\n", sizestr.ToString(totalBytes))
-			if len(strings.TrimSpace(filter)) > 0 {
-				fmt.Printf("Filters: %s\n", filter)
-			}
-		}
-
-		// recreate table from scratch
-		headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
-		columnFmt := color.New(color.FgHiYellow).SprintfFunc()
-		tbl := table.New(
-			"Name",
-			"Packets",
-			"Bytes",
-		)
-		if outputBuffer != nil {
-			tbl.WithWriter(outputBuffer)
-		}
-		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt).WithPadding(10)
-
-		for _, result := range packets {
-			tbl.AddRow(
-				result.Name,
-				result.PacketCount,
-				sizestr.ToString(result.ByteCount),
-			)
-		}
-
-		// print table
-		tbl.Print()
-	}
-
-	if len(keyboardError) > 0 {
-		fmt.Println(keyboardError)
-	}
-
-	// unlock
-	mutex.Unlock()
-}
-
-func packetCaptureScanner() {
-	if err := keyboard.Open(); err != nil {
-		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
-		return
-	}
-	defer func() {
-		_ = keyboard.Close()
-	}()
-
-	for {
-		_, key, err := keyboard.GetKey()
-		if err != nil {
-			panic(err)
-		}
-		if key == keyboard.KeyCtrlC || stopReceived {
-			log.Info("Ctrl-C pressed, exiting program.")
-
-			// exit program
-			os.Exit(0)
-		}
+	err := pw.WriteInterfaceDescription(uint16(layers.LinkTypeEthernet), io)
+	if err != nil {
+		log.Fatal(err)
 	}
 }

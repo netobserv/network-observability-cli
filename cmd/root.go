@@ -50,6 +50,7 @@ var (
 		},
 	}
 
+	captureType   = "Flow"
 	outputBuffer  *bytes.Buffer
 	stopReceived  = false
 	keyboardError = ""

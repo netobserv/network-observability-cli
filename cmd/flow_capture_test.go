@@ -17,7 +17,7 @@ func TestFlowTableRefreshDelay(t *testing.T) {
 	buf := bytes.Buffer{}
 	setOutputBuffer(&buf)
 
-	manageFlowsDisplay([]byte(`{"TimeFlowEndMs": 1709741962017}`))
+	parseGenericMapAndDisplay([]byte(`{"TimeFlowEndMs": 1709741962017}`))
 
 	out := buf.String()
 	assert.Empty(t, out)
@@ -33,7 +33,7 @@ func TestFlowTableDefaultDisplay(t *testing.T) {
 	// add 1s to current time to avoid maxRefreshRate limit
 	tickTime()
 
-	manageFlowsDisplay([]byte(sampleFlow))
+	parseGenericMapAndDisplay([]byte(sampleFlow))
 
 	// get table output as string
 	rows := strings.Split(buf.String(), "\n")
@@ -72,7 +72,7 @@ func TestFlowTableMultipleFlows(t *testing.T) {
 		bytes = bytes + 1000
 
 		// add flow to table
-		manageFlowsDisplay([]byte(fmt.Sprintf(`{
+		parseGenericMapAndDisplay([]byte(fmt.Sprintf(`{
 			"AgentIP":"10.0.1.1",
 			"Bytes":%d,
 			"DstAddr":"10.0.0.6",
@@ -120,7 +120,7 @@ func TestFlowTableAdvancedDisplay(t *testing.T) {
 
 		// add one second to time and draw table
 		tickTime()
-		manageFlowsDisplay([]byte(sampleFlow))
+		parseGenericMapAndDisplay([]byte(sampleFlow))
 
 		// get table output per rows
 		return strings.Split(buf.String(), "\n")

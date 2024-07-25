@@ -400,8 +400,20 @@ func toText(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
+func toFloat64(genericMap config.GenericMap, fieldName string) float64 {
+	v, ok := genericMap[fieldName]
+	if ok {
+		return v.(float64)
+	}
+	return 0
+}
+
 func toTimeString(genericMap config.GenericMap, fieldName string) string {
-	return time.UnixMilli(int64(genericMap[fieldName].(float64))).Format("15:04:05.000000")
+	v, ok := genericMap[fieldName]
+	if ok {
+		return time.UnixMilli(int64(v.(float64))).Format("15:04:05.000000")
+	}
+	return emptyText
 }
 
 func ToTableRow(genericMap config.GenericMap, cols []string) []interface{} {
@@ -411,7 +423,11 @@ func ToTableRow(genericMap config.GenericMap, cols []string) []interface{} {
 		// convert field name / value accordingly
 		switch col {
 		case "Time":
-			row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
+			if captureType == "Flow" {
+				row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
+			} else {
+				row = append(row, toTimeString(genericMap, "Time"))
+			}
 		case "SrcZone":
 			row = append(row, toText(genericMap, "SrcK8S_Zone"))
 		case "DstZone":
