@@ -74,8 +74,8 @@ func TestFlowCapture(t *testing.T) {
 			var jsons []string
 			var dbs []string
 
-			assert.Equal(t, true, outputDirExists())
 			dirPath := path.Join("output", "flow")
+			assert.True(t, dirExists(dirPath), "directory %s not found", dirPath)
 			err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					fmt.Println(err)
@@ -139,8 +139,8 @@ func TestPacketCapture(t *testing.T) {
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			var pcaps []string
 
-			assert.Equal(t, true, outputDirExists())
 			dirPath := path.Join("output", "pcap")
+			assert.True(t, dirExists(dirPath), "directory %s not found", dirPath)
 			err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					fmt.Println(err)
@@ -170,8 +170,8 @@ func TestPacketCapture(t *testing.T) {
 	testCluster.TestEnv().Test(t, f1)
 }
 
-func outputDirExists() bool {
-	if _, err := os.Stat("output"); err != nil {
+func dirExists(dir string) bool {
+	if _, err := os.Stat(dir); err != nil {
 		if os.IsNotExist(err) {
 			return false
 		}
