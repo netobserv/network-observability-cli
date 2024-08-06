@@ -177,6 +177,7 @@ function common_usage {
   echo "          --sport_range: flow filter source port range"
   echo "          --dport_range: flow filter destination port range"
   echo "          --port_range: flow filter port range"
+  echo "          --tcp_flags: flow filter TCP flags"
   echo "          --icmp_type: ICMP type"
   echo "          --icmp_code: ICMP code"
   echo "          --peer_ip: peer IP"
@@ -262,6 +263,9 @@ function edit_manifest() {
   "filter_action")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ACTION\").value|=\"$2\"" "$3"
     ;;
+  "filter_tcp_flags")
+  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
+  ;;
   "log_level")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
     ;;
@@ -372,6 +376,13 @@ function check_args_and_apply() {
             --port_range) # Configure filter port range
                 edit_manifest "filter_port_range" "$value" "$2"
                 ;;
+            --tcp_flags) # Configure filter TCP flags
+              if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
+                edit_manifest "filter_tcp_flags" "$value" "$2"
+              else
+                echo "invalid value for --tcp_flags"
+              fi
+              ;;
             --icmp_type) # ICMP type
                 edit_manifest "filter_icmp_type" "$value" "$2"
                 ;;

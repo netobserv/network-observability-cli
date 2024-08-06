@@ -67,6 +67,8 @@ spec:
             value: ""
           - name: FILTER_PEER_IP
             value: ""
+          - name: FILTER_TCP_FLAGS
+            value: ""
           - name: FILTER_ACTION
             value: "Accept"
           - name: EXPORT
