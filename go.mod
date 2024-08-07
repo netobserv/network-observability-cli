@@ -11,7 +11,7 @@ require (
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/netobserv/flowlogs-pipeline v1.6.1-crc0
-	github.com/rodaine/table v1.2.0
+	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
