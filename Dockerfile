@@ -26,7 +26,7 @@ RUN GOARCH=$TARGETARCH make compile
 RUN mkdir -p output
 
 # Create final image from ubi + built binary
-FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9-minimal:9.4-1194
+FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9-minimal:9.4
 RUN microdnf update -y && microdnf install -y tar
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
