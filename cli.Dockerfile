@@ -1,4 +1,4 @@
-FROM docker.io/library/golang:1.22 as builder
+FROM docker.io/library/golang:1.23 as builder
 COPY . .
 
 RUN make compile
