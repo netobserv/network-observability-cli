@@ -168,21 +168,23 @@ function common_usage {
   echo "          --max-bytes:        maximum capture bytes               (default: 50000000 = 50MB)"
   echo "          --copy:             copy the output files locally       (default: prompt)"
   # filters
-  echo "          --direction:        flow filter direction               (default: n/a)"
-  echo "          --cidr:             flow filter CIDR                    (default: 0.0.0.0/0)"
-  echo "          --protocol:         flow filter protocol                (default: n/a)"
-  echo "          --sport:            flow filter source port             (default: n/a)"
-  echo "          --dport:            flow filter destination port        (default: n/a)"
-  echo "          --port:             flow filter port                    (default: n/a)"
-  echo "          --sport_range:      flow filter source port range       (default: n/a)"
-  echo "          --dport_range:      flow filter destination port range  (default: n/a)"
-  echo "          --port_range:       flow filter port range              (default: n/a)"
-  echo "          --tcp_flags:        flow filter TCP flags               (default: n/a)"
-  echo "          --icmp_type:        ICMP type                           (default: n/a)"
-  echo "          --icmp_code:        ICMP code                           (default: n/a)"
-  echo "          --peer_ip:          peer IP                             (default: n/a)"
-  echo "          --action:           flow filter action                  (default: Accept)"
-
+  echo "          --direction:        flow filter direction                           (default: n/a)"
+  echo "          --cidr:             flow filter CIDR                                (default: 0.0.0.0/0)"
+  echo "          --protocol:         flow filter protocol                            (default: n/a)"
+  echo "          --sport:            flow filter source port                         (default: n/a)"
+  echo "          --dport:            flow filter destination port                    (default: n/a)"
+  echo "          --port:             flow filter port                                (default: n/a)"
+  echo "          --sport_range:      flow filter source port range                   (default: n/a)"
+  echo "          --dport_range:      flow filter destination port range              (default: n/a)"
+  echo "          --port_range:       flow filter port range                          (default: n/a)"
+  echo "          --sports:           flow filter on either of two source ports       (default: n/a)"
+  echo "          --dports:           flow filter on either of two destination ports  (default: n/a)"
+  echo "          --ports:            flow filter on either of two ports              (default: n/a)"
+  echo "          --tcp_flags:        flow filter TCP flags                           (default: n/a)"
+  echo "          --icmp_type:        ICMP type                                       (default: n/a)"
+  echo "          --icmp_code:        ICMP code                                       (default: n/a)"
+  echo "          --peer_ip:          peer IP                                         (default: n/a)"
+  echo "          --action:           flow filter action                              (default: Accept)"
 }
 
 function flows_usage {
@@ -252,6 +254,15 @@ function edit_manifest() {
     ;;
   "filter_port_range")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PORT_RANGE\").value|=\"$2\"" "$3"
+    ;;
+  "filter_sports")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_SOURCE_PORTS\").value|=\"$2\"" "$3"
+    ;;
+  "filter_dportS")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DESTINATION_PORTS\").value|=\"$2\"" "$3"
+    ;;
+  "filter_ports")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PORTS\").value|=\"$2\"" "$3"
     ;;
   "filter_icmp_type")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ICMP_TYPE\").value|=\"$2\"" "$3"
@@ -389,6 +400,15 @@ function check_args_and_apply() {
                 ;;
             --port_range) # Configure filter port range
                 edit_manifest "filter_port_range" "$value" "$2"
+                ;;
+            --sports) # Configure filter source two ports using ","
+                edit_manifest "filter_sports" "$value" "$2"
+                ;;
+            --dports) # Configure filter destination two ports using ","
+                edit_manifest "filter_dports" "$value" "$2"
+                ;;
+            --ports) # Configure filter on two ports usig "," can either be srcport or dstport
+                edit_manifest "filter_ports" "$value" "$2"
                 ;;
             --tcp_flags) # Configure filter TCP flags
               if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
