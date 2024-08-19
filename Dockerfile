@@ -16,16 +16,23 @@ COPY cmd cmd
 COPY main.go main.go
 COPY go.mod go.mod
 COPY go.sum go.sum
+COPY commands/ commands/
+COPY res/ res/
+COPY scripts/ scripts/
 COPY vendor/ vendor/
 COPY Makefile Makefile
 COPY .mk/ .mk/
 
-# Build
+# Build collector
 RUN GOARCH=$TARGETARCH make compile
+
+# Embedd commands in case users want to pull it from collector image
+RUN USER=netobserv VERSION=main make oc-commands
+
 # Prepare output dir
 RUN mkdir -p output
 
-# Create final image from ubi + built binary
+# Create final image from ubi + built binary and command
 FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.4
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
