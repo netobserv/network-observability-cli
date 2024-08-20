@@ -6,7 +6,6 @@
 Users of Netobserv CLI can pass command line arguments to enable features or pass configuration options to the eBPF agent and flowlogs-pipeline.
 This document lists all the supported command line options and their possible values.
 
-
 == Flows usage
 [cols="1,1,1",options="header"]
 |===
