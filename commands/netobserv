@@ -36,6 +36,32 @@ maxTime="5m"
 # max bytes (default: 50MB)
 maxBytes=50000000
 
+function flows() {
+  case "$2" in
+    "help")
+      flows_usage
+      exit 0 ;;
+    *)
+      shift # remove first argument
+      filter="$*"
+      # run flows command
+      command="flows" ;;
+  esac
+}
+
+function packets() {
+  case "$2" in
+    "help")
+      packets_usage
+      exit 0 ;;
+    *)
+      shift # remove first argument
+      filter="$*"
+      # run packets command
+      command="packets" ;;
+  esac
+}
+
 case "$1" in  
 "help")
     # display Help
@@ -47,9 +73,11 @@ case "$1" in
     echo
     echo "options:"
     echo "  flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'."
+    echo "        Options:"
     flows_usage
     echo "  packets    Capture packets information in pcap format."
     packets_usage
+    echo "        Options:"
     echo "  cleanup    Remove netobserv components."
     echo "  version    Print software version."
     echo
@@ -59,15 +87,9 @@ case "$1" in
     echo "Netobserv CLI version $version"
     exit 0 ;;
 "flows")
-    shift # remove first argument
-    filter="$*"
-    # run flows command
-    command="flows" ;;
+    flows $* ;;
 "packets")
-    shift # remove first argument
-    filter="$*"
-    # run packets command
-    command="packets" ;;
+    packets $* ;;
 "cleanup")
     # run cleanup command
     cleanup

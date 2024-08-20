@@ -163,44 +163,42 @@ function cleanup {
 
 function common_usage {
   # general options
-  echo "          --log-level: components logs (default: info)"
-  echo "          --max-time: maximum capture time (default: 5m)"
-  echo "          --max-bytes: maximum capture bytes (default: 50000000 = 50MB)"
-  echo "          --copy: copy the output files locally (default: prompt)"
+  echo "          --log-level:        components logs                     (default: info)"
+  echo "          --max-time:         maximum capture time                (default: 5m)"
+  echo "          --max-bytes:        maximum capture bytes               (default: 50000000 = 50MB)"
+  echo "          --copy:             copy the output files locally       (default: prompt)"
   # filters
-  echo "          --direction: flow filter direction"
-  echo "          --cidr: flow filter CIDR (default: 0.0.0.0/0)"
-  echo "          --protocol: flow filter protocol"
-  echo "          --sport: flow filter source port"
-  echo "          --dport: flow filter destination port"
-  echo "          --port: flow filter port"
-  echo "          --sport_range: flow filter source port range"
-  echo "          --dport_range: flow filter destination port range"
-  echo "          --port_range: flow filter port range"
-  echo "          --tcp_flags: flow filter TCP flags"
-  echo "          --icmp_type: ICMP type"
-  echo "          --icmp_code: ICMP code"
-  echo "          --peer_ip: peer IP"
-  echo "          --action: flow filter action (default: Accept)"
+  echo "          --direction:        flow filter direction               (default: n/a)"
+  echo "          --cidr:             flow filter CIDR                    (default: 0.0.0.0/0)"
+  echo "          --protocol:         flow filter protocol                (default: n/a)"
+  echo "          --sport:            flow filter source port             (default: n/a)"
+  echo "          --dport:            flow filter destination port        (default: n/a)"
+  echo "          --port:             flow filter port                    (default: n/a)"
+  echo "          --sport_range:      flow filter source port range       (default: n/a)"
+  echo "          --dport_range:      flow filter destination port range  (default: n/a)"
+  echo "          --port_range:       flow filter port range              (default: n/a)"
+  echo "          --tcp_flags:        flow filter TCP flags               (default: n/a)"
+  echo "          --icmp_type:        ICMP type                           (default: n/a)"
+  echo "          --icmp_code:        ICMP code                           (default: n/a)"
+  echo "          --peer_ip:          peer IP                             (default: n/a)"
+  echo "          --action:           flow filter action                  (default: Accept)"
 
 }
 
 function flows_usage {
-  echo "        Options:"
   # features
-  echo "          --enable_pktdrop: enable packet drop (default: false)"
-  echo "          --enable_dns: enable DNS tracking (default: false)"
-  echo "          --enable_rtt: enable RTT tracking (default: false)"
-  echo "          --enable_filter: enable flow filter (default: false)"
+  echo "          --enable_pktdrop:   enable packet drop                  (default: false)"
+  echo "          --enable_dns:       enable DNS tracking                 (default: false)"
+  echo "          --enable_rtt:       enable RTT tracking                 (default: false)"
+  echo "          --enable_filter:    enable flow filter                  (default: false)"
   # common
   common_usage
   # specific filters
-  echo "          --interfaces: interfaces to monitor"
+  echo "          --interfaces:       interfaces to monitor               (default: n/a)"
 
 }
 
 function packets_usage {
-  echo "        Options:"
   # common
   common_usage
 }
