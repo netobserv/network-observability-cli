@@ -6,6 +6,7 @@
 You can use the The Network Observability CLI (`oc netobserv`) to pass command line arguments to capture flow data and packet data for further analysis, enable Network Observability Operator features or pass configuration options to the eBPF agent and flowlogs-pipeline.
 == Syntax 
 The basic syntax for `oc netobserv` commands: 
+
 .`oc netobserv` syntax
 [source,terminal]
 ----
@@ -72,6 +73,7 @@ $ oc netobserv flows --enable_pktdrop=true  --enable_rtt=true --enable_filter=tr
 ----
 == Packets capture options
 You can filter on port and protocol for packet capture data. 
+
 .`oc netobserv packets` syntax
 [source,terminal]
 ----
