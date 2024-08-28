@@ -177,6 +177,10 @@ oc-commands: commands ## Generate oc plugins and add them to build folder
 install-commands: commands ## Generate plugins and add them to /usr/bin/
 	sudo cp -a ./build/. /usr/bin/
 
+.PHONY: docs
+docs: oc-commands ## Generate asciidoc
+	./scripts/generate-doc.sh
+
 .PHONY: release
 release: clean ## Generate tar.gz containing krew plugin and display krew updated index
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
