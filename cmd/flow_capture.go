@@ -115,6 +115,10 @@ func runFlowCaptureOnAddr(port int, filename string) {
 
 	log.Trace("Ready ! Waiting for flows...")
 	for fp := range flowPackets {
+		if !captureStarted {
+			log.Tracef("Received first %d flows", len(flowPackets))
+		}
+
 		if stopReceived {
 			log.Trace("Stop received")
 			return
@@ -127,10 +131,17 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		if err != nil {
 			log.Error("Error while writing to DB:", err.Error())
 		}
+		if !captureStarted {
+			log.Trace("Wrote flows to DB")
+		}
+
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
 			log.Fatal(err)
+		}
+		if !captureStarted {
+			log.Trace("Wrote flows to json")
 		}
 
 		// terminate capture if max bytes reached
@@ -147,6 +158,8 @@ func runFlowCaptureOnAddr(port int, filename string) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
 			return
 		}
+
+		captureStarted = true
 	}
 }
 
@@ -158,6 +171,9 @@ func parseGenericMapAndDisplay(bytes []byte) {
 		return
 	}
 
+	if !captureStarted {
+		log.Tracef("Parsed genericMap %v", genericMap)
+	}
 	manageFlowsDisplay(genericMap)
 }
 

@@ -50,10 +50,11 @@ var (
 		},
 	}
 
-	captureType   = "Flow"
-	outputBuffer  *bytes.Buffer
-	stopReceived  = false
-	keyboardError = ""
+	captureType    = "Flow"
+	outputBuffer   *bytes.Buffer
+	captureStarted = false
+	stopReceived   = false
+	keyboardError  = ""
 )
 
 // Execute executes the root command.

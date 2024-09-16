@@ -103,21 +103,32 @@ func runPacketCaptureOnAddr(port int, filename string) {
 
 	log.Trace("Ready ! Waiting for packets...")
 	for fp := range flowPackets {
+		if !captureStarted {
+			log.Tracef("Received first %d packets", len(flowPackets))
+		}
+
 		if stopReceived {
 			log.Trace("Stop received")
 			return
 		}
+
 		genericMap := config.GenericMap{}
 		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
 			log.Error("Error while parsing json", err)
 			return
 		}
+		if !captureStarted {
+			log.Tracef("Parsed genericMap %v", genericMap)
+		}
 
 		data, ok := genericMap["Data"]
 		if ok {
 			// clear generic map data
 			delete(genericMap, "Data")
+			if !captureStarted {
+				log.Trace("Deleted data")
+			}
 
 			// display as flow async
 			go manageFlowsDisplay(genericMap)
@@ -141,6 +152,10 @@ func runPacketCaptureOnAddr(port int, filename string) {
 				log.Fatal(err)
 			}
 		} else {
+			if !captureStarted {
+				log.Trace("Data is missing")
+			}
+
 			// display as flow async
 			go manageFlowsDisplay(genericMap)
 		}
@@ -159,6 +174,8 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
 			return
 		}
+
+		captureStarted = true
 	}
 }
 
