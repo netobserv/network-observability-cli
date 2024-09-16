@@ -82,12 +82,19 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
+	log.Trace("Created flow folder")
+
 	f, err = os.Create("./output/flow/" + filename + ".json")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
 	defer f.Close()
+	log.Trace("Created json file")
+
+	// Initialize sqlite DB
+	db := initFlowDB(filename)
+	log.Trace("Initialized database")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -95,16 +102,21 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Error("StartCollector failed:", err.Error())
 		log.Fatal(err)
 	}
-	// Initialize sqlite DB
-	db := initFlowDB(filename)
+	log.Trace("Started collector")
+
 	go func() {
 		<-utils.ExitChannel()
+		log.Trace("Ending collector")
 		close(flowPackets)
 		collector.Close()
 		db.Close()
+		log.Trace("Done")
 	}()
+
+	log.Trace("Ready ! Waiting for flows...")
 	for fp := range flowPackets {
 		if stopReceived {
+			log.Trace("Stop received")
 			return
 		}
 		// parse and display flow async

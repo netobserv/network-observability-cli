@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	CommandTimeout = 30 * time.Second
+	CommandTimeout = 60 * time.Second
 )
 
 var (
