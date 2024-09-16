@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/google/gopacket v1.1.19
 	github.com/jpillora/sizestr v1.0.0
-	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/mattn/go-sqlite3 v1.14.23
 	github.com/netobserv/flowlogs-pipeline v1.6.1-crc0
 	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
