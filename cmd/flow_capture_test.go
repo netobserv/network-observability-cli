@@ -39,9 +39,9 @@ func TestFlowTableDefaultDisplay(t *testing.T) {
 	rows := strings.Split(buf.String(), "\n")
 
 	assert.Equal(t, 4, len(rows))
-	assert.Equal(t, `Time              SrcName                                        SrcType   DstName                                        DstType   DropBytes     DropPackets   DropState             DropCause                                 DnsId   DnsLatency  DnsRCode  DnsErrno  RTT     `, rows[0])
-	assert.Equal(t, `17:25:28.703000   src-pod                                        Pod       dst-pod                                        Pod       32B           1             TCP_INVALID_STATE     SKB_DROP_REASON_TCP_INVALID_SEQUENCE      31319   1ms         NoError   0         10µs    `, rows[1])
-	assert.Equal(t, `----------------  ---------------------------------------------  --------  ---------------------------------------------  --------  ------------  ------------  --------------------  ----------------------------------------  ------  ------      ------    ------    ------  `, rows[2])
+	assert.Equal(t, `Time              SrcName                                        SrcType   DstName                                        DstType   DropBytes     DropPackets   DropState             DropCause                                 DnsId   DnsLatency  DnsRCode  DnsErrno  RTT     NetworkEvents     `, rows[0])
+	assert.Equal(t, `17:25:28.703000   src-pod                                        Pod       dst-pod                                        Pod       32B           1             TCP_INVALID_STATE     SKB_DROP_REASON_TCP_INVALID_SEQUENCE      31319   1ms         NoError   0         10µs    hello             `, rows[1])
+	assert.Equal(t, `----------------  ---------------------------------------------  --------  ---------------------------------------------  --------  ------------  ------------  --------------------  ----------------------------------------  ------  ------      ------    ------    ------  ----------------  `, rows[2])
 	assert.Empty(t, rows[3])
 }
 
@@ -127,12 +127,11 @@ func TestFlowTableAdvancedDisplay(t *testing.T) {
 	}
 
 	// set display without enrichment
-	rows := getRows([]string{pktDropDisplay, dnsDisplay, rttDisplay}, []string{noEnrichment})
-
+	rows := getRows([]string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}, []string{noEnrichment})
 	assert.Equal(t, 4, len(rows))
-	assert.Equal(t, `Time              SrcAddr                                   SrcPort  DstAddr                                   DstPort  DropBytes     DropPackets   DropState             DropCause                                 DnsId   DnsLatency  DnsRCode  DnsErrno  RTT     `, rows[0])
-	assert.Equal(t, `17:25:28.703000   10.128.0.29                               1234     10.129.0.26                               5678     32B           1             TCP_INVALID_STATE     SKB_DROP_REASON_TCP_INVALID_SEQUENCE      31319   1ms         NoError   0         10µs    `, rows[1])
-	assert.Equal(t, `----------------  ----------------------------------------  ------   ----------------------------------------  ------   ------------  ------------  --------------------  ----------------------------------------  ------  ------      ------    ------    ------  `, rows[2])
+	assert.Equal(t, `Time              SrcAddr                                   SrcPort  DstAddr                                   DstPort  DropBytes     DropPackets   DropState             DropCause                                 DnsId   DnsLatency  DnsRCode  DnsErrno  RTT     NetworkEvents     `, rows[0])
+	assert.Equal(t, `17:25:28.703000   10.128.0.29                               1234     10.129.0.26                               5678     32B           1             TCP_INVALID_STATE     SKB_DROP_REASON_TCP_INVALID_SEQUENCE      31319   1ms         NoError   0         10µs    hello             `, rows[1])
+	assert.Equal(t, `----------------  ----------------------------------------  ------   ----------------------------------------  ------   ------------  ------------  --------------------  ----------------------------------------  ------  ------      ------    ------    ------  ----------------  `, rows[2])
 	assert.Empty(t, rows[3])
 
 	// set display to standard
@@ -169,5 +168,13 @@ func TestFlowTableAdvancedDisplay(t *testing.T) {
 	assert.Equal(t, `Time              SrcAddr                                   SrcPort  DstAddr                                   DstPort  RTT     `, rows[0])
 	assert.Equal(t, `17:25:28.703000   10.128.0.29                               1234     10.129.0.26                               5678     10µs    `, rows[1])
 	assert.Equal(t, `----------------  ----------------------------------------  ------   ----------------------------------------  ------   ------  `, rows[2])
+	assert.Empty(t, rows[3])
+
+	// set display to NetworkEvents
+	rows = getRows([]string{networkEventsDisplay}, []string{noEnrichment})
+	assert.Equal(t, 4, len(rows))
+	assert.Equal(t, `Time              SrcAddr                                   SrcPort  DstAddr                                   DstPort  NetworkEvents     `, rows[0])
+	assert.Equal(t, `17:25:28.703000   10.128.0.29                               1234     10.129.0.26                               5678     hello             `, rows[1])
+	assert.Equal(t, `----------------  ----------------------------------------  ------   ----------------------------------------  ------   ----------------  `, rows[2])
 	assert.Empty(t, rows[3])
 }

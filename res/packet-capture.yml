@@ -128,6 +128,7 @@ spec:
             - name: bpf-kernel-debug
               mountPath: /sys/kernel/debug
               mountPropagation: Bidirectional
+
       volumes:
         - name: bpf-kernel-debug
           hostPath:

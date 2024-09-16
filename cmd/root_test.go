@@ -44,6 +44,7 @@ const (
 		"PktDropLatestFlags":16,
 		"PktDropLatestState":"TCP_INVALID_STATE",
 		"PktDropPackets":1,
+        "NetworkEvents":["hello"],
 		"Proto":6,
 		"SrcAddr":"10.128.0.29",
 		"SrcK8S_HostIP":"10.0.1.1",

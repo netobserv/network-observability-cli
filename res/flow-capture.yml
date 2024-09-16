@@ -41,6 +41,8 @@ spec:
             value: "false"
           - name: ENABLE_DNS_TRACKING
             value: "false"
+          - name: ENABLE_NETWORK_EVENTS_MONITORING
+            value: "false"
           - name: ENABLE_FLOW_FILTER
             value: "false"
           - name: FILTER_DIRECTION
@@ -142,8 +144,23 @@ spec:
             - name: bpf-kernel-debug
               mountPath: /sys/kernel/debug
               mountPropagation: Bidirectional
+            - name: var-run-ovn
+              mountPath: /var/run/ovn
+              mountPropagation: Bidirectional
+            - name: var-run-ovs
+              mountPath: /var/run/openvswitch
+              mountPropagation: Bidirectional
+
       volumes:
         - name: bpf-kernel-debug
           hostPath:
             path: /sys/kernel/debug
             type: Directory
+        - name: var-run-ovn
+          hostPath:
+            path: /var/run/ovn-ic
+            type: DirectoryOrCreate
+        - name: var-run-ovs
+          hostPath:
+            path: /var/run/openvswitch
+            type: DirectoryOrCreate
