@@ -19,7 +19,7 @@ import (
 
 const (
 	cliContainerName = "localhost/netobserv-cli:test"
-	kindImage        = "kindest/node:v1.29.2"
+	kindImage        = "kindest/node:v1.31.0"
 	logsSubDir       = "e2e-logs"
 	localArchiveName = "cli-e2e-img.tar"
 )
