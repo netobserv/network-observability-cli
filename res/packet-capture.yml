@@ -31,6 +31,22 @@ spec:
             value: "false"
           - name: LOG_LEVEL
             value: info
+          - name: INTERFACES
+            value: ""
+          - name: EXCLUDE_INTERFACES
+            value: "lo"
+          - name: SAMPLING
+            value: "1"
+          - name: ENABLE_RTT
+            value: "false"
+          - name: ENABLE_PKT_DROPS
+            value: "false"
+          - name: ENABLE_DNS_TRACKING
+            value: "false"
+          - name: ENABLE_NETWORK_EVENTS_MONITORING
+            value: "false"
+          - name: ENABLE_FLOW_FILTER
+            value: "false"
           - name: FILTER_DIRECTION
             value: ""
           - name: FILTER_IP_CIDR
@@ -54,6 +70,8 @@ spec:
           - name: FILTER_ICMP_CODE
             value: ""
           - name: FILTER_PEER_IP
+            value: ""
+          - name: FILTER_TCP_FLAGS
             value: ""
           - name: FILTER_ACTION
             value: "Accept"
