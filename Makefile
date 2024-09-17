@@ -44,7 +44,7 @@ IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/$(NAME)
 IMAGE ?= $(IMAGE_TAG_BASE):$(VERSION)
 PULL_POLICY ?=Always
 # Agent image URL to deploy
-AGENT_IMAGE ?= quay.io/netobserv/netobserv-ebpf-agent:c6f33c1
+AGENT_IMAGE ?= quay.io/netobserv/netobserv-ebpf-agent:main
 OCI_BUILD_OPTS ?=
 
 # Image building tool (docker / podman) - docker is preferred in CI
