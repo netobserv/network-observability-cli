@@ -82,12 +82,19 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
+	log.Trace("Created flow folder")
+
 	f, err = os.Create("./output/flow/" + filename + ".json")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
 	defer f.Close()
+	log.Trace("Created json file")
+
+	// Initialize sqlite DB
+	db := initFlowDB(filename)
+	log.Trace("Initialized database")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -95,16 +102,25 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		log.Error("StartCollector failed:", err.Error())
 		log.Fatal(err)
 	}
-	// Initialize sqlite DB
-	db := initFlowDB(filename)
+	log.Trace("Started collector")
+
 	go func() {
 		<-utils.ExitChannel()
+		log.Trace("Ending collector")
 		close(flowPackets)
 		collector.Close()
 		db.Close()
+		log.Trace("Done")
 	}()
+
+	log.Trace("Ready ! Waiting for flows...")
 	for fp := range flowPackets {
+		if !captureStarted {
+			log.Tracef("Received first %d flows", len(flowPackets))
+		}
+
 		if stopReceived {
+			log.Trace("Stop received")
 			return
 		}
 		// parse and display flow async
@@ -115,10 +131,17 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		if err != nil {
 			log.Error("Error while writing to DB:", err.Error())
 		}
+		if !captureStarted {
+			log.Trace("Wrote flows to DB")
+		}
+
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
 			log.Fatal(err)
+		}
+		if !captureStarted {
+			log.Trace("Wrote flows to json")
 		}
 
 		// terminate capture if max bytes reached
@@ -135,6 +158,8 @@ func runFlowCaptureOnAddr(port int, filename string) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
 			return
 		}
+
+		captureStarted = true
 	}
 }
 
@@ -146,6 +171,9 @@ func parseGenericMapAndDisplay(bytes []byte) {
 		return
 	}
 
+	if !captureStarted {
+		log.Tracef("Parsed genericMap %v", genericMap)
+	}
 	manageFlowsDisplay(genericMap)
 }
 

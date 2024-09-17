@@ -8,7 +8,7 @@ K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd ../ && pwd )
 
 KIND_CLUSTER_NAME="netobserv-cli-cluster"
-KIND_IMAGE="kindest/node:v1.29.2"
+KIND_IMAGE="kindest/node:v1.31.0"
 
 # deploy_kind installs the kind cluster
 deploy_kind() {

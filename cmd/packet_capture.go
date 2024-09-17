@@ -64,11 +64,15 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
+	log.Trace("Created pcap folder")
+
 	pw, err := pcapng.NewFileWriter("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
+	log.Trace("Created pcapng file")
+
 	// write pcap file header
 	so := types.SectionHeaderOptions{
 		Comment:     filename,
@@ -79,6 +83,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		log.Fatal(err)
 	}
 	defer f.Close()
+	log.Trace("Wrote pcap section header")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -86,26 +91,44 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		log.Error("StartCollector failed:", err.Error())
 		log.Fatal(err)
 	}
+	log.Trace("Started collector")
+
 	go func() {
 		<-utils.ExitChannel()
+		log.Trace("Ending collector")
 		close(flowPackets)
 		collector.Close()
+		log.Trace("Done")
 	}()
+
+	log.Trace("Ready ! Waiting for packets...")
 	for fp := range flowPackets {
+		if !captureStarted {
+			log.Tracef("Received first %d packets", len(flowPackets))
+		}
+
 		if stopReceived {
+			log.Trace("Stop received")
 			return
 		}
+
 		genericMap := config.GenericMap{}
 		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
 			log.Error("Error while parsing json", err)
 			return
 		}
+		if !captureStarted {
+			log.Tracef("Parsed genericMap %v", genericMap)
+		}
 
 		data, ok := genericMap["Data"]
 		if ok {
 			// clear generic map data
 			delete(genericMap, "Data")
+			if !captureStarted {
+				log.Trace("Deleted data")
+			}
 
 			// display as flow async
 			go manageFlowsDisplay(genericMap)
@@ -129,6 +152,10 @@ func runPacketCaptureOnAddr(port int, filename string) {
 				log.Fatal(err)
 			}
 		} else {
+			if !captureStarted {
+				log.Trace("Data is missing")
+			}
+
 			// display as flow async
 			go manageFlowsDisplay(genericMap)
 		}
@@ -147,6 +174,8 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
 			return
 		}
+
+		captureStarted = true
 	}
 }
 

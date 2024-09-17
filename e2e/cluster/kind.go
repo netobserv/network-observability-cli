@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -18,7 +19,7 @@ import (
 
 const (
 	cliContainerName = "localhost/netobserv-cli:test"
-	kindImage        = "kindest/node:v1.29.2"
+	kindImage        = "kindest/node:v1.31.0"
 	logsSubDir       = "e2e-logs"
 	localArchiveName = "cli-e2e-img.tar"
 )
@@ -73,10 +74,19 @@ func (k *Kind) Run(m *testing.M) {
 	klog.WithField("returnCode", code).Info("tests finished run")
 }
 
+func (k *Kind) GetLogsDir() string {
+	logsDir := path.Join(k.baseDir, logsSubDir)
+	err := os.MkdirAll(logsDir, 0700)
+	if err != nil {
+		klog.Error(err)
+	}
+	return logsDir
+}
+
 // export logs into the e2e-logs folder of the base directory.
 func (k *Kind) exportLogs() env.Func {
 	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
-		logsDir := path.Join(k.baseDir, logsSubDir)
+		logsDir := k.GetLogsDir()
 		klog.WithField("directory", logsDir).Info("exporting cluster logs")
 		exe := gexe.New()
 		out := exe.Run("kind export logs " + logsDir + " --name " + k.clusterName)
@@ -90,6 +100,14 @@ func (k *Kind) exportLogs() env.Func {
 
 		return ctx, nil
 	}
+}
+
+func (k *Kind) GetAgentLogs() string {
+	exe := gexe.New()
+	contextOut := exe.Run("kubectl cluster-info --context " + k.clusterName)
+	logsOut := exe.Run("kubectl logs -l app=netobserv-cli -n netobserv-cli --tail -1")
+
+	return fmt.Sprintf("Set context: %s\n\nLogs: %s", contextOut, logsOut)
 }
 
 // delete netobserv-cli namespace
