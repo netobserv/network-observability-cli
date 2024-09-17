@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -98,4 +100,17 @@ func initConfig() {
 	}
 
 	log.Infof("Running network-observability-cli\nLog level: %s\nFilter(s): %s", logLevel, filter)
+	showKernelVersion()
+}
+
+func showKernelVersion() {
+	output, err := exec.Command("uname", "-r").Output()
+	if err != nil {
+		log.Errorf("Can't get kernel version: %v", err)
+	}
+	if len(output) == 0 {
+		log.Infof("Kernel version not found")
+	} else {
+		log.Infof("Kernel version: %s", strings.TrimSpace(string(output)))
+	}
 }
