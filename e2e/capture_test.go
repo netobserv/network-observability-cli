@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/netobserv/network-observability-cli/e2e/cluster"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ import (
 const (
 	clusterNamePrefix = "netobserv-cli-e2e-test-cluster"
 	namespace         = "default"
+	ExportLogsTimeout = 30 * time.Second
 )
 
 var (
@@ -42,6 +44,13 @@ func TestMain(m *testing.M) {
 func TestFlowCapture(t *testing.T) {
 	f1 := features.New("flow capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			timer := time.AfterFunc(ExportLogsTimeout, func() {
+				agentLogs := testCluster.GetAgentLogs()
+				err := os.WriteFile(path.Join(testCluster.GetLogsDir(), StartupDate+"-flowAgentLogs"), []byte(agentLogs), 0666)
+				assert.Nil(t, err)
+			})
+			defer timer.Stop()
+
 			output, err := RunCommand(clog, "oc-netobserv", "flows", "--log-level=trace")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
@@ -113,6 +122,13 @@ func TestFlowCapture(t *testing.T) {
 func TestPacketCapture(t *testing.T) {
 	f1 := features.New("packet capture").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			timer := time.AfterFunc(ExportLogsTimeout, func() {
+				agentLogs := testCluster.GetAgentLogs()
+				err := os.WriteFile(path.Join(testCluster.GetLogsDir(), StartupDate+"-packetAgentLogs"), []byte(agentLogs), 0666)
+				assert.Nil(t, err)
+			})
+			defer timer.Stop()
+
 			output, err := RunCommand(clog, "oc-netobserv", "packets", "--log-level=trace", "--protocol=TCP", "--port=6443")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
