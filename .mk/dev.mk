@@ -1,0 +1,9 @@
+##@ dev helpers
+
+.PHONY:	dev-flows-mock
+flows-mock: build ## Run flow capture using mocks
+	./build/network-observability-cli get-flows --mock true
+
+.PHONY:	dev-packets-mock
+packets-mock: build ## Run packet capture using mocks
+	./build/network-observability-cli get-packets --mock true
