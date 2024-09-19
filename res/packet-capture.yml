@@ -49,6 +49,12 @@ spec:
             value: ""
           - name: FILTER_PORT_RANGE
             value: ""
+          - name:  FILTER_SOURCE_PORTS
+            value: ""
+          - name: FILTER_DESTINATION_PORTS
+            value: ""
+          - name: FILTER_PORTS
+            value: ""
           - name: FILTER_ICMP_TYPE
             value: ""
           - name: FILTER_ICMP_CODE
