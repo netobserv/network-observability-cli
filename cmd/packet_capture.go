@@ -27,12 +27,6 @@ var pktCmd = &cobra.Command{
 	Run:   runPacketCapture,
 }
 
-type PcapResult struct {
-	Name        string
-	PacketCount int64
-	ByteCount   int64
-}
-
 func runPacketCapture(_ *cobra.Command, _ []string) {
 	go scanner()
 
@@ -146,8 +140,8 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			// write enriched data as interface
 			writeEnrichedData(pw, &genericMap)
 
-			// then append packet to file
-			err = pw.WriteEnhancedPacketBlock(0, ts, b, types.EnhancedPacketOptions{})
+			// then append packet to file using totalPackets as unique id
+			err = pw.WriteEnhancedPacketBlock(totalPackets, ts, b, types.EnhancedPacketOptions{})
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -166,6 +160,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
 			return
 		}
+		totalPackets = totalPackets + 1
 
 		// terminate capture if max time reached
 		now := currentTime()

@@ -31,9 +31,10 @@ var (
 	currentTime = func() time.Time {
 		return time.Now()
 	}
-	startupTime = currentTime()
-	lastRefresh = startupTime
-	totalBytes  = int64(0)
+	startupTime  = currentTime()
+	lastRefresh  = startupTime
+	totalBytes   = int64(0)
+	totalPackets = uint32(0)
 
 	mutex = sync.Mutex{}
 
