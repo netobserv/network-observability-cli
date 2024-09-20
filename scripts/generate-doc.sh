@@ -26,7 +26,7 @@ $ oc netobserv [<command>] [<feature_option>] [<command_options>] <1>
 | flows
 | Capture flows information. For subcommands, see the \"Flow capture subcommands\" table.
 | packets
-| Capture packets from a specific protocol or port pair, such as netobserv packets --filter=tcp,80. For more information about packet capture, see the \"Packet capture subcommand\" table.
+| Capture packets data. For subcommands, see the \"Packet capture subcommand\" table.
 | cleanup
 | Remove the Network Observability CLI components.
 | version
@@ -52,7 +52,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 echo -e "|==="
 # Flow example
 echo "
-.Example running flow capture with options:
+.Example running flow capture on TCP protocol and port 49051 with PacketDrop and RTT features enabled:
 [source,terminal]
 ----
 $ oc netobserv flows --enable_pktdrop=true  --enable_rtt=true --enable_filter=true --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
@@ -74,7 +74,7 @@ $ oc netobserv packets [<option>]
 echo -e "|==="
 # Packet example
 echo "
-.Example running packet capture with options:
+.Example running packet capture on TCP protocol and port 49051:
 [source,terminal]
 ----
 $ oc netobserv packets --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051

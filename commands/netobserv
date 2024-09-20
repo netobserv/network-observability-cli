@@ -71,13 +71,13 @@ case "$1" in
     echo
     echo "Syntax: netobserv [flows|packets|cleanup] [options]"
     echo
-    echo "options:"
+    echo "commands:"
     echo "  flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'."
     echo "        Options:"
     flows_usage
     echo "  packets    Capture packets information in pcap format."
-    packets_usage
     echo "        Options:"
+    packets_usage
     echo "  cleanup    Remove netobserv components."
     echo "  version    Print software version."
     echo
