@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set -eu
+set -e
+set +u
 
 # e2e skips inputs
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
