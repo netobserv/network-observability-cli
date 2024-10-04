@@ -77,6 +77,8 @@ spec:
             value: ""
           - name: FILTER_TCP_FLAGS
             value: ""
+          - name: FILTER_DROPS
+            value: "false"
           - name: FILTER_ACTION
             value: "Accept"
           - name: EXPORT
