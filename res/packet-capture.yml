@@ -83,7 +83,7 @@ spec:
                                   "type":"add_kubernetes",
                                   "kubernetes":{
                                       "add_zone": true,
-                                      "input":"SrcAddr",
+                                      "ipField":"SrcAddr",
                                       "output":"SrcK8S"
                                   }
                                 },
@@ -91,7 +91,7 @@ spec:
                                   "type":"add_kubernetes",
                                   "kubernetes":{
                                       "add_zone": true,
-                                      "input":"DstAddr",
+                                      "ipField":"DstAddr",
                                       "output":"DstK8S"
                                   }
                                 },
