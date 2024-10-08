@@ -186,6 +186,7 @@ function common_usage {
   echo "          --icmp_type:              filter ICMP type                           (default: n/a)"
   echo "          --icmp_code:              filter ICMP code                           (default: n/a)"
   echo "          --peer_ip:                filter peer IP                             (default: n/a)"
+  echo "          --drops:                  filter flows with only dropped packets     (default: false)"
 }
 
 function flows_usage {
@@ -279,6 +280,9 @@ function edit_manifest() {
     ;;
   "filter_tcp_flags")
   yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
+  ;;
+ "filter_pkt_drops")
+  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
   ;;
   "log_level")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
@@ -418,6 +422,13 @@ function check_args_and_apply() {
                 echo "invalid value for --tcp_flags"
               fi
               ;;
+            --drops) # Filter packet drops
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                  edit_manifest "filter_pkt_drops" "$value" "$2"
+                else
+                  echo "invalid value for --drops"
+                fi
+                ;;
             --icmp_type) # ICMP type
                 edit_manifest "filter_icmp_type" "$value" "$2"
                 ;;
