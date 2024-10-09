@@ -1,10 +1,8 @@
 # We do not use --platform feature to auto fill this ARG because of incompatibility between podman and docker
-ARG TARGETPLATFORM=linux/amd64
-ARG BUILDPLATFORM=linux/amd64
 ARG TARGETARCH=amd64
 
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.22 as builder
+FROM docker.io/library/golang:1.22 as builder
 
 ARG TARGETARCH
 ARG TARGETPLATFORM
@@ -33,7 +31,7 @@ RUN USER=netobserv VERSION=main make oc-commands
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
-FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi:9.4
+FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.4
 WORKDIR /
 COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
