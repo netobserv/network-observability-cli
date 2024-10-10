@@ -289,8 +289,9 @@ function edit_manifest() {
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
     ;;
   "node_selector")
-    keyVal=(${2//:/ })
-    yq e --inplace ".spec.template.spec.nodeSelector.\""${keyVal[0]}"\" |= \""${keyVal[1]}"\"" "$3"
+    key=${2%:*}
+    val=${2#*:}
+    yq e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
     ;;
   esac
 }
