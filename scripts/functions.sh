@@ -169,6 +169,7 @@ function common_usage {
   echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
   echo "          --copy:                   copy the output files locally              (default: prompt)"
   # filters
+  echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
   echo "          --direction:              filter direction                           (default: n/a)"
   echo "          --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
   echo "          --protocol:               filter protocol                            (default: n/a)"
@@ -279,13 +280,17 @@ function edit_manifest() {
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ACTION\").value|=\"$2\"" "$3"
     ;;
   "filter_tcp_flags")
-  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
-  ;;
- "filter_pkt_drops")
-  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
-  ;;
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
+    ;;
+  "filter_pkt_drops")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
+    ;;
   "log_level")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
+    ;;
+  "node_selector")
+    keyVal=(${2//:/ })
+    yq e --inplace ".spec.template.spec.nodeSelector.\""${keyVal[0]}"\" |= \""${keyVal[1]}"\"" "$3"
     ;;
   esac
 }
@@ -302,7 +307,6 @@ function check_args_and_apply() {
         case "$key" in
             --copy) # Copy or skip without prompt
                 if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
-                  echo "param: $key, param_value: $value"
                   copy="$value"
                 else
                   echo "invalid value for --copy"
@@ -455,14 +459,20 @@ function check_args_and_apply() {
                 fi
                 ;;
             --max-time) # Max time
-                echo "param: $key, param_value: $value"
                 maxTime=$value
                 filter=${filter/$key=$maxTime/}
                 ;;
             --max-bytes) # Max bytes
-                echo "param: $key, param_value: $value"
                 maxBytes=$value
                 filter=${filter/$key=$maxBytes/}
+                ;;
+            --node-selector) # Node selector
+                if [[ $value == *":"* ]]; then
+                  edit_manifest "node_selector" "$value" "$2"
+                else
+                  echo "invalid value for --node-selector. Use --node-selector=key:val instead."
+                  exit 1
+                fi
                 ;;
             *) # Invalid option
                 echo "Invalid option: $key" >&2
