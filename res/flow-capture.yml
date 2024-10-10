@@ -158,7 +158,6 @@ spec:
             - name: var-run-ovs
               mountPath: /var/run/openvswitch
               mountPropagation: Bidirectional
-
       volumes:
         - name: bpf-kernel-debug
           hostPath:
