@@ -23,7 +23,7 @@ MULTIARCH_TARGETS ?= amd64
 # In CI, to be replaced by `netobserv`
 IMAGE_ORG ?= $(USER)
 
-# Build output 
+# Build output
 NAME := network-observability-cli
 DIST_DIR ?= build
 FILES_OUTPUT_DIR ?= output
@@ -31,7 +31,7 @@ OUTPUT := $(DIST_DIR)/$(NAME)
 
 # Available commands for development with args
 COMMANDS = flows packets cleanup
-COMMAND_ARGS ?= 
+COMMAND_ARGS ?=
 
 # Get either oc (favorite) or kubectl paths
 K8S_CLI_BIN_PATH = $(shell which oc 2>/dev/null || which kubectl)
@@ -58,7 +58,7 @@ YQ_VERSION = v4.43.1
 # build a single arch target provided as argument
 define build_target
 	echo 'building image for arch $(1)'; \
-	DOCKER_BUILDKIT=1 $(OCI_BIN) buildx build --load --build-arg TARGETPLATFORM=linux/$(1) --build-arg TARGETARCH=$(1) --build-arg BUILDPLATFORM=linux/amd64 ${OCI_BUILD_OPTS} -t ${IMAGE}-$(1) -f Dockerfile .;
+	DOCKER_BUILDKIT=1 $(OCI_BIN) buildx build --load --build-arg TARGETARCH=$(1) ${OCI_BUILD_OPTS} -t ${IMAGE}-$(1) -f Dockerfile .;
 endef
 
 # push a single arch target image
