@@ -108,6 +108,12 @@ function namespaceFound() {
   fi
 }
 
+function namespaceFound() {
+  # ensure namespace doesn't exist, else we should not override content
+  found="$(oc get namespace netobserv-cli --ignore-not-found=true | grep -q 'Active')"
+  return "$found"
+}
+
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
 CONFIG_JSON_TEMP="config.json"
