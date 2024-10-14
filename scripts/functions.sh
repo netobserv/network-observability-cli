@@ -9,6 +9,11 @@ if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
 # prompt copy by default
 if [ -z "${copy+x}" ]; then copy="prompt"; fi
+# run foreground by default
+if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
+
+# force skipping cleanup
+skipCleanup=false
 
 # get either oc (favorite) or kubectl paths
 # this is used only when calling commands directly
@@ -76,6 +81,15 @@ function clusterIsReady() {
   fi
 }
 
+function namespaceFound() {
+  # ensure namespace doesn't exist, else we should not override content
+  if ${K8S_CLI_BIN} get namespace netobserv-cli --ignore-not-found=true | grep -q "netobserv-cli"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
 CONFIG_JSON_TEMP="config.json"
@@ -92,6 +106,12 @@ function setup {
 
   if ! clusterIsReady; then
     printf 'You must be connected to cluster\n' >&2
+    exit 1
+  fi
+
+  if namespaceFound; then
+    printf "netobserv-cli namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" >&2
+    skipCleanup="true"
     exit 1
   fi
 
@@ -131,17 +151,40 @@ function setup {
   fi
 }
 
+function follow {
+  ${K8S_CLI_BIN} logs collector -n netobserv-cli -f
+}
+
 function copyOutput {
   echo "Copying collector output files..."
   mkdir -p ./output
   ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
 }
 
+function deleteDaemonset {
+  printf "\nDeleting daemonset... "
+  ${K8S_CLI_BIN} delete daemonset netobserv-cli -n netobserv-cli --ignore-not-found=true
+}
+
+function deletePod {
+  printf "\nDeleting pod... "
+  ${K8S_CLI_BIN} delete pod collector -n netobserv-cli --ignore-not-found=true
+}
+
+function deleteNamespace {
+  printf "\nDeleting namespace... "
+  ${K8S_CLI_BIN} delete namespace netobserv-cli --ignore-not-found=true
+}
+
 function cleanup {
+  if [[ "$runBackground" == "true" || "$skipCleanup" == "true" ]]; then
+    return
+  fi
+
   # shellcheck disable=SC2034
   if clusterIsReady; then
     if [ "$captureStarted" = false ]; then
-      echo "Can't copy since capture didn't start"
+      echo "Copy skipped"
     elif [[ "$isE2E" = true || "$copy" = true ]]; then
       copyOutput
     elif [ "$copy" = "prompt" ]; then
@@ -161,8 +204,11 @@ function cleanup {
       done
     fi
 
-    printf "\nCleaning up... "
-    ${K8S_CLI_BIN} delete namespace netobserv-cli
+    printf "\nCleaning up..."
+    deleteDaemonset
+    deletePod
+    deleteNamespace
+    printf "\n"
   else
     echo "Cleanup namespace skipped"
     return
@@ -174,6 +220,7 @@ function common_usage {
   echo "          --log-level:              components logs                            (default: info)"
   echo "          --max-time:               maximum capture time                       (default: 5m)"
   echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
+  echo "          --background:             run in background                          (default: false)"
   echo "          --copy:                   copy the output files locally              (default: prompt)"
   # filters
   echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
@@ -352,6 +399,14 @@ function check_args_and_apply() {
     key="${option%%=*}"
     value="${option#*=}"
     case "$key" in
+    --background) # Run command in background
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        echo "param: $key, param_value: $value"
+        runBackground="$value"
+      else
+        echo "invalid value for --background"
+      fi
+      ;;
     --copy) # Copy or skip without prompt
       if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
         copy="$value"

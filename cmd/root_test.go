@@ -73,7 +73,7 @@ func TestDefaultArguments(t *testing.T) {
 	assert.Equal(t, "info", logLevel)
 	assert.Equal(t, []int{9999}, ports)
 	assert.Equal(t, []string{""}, nodes)
-	assert.Empty(t, filter)
+	assert.Empty(t, options)
 }
 
 func setup() {

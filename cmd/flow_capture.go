@@ -148,16 +148,20 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		// terminate capture if max bytes reached
 		totalBytes = totalBytes + int64(bytes)
 		if totalBytes > maxBytes {
-			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-			return
+			if exit := onLimitReached(); exit {
+				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+				return
+			}
 		}
 
 		// terminate capture if max time reached
 		now := currentTime()
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
-			log.Infof("Capture reached %s, exiting now...", maxTime)
-			return
+			if exit := onLimitReached(); exit {
+				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+				return
+			}
 		}
 
 		captureStarted = true
@@ -242,7 +246,7 @@ func toSize(fieldName string) int {
 func updateTable() {
 	// don't refresh terminal too often to avoid blinking
 	now := currentTime()
-	if int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
+	if !captureEnded && int(now.Sub(lastRefresh)) > int(maxRefreshRate) {
 		lastRefresh = now
 		resetTerminal()
 
@@ -252,12 +256,18 @@ func updateTable() {
 			fmt.Printf("Log level: %s ", logLevel)
 			fmt.Printf("Duration: %s ", duration.Round(time.Second))
 			fmt.Printf("Capture size: %s\n", sizestr.ToString(totalBytes))
-			if len(strings.TrimSpace(filter)) > 0 {
-				fmt.Printf("Filters: %s\n", filter)
+			if len(strings.TrimSpace(options)) > 0 {
+				fmt.Printf("Options: %s\n", options)
 			}
-			fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
-			fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
-			fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+			if strings.Contains(options, "background=true") {
+				fmt.Printf("Showing last: %d\n", flowsToShow)
+				fmt.Printf("Display: %s\n", strings.Join(display, ","))
+				fmt.Printf("Enrichment: %s\n", strings.Join(enrichement, ","))
+			} else {
+				fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
+				fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
+				fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+			}
 		}
 
 		if slices.Contains(display, rawDisplay) {
@@ -394,7 +404,6 @@ func updateTable() {
 				fmt.Printf("Type anything to filter incoming flows in view\n")
 			}
 		}
-
 	}
 }
 

@@ -158,8 +158,10 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		// terminate capture if max bytes reached
 		totalBytes = totalBytes + int64(len(fp.GenericMap.Value))
 		if totalBytes > maxBytes {
-			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-			return
+			if exit := onLimitReached(); exit {
+				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+				return
+			}
 		}
 		totalPackets = totalPackets + 1
 
@@ -167,8 +169,10 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		now := currentTime()
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
-			log.Infof("Capture reached %s, exiting now...", maxTime)
-			return
+			if exit := onLimitReached(); exit {
+				log.Infof("Capture reached %s, exiting now...", maxTime)
+				return
+			}
 		}
 
 		captureStarted = true

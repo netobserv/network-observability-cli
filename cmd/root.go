@@ -24,7 +24,7 @@ var (
 	logLevel string
 	ports    []int
 	nodes    []string
-	filter   string
+	options  string
 	maxTime  time.Duration
 	maxBytes int64
 
@@ -57,6 +57,7 @@ var (
 	outputBuffer     *bytes.Buffer
 	collectorStarted = false
 	captureStarted   = false
+	captureEnded     = false
 	stopReceived     = false
 	useMocks         = false
 	keyboardError    = ""
@@ -73,7 +74,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", "info", "Log level")
 	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
 	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
-	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter(s)")
+	rootCmd.PersistentFlags().StringVarP(&options, "options", "", "", "Options(s)")
 	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
 	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
 	rootCmd.PersistentFlags().BoolVarP(&useMocks, "mock", "", false, "Use mock")
@@ -103,13 +104,25 @@ func onInit() {
 		log.Fatalf("specified nodes names doesn't match ports length")
 	}
 
-	log.Infof("Running network-observability-cli\nLog level: %s\nFilter(s): %s", logLevel, filter)
+	printBanner()
+	log.Infof("Log level: %s\nOption(s): %s", logLevel, options)
 	showKernelVersion()
 
 	if useMocks {
 		log.Info("Using mocks...")
 		go MockForever()
 	}
+}
+
+func printBanner() {
+	fmt.Print(`
+------------------------------------------------------------------------
+         _  _     _       _                       ___ _    ___
+        | \| |___| |_ ___| |__ ___ ___ _ ___ __  / __| |  |_ _|
+        | .' / -_)  _/ _ \ '_ (_-</ -_) '_\ V / | (__| |__ | | 
+        |_|\_\___|\__\___/_.__/__/\___|_|  \_/   \___|____|___|
+
+------------------------------------------------------------------------`)
 }
 
 func showKernelVersion() {
@@ -122,4 +135,35 @@ func showKernelVersion() {
 	} else {
 		log.Infof("Kernel version: %s", strings.TrimSpace(string(output)))
 	}
+}
+
+func onLimitReached() bool {
+	shouldExit := false
+	if !captureEnded {
+		if strings.Contains(options, "background=true") {
+			captureEnded = true
+			resetTerminal()
+			out, err := exec.Command("/oc-netobserv", "stop").Output()
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+			fmt.Print(`Thank you for using...`)
+			printBanner()
+			fmt.Print(`
+
+	- Download the generated output using 'oc netobserv copy' command
+
+	- Once finished, clean the collector pod using 'oc netobserv cleanup'
+
+                                                      See you soon !
+																											
+																											
+		`)
+		} else {
+			shouldExit = true
+		}
+	}
+
+	return shouldExit
 }
