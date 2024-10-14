@@ -15,6 +15,14 @@ if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
 # options such as filters, background etc
 options=""
 
+# namespace for this run
+namespace="netobserv-cli"
+
+if [ -n "$NETOBSERV_NAMESPACE" ]; then
+  echo "using custom namespace $NETOBSERV_NAMESPACE"
+  namespace="$NETOBSERV_NAMESPACE"
+fi
+
 # CLI image to use
 img="quay.io/netobserv/network-observability-cli:main"
 
@@ -129,7 +137,7 @@ fi
 
 echo "Running network-observability-cli get-$command... "
 ${K8S_CLI_BIN} run \
-  -n netobserv-cli \
+  -n $namespace \
   collector \
   --image=$img\
   --image-pull-policy='Always' \
@@ -138,14 +146,14 @@ ${K8S_CLI_BIN} run \
   --command -- $runCommand
 
 ${K8S_CLI_BIN} wait \
-  -n netobserv-cli \
+  -n $namespace \
   --for=condition=Ready pod/collector || exit 1
 
 captureStarted=true
 
 if [ -n "${execCommand}" ]; then
   ${K8S_CLI_BIN} exec -i --tty \
-    -n netobserv-cli \
+    -n $namespace \
     collector \
     -- $execCommand
 else 
