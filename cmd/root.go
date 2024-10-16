@@ -53,11 +53,13 @@ var (
 		},
 	}
 
-	captureType    = "Flow"
-	outputBuffer   *bytes.Buffer
-	captureStarted = false
-	stopReceived   = false
-	keyboardError  = ""
+	captureType      = "Flow"
+	outputBuffer     *bytes.Buffer
+	collectorStarted = false
+	captureStarted   = false
+	stopReceived     = false
+	useMocks         = false
+	keyboardError    = ""
 )
 
 // Execute executes the root command.
@@ -67,13 +69,14 @@ func Execute() error {
 
 // func main() {
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(onInit)
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", "info", "Log level")
 	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
 	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
 	rootCmd.PersistentFlags().StringVarP(&filter, "filter", "", "", "Filter(s)")
 	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
 	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
+	rootCmd.PersistentFlags().BoolVarP(&useMocks, "mock", "", false, "Use mock")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM)
@@ -92,7 +95,7 @@ func init() {
 	rootCmd.AddCommand(pktCmd)
 }
 
-func initConfig() {
+func onInit() {
 	lvl, _ := logrus.ParseLevel(logLevel)
 	log.SetLevel(lvl)
 
@@ -102,6 +105,11 @@ func initConfig() {
 
 	log.Infof("Running network-observability-cli\nLog level: %s\nFilter(s): %s", logLevel, filter)
 	showKernelVersion()
+
+	if useMocks {
+		log.Info("Using mocks...")
+		go MockForever()
+	}
 }
 
 func showKernelVersion() {

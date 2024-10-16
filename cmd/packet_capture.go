@@ -86,6 +86,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		log.Fatal(err)
 	}
 	log.Trace("Started collector")
+	collectorStarted = true
 
 	go func() {
 		<-utils.ExitChannel()
