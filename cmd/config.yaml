@@ -1,0 +1,1120 @@
+# these configurations are static and append to the console plugin configmap
+# other fields such as recordTypes, quickFilters, alertNamespaces, sampling, features
+# are taken from the CR
+# see consoleplugin_objects.go -> configMap func
+columns:
+  - id: StartTime
+    name: Start Time
+    tooltip: Time of the first packet observed. Unlike End Time, it is not used in queries
+      to select records in an interval.
+    field: TimeFlowStartMs
+    default: false
+    width: 15
+  - id: EndTime
+    name: End Time
+    tooltip: Time of the last packet observed. This is what is used in queries to select
+      records in an interval.
+    field: TimeFlowEndMs
+    default: true
+    width: 15
+  - id: RecordType
+    name: Event / Type
+    field: _RecordType
+    filter: type
+    default: true
+    width: 15
+  - id: _HashId
+    name: Conversation Id
+    field: _HashId
+    filter: id
+    default: true
+    width: 15
+  - id: ClusterName
+    name: Cluster
+    tooltip: The cluster ID or Name.
+    field: K8S_ClusterName
+    filter: cluster_name
+    default: false
+    width: 15
+    feature: multiCluster
+  - id: SrcK8S_Name
+    group: Source
+    name: Name
+    tooltip: The source name of the related kubernetes resource.
+    docURL: http://kubernetes.io/docs/user-guide/identifiers#names
+    field: SrcK8S_Name
+    filter: src_name
+    default: true
+    width: 15
+  - id: SrcK8S_Type
+    group: Source
+    name: Kind
+    tooltip: |-
+      The  kind of the related kubernetes resource. Examples:
+            - Pod
+            - Service
+            - Node
+    field: SrcK8S_Type
+    filter: src_kind
+    default: false
+    width: 10
+  - id: SrcK8S_OwnerName
+    group: Source
+    name: Owner
+    tooltip: The source owner name of the related kubernetes resource.
+    docURL: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+    field: SrcK8S_OwnerName
+    filter: src_owner_name
+    default: false
+    width: 15
+  - id: SrcK8S_OwnerType
+    group: Source
+    name: Owner Kind
+    tooltip: |-
+      The  owner kind of the related kubernetes resource. Examples:
+            - Deployment
+            - StatefulSet
+            - DaemonSet
+            - Job
+            - CronJob
+    field: SrcK8S_OwnerType
+    filter: src_kind
+    default: false
+    width: 10
+  - id: SrcK8S_Namespace
+    group: Source
+    name: Namespace
+    tooltip: The source namespace of the related kubernetes resource.
+    docURL: http://kubernetes.io/docs/user-guide/identifiers#namespaces
+    field: SrcK8S_Namespace
+    filter: src_namespace
+    default: true
+    width: 15
+  - id: SrcAddr
+    group: Source
+    name: IP
+    tooltip: The source IP address. Can be either in IPv4 or IPv6 format.
+    field: SrcAddr
+    filter: src_address
+    default: false
+    width: 10
+  - id: SrcPort
+    group: Source
+    name: Port
+    tooltip: The source port number.
+    field: SrcPort
+    filter: src_port
+    default: true
+    width: 10
+  - id: SrcMac
+    group: Source
+    name: MAC
+    tooltip: The source MAC address.
+    field: SrcMac
+    filter: src_mac
+    default: false
+    width: 10
+  - id: SrcK8S_HostIP
+    group: Source
+    name: Node IP
+    tooltip: The source node IP address. Can be either in IPv4 or IPv6 format.
+    field: SrcK8S_HostIP
+    filter: src_host_address
+    default: false
+    width: 10
+  - id: SrcK8S_HostName
+    group: Source
+    name: Node Name
+    tooltip: The source name of the node running the workload.
+    docURL: https://kubernetes.io/docs/concepts/architecture/nodes/
+    field: SrcK8S_HostName
+    filter: src_host_name
+    default: false
+    width: 15
+  - id: SrcK8S_Object
+    group: Source
+    name: Kubernetes Object
+    calculated: getConcatenatedValue(SrcAddr,SrcPort,SrcK8S_Type,SrcK8S_Namespace,SrcK8S_Name)
+    default: false
+    width: 15
+  - id: SrcK8S_OwnerObject
+    group: Source
+    name: Owner Kubernetes Object
+    calculated: getConcatenatedValue(SrcAddr,SrcPort,SrcK8S_OwnerType,SrcK8S_Namespace,SrcK8S_OwnerName)
+    default: false
+    width: 15
+  - id: SrcAddrPort
+    group: Source
+    name: IP & Port
+    calculated: getConcatenatedValue(SrcAddr,SrcPort)
+    default: false
+    width: 15
+  - id: SrcZone
+    group: Source
+    name: Zone
+    field: SrcK8S_Zone
+    filter: src_zone
+    default: false
+    width: 15
+    feature: zones
+  - id: SrcSubnetLabel
+    group: Source
+    name: Subnet Label
+    field: SrcSubnetLabel
+    filter: src_subnet_label
+    default: false
+    width: 10
+    feature: subnetLabels
+  - id: DstK8S_Name
+    group: Destination
+    name: Name
+    tooltip: The destination name of the related kubernetes resource.
+    docURL: http://kubernetes.io/docs/user-guide/identifiers#names
+    field: DstK8S_Name
+    filter: dst_name
+    default: true
+    width: 15
+  - id: DstK8S_Type
+    group: Destination
+    name: Kind
+    tooltip: |-
+      The  kind of the related kubernetes resource. Examples:
+            - Pod
+            - Service
+            - Node
+    field: DstK8S_Type
+    filter: dst_kind
+    default: false
+    width: 10
+  - id: DstK8S_OwnerName
+    group: Destination
+    name: Owner
+    tooltip: The destination owner name of the related kubernetes resource.
+    docURL: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+    field: DstK8S_OwnerName
+    filter: dst_owner_name
+    default: false
+    width: 15
+  - id: DstK8S_OwnerType
+    group: Destination
+    name: Owner Kind
+    tooltip: |-
+      The  owner kind of the related kubernetes resource. Examples:
+            - Deployment
+            - StatefulSet
+            - DaemonSet
+            - Job
+            - CronJob
+    field: DstK8S_OwnerType
+    filter: dst_kind
+    default: false
+    width: 10
+  - id: DstK8S_Namespace
+    group: Destination
+    name: Namespace
+    tooltip: The destination namespace of the related kubernetes resource.
+    docURL: http://kubernetes.io/docs/user-guide/identifiers#namespaces
+    field: DstK8S_Namespace
+    filter: dst_namespace
+    default: true
+    width: 15
+  - id: DstAddr
+    group: Destination
+    name: IP
+    tooltip: The destination IP address. Can be either in IPv4 or IPv6 format.
+    field: DstAddr
+    filter: dst_address
+    default: false
+    width: 10
+  - id: DstPort
+    group: Destination
+    name: Port
+    tooltip: The destination port number.
+    field: DstPort
+    filter: dst_port
+    default: true
+    width: 10
+  - id: DstMac
+    group: Destination
+    name: MAC
+    tooltip: The destination MAC address.
+    field: DstMac
+    filter: dst_mac
+    default: false
+    width: 10
+  - id: DstK8S_HostIP
+    group: Destination
+    name: Node IP
+    tooltip: The destination node IP address. Can be either in IPv4 or IPv6 format.
+    field: DstK8S_HostIP
+    filter: dst_host_address
+    default: false
+    width: 10
+  - id: DstK8S_HostName
+    group: Destination
+    name: Node Name
+    tooltip: The destination name of the node running the workload.
+    docURL: https://kubernetes.io/docs/concepts/architecture/nodes/
+    field: DstK8S_HostName
+    filter: dst_host_name
+    default: false
+    width: 15
+  - id: DstK8S_Object
+    group: Destination
+    name: Kubernetes Object
+    calculated: getConcatenatedValue(DstAddr,DstPort,DstK8S_Type,DstK8S_Namespace,DstK8S_Name)
+    default: false
+    width: 15
+  - id: DstK8S_OwnerObject
+    group: Destination
+    name: Owner Kubernetes Object
+    calculated: getConcatenatedValue(DstAddr,DstPort,DstK8S_OwnerType,DstK8S_Namespace,DstK8S_OwnerName)
+    default: false
+    width: 15
+  - id: DstAddrPort
+    group: Destination
+    name: IP & Port
+    calculated: getConcatenatedValue(DstAddr,DstPort)
+    default: false
+    width: 15
+  - id: DstZone
+    group: Destination
+    name: Zone
+    field: DstK8S_Zone
+    filter: dst_zone
+    default: false
+    width: 15
+    feature: zones
+  - id: DstSubnetLabel
+    group: Destination
+    name: Subnet Label
+    field: DstSubnetLabel
+    filter: dst_subnet_label
+    default: false
+    width: 10
+    feature: subnetLabels
+  - id: K8S_Name
+    name: Names
+    calculated: getSrcOrDstValue(SrcK8S_Name,DstK8S_Name)
+    default: false
+    width: 15
+  - id: K8S_Type
+    name: Kinds
+    calculated: getSrcOrDstValue(SrcK8S_Type,DstK8S_Type)
+    default: false
+    width: 10
+  - id: K8S_OwnerName
+    name: Owners
+    calculated: getSrcOrDstValue(SrcK8S_OwnerName,DstK8S_OwnerName)
+    default: false
+    width: 15
+  - id: K8S_OwnerType
+    name: Owner Kinds
+    calculated: getSrcOrDstValue(SrcK8S_OwnerType,DstK8S_OwnerType)
+    default: false
+    width: 10
+  - id: K8S_Namespace
+    name: Namespaces
+    calculated: getSrcOrDstValue(SrcK8S_Namespace,DstK8S_Namespace)
+    default: false
+    width: 15
+  - id: Addr
+    name: IP
+    calculated: getSrcOrDstValue(SrcAddr,DstAddr)
+    default: false
+    width: 10
+  - id: Port
+    name: Ports
+    calculated: getSrcOrDstValue(SrcPort,DstPort)
+    default: false
+    width: 10
+  - id: Mac
+    name: MAC
+    calculated: getSrcOrDstValue(SrcMac,DstMac)
+    default: false
+    width: 10
+  - id: K8S_HostIP
+    name: Node IP
+    calculated: getSrcOrDstValue(SrcK8S_HostIP,DstK8S_HostIP)
+    default: false
+    width: 10
+  - id: K8S_HostName
+    name: Node Name
+    calculated: getSrcOrDstValue(SrcK8S_HostName,DstK8S_HostName)
+    default: false
+    width: 15
+  - id: K8S_Object
+    name: Kubernetes Objects
+    calculated: '[column.SrcK8S_Object,column.DstK8S_Object]'
+    default: false
+    width: 15
+  - id: K8S_OwnerObject
+    name: Owner Kubernetes Objects
+    calculated: '[column.SrcK8S_OwnerObject,column.DstK8S_OwnerObject]'
+    default: false
+    width: 15
+  - id: K8S_FlowLayer
+    name: Flow layer
+    field: K8S_FlowLayer
+    filter: flow_layer
+    default: false
+    width: 15
+  - id: AddrPort
+    name: IPs & Ports
+    calculated: '[column.SrcAddrPort,column.DstAddrPort]'
+    default: false
+    width: 15
+  - id: Proto
+    group: L3 Layer
+    name: Protocol
+    tooltip: The value of the protocol number in the IP packet header
+    field: Proto
+    filter: protocol
+    default: true
+    width: 10
+  - id: Dscp
+    group: L3 Layer
+    name: DSCP
+    tooltip: The value of the Differentiated Services Code Point
+    field: Dscp
+    filter: dscp
+    default: true
+    width: 10
+  - id: IcmpType
+    group: ICMP
+    name: Type
+    tooltip: The type of the ICMP message
+    field: IcmpType
+    fields: 
+    - Proto
+    - IcmpType
+    filter: icmp_type
+    default: false
+    width: 10
+  - id: IcmpCode
+    group: ICMP
+    name: Code
+    tooltip: The code of the ICMP message
+    field: IcmpCode
+    fields: 
+    - Proto
+    - IcmpType
+    - IcmpCode
+    filter: icmp_code
+    default: false
+    width: 10
+  - id: TCPFlags
+    name: TCP Flags
+    tooltip: Logical OR combination of unique TCP flags comprised in the flow, as per RFC-9293, with additional custom values.
+    field: Flags
+    filter: tcp_flags
+    default: false
+    width: 10
+  - id: FlowDirection
+    name: Node Direction
+    tooltip: The interpreted direction of the flow observed at the Node observation point.
+    field: FlowDirection
+    filter: node_direction
+    default: false
+    width: 10
+  - id: Interfaces
+    name: Interfaces
+    tooltip: The network interfaces of the Flow.
+    field: Interfaces
+    filter: interfaces
+    default: false
+    width: 10
+  - id: IfDirections
+    name: Interface Directions
+    tooltip: The directions of the Flow observed at the network interface observation point.
+    field: IfDirections
+    filter: ifdirections
+    default: false
+    width: 10
+  - id: FlowDirInts
+    name: Interfaces and Directions
+    tooltip: Pairs of network interface and direction of the Flow observed at the network interface observation point.
+    field: Interfaces
+    default: false
+    width: 15
+  - id: Bytes
+    name: Bytes
+    tooltip: The total aggregated number of bytes.
+    field: Bytes
+    fields:
+      - Bytes
+      - PktDropBytes
+    default: true
+    width: 5
+  - id: Packets
+    name: Packets
+    tooltip: The total aggregated number of packets.
+    field: Packets
+    fields:
+      - Packets
+      - PktDropPackets
+    filter: pkt_drop_cause
+    default: true
+    width: 5
+  - id: FlowDuration
+    name: Duration
+    tooltip: Time elapsed between Start Time and End Time.
+    calculated: substract(TimeFlowEndMs,TimeFlowStartMs)
+    default: false
+    width: 5
+  - id: CollectionTime
+    name: Collection Time
+    tooltip: Reception time of the record by the collector.
+    calculated: multiply(TimeReceived,1000),
+    field: TimeReceived
+    default: false
+    width: 15
+  - id: CollectionLatency
+    name: Collection Latency
+    tooltip: Time elapsed between End Time and Collection Time.
+    calculated: substract(column.CollectionTime,TimeFlowEndMs)
+    default: false
+    width: 5
+  - id: PktDropBytes
+    name: Dropped Bytes
+    tooltip: The total aggregated number of bytes dropped.
+    field: PktDropBytes
+    default: false
+    width: 5
+    feature: pktDrop
+  - id: PktDropPackets
+    name: Dropped Packets
+    tooltip: The total aggregated number of packets dropped.
+    field: PktDropPackets
+    default: false
+    width: 5
+    feature: pktDrop
+  - id: PktDropLatestState
+    name: Drop State
+    tooltip: TCP state on last dropped packet.
+    field: PktDropLatestState
+    default: false
+    width: 10
+    feature: pktDrop
+  - id: PktDropLatestDropCause
+    name: Drop Cause
+    tooltip: TCP state on last dropped packet.
+    field: PktDropLatestDropCause
+    default: false
+    width: 10
+    feature: pktDrop
+  - id: PktDropLatestFlags
+    name: Drop Flags
+    tooltip: TCP flags on last dropped packet.
+    field: PktDropLatestFlags
+    default: false
+    width: 10
+    feature: pktDrop
+  - id: DNSId
+    group: DNS
+    name: DNS Id
+    tooltip: DNS request identifier.
+    field: DnsId
+    filter: dns_id
+    default: false
+    width: 5
+    feature: dnsTracking
+  - id: DNSLatency
+    group: DNS
+    name: DNS Latency
+    tooltip: Time elapsed between DNS request and response.
+    field: DnsLatencyMs
+    filter: dns_latency
+    default: true
+    width: 5
+    feature: dnsTracking
+  - id: DNSResponseCode
+    group: DNS
+    name: DNS Response Code
+    tooltip: DNS RCODE name from response header.
+    field: DnsFlagsResponseCode
+    filter: dns_flag_response_code
+    default: true
+    width: 5
+    feature: dnsTracking
+  - id: DNSErrNo
+    group: DNS
+    name: DNS Error
+    tooltip: DNS error number returned by bpf_skb_load_bytes function.
+    field: DnsErrno
+    filter: dns_errno
+    default: false
+    width: 5
+    feature: dnsTracking
+  - id: TimeFlowRttMs
+    name: Flow RTT
+    tooltip: TCP Smoothed Round Trip Time (SRTT)
+    field: TimeFlowRttNs
+    filter: time_flow_rtt
+    default: true
+    width: 5
+    feature: flowRTT
+  - id: NetworkEvents
+    name: Network Events
+    tooltip: Network events flow monitor
+    field: NetworkEvents
+    filter: network_events
+    default: true
+    width: 15
+    feature: networkEvents
+filters:
+  - id: cluster_name
+    name: Cluster
+    component: autocomplete
+    hint: Specify a cluster ID or name.
+  - id: src_namespace
+    name: Namespace
+    component: autocomplete
+    autoCompleteAddsQuotes: true
+    category: source
+    placeholder: 'E.g: netobserv'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: dst_namespace
+    name: Namespace
+    component: autocomplete
+    autoCompleteAddsQuotes: true
+    category: destination
+    placeholder: 'E.g: netobserv'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: src_name
+    name: Name
+    component: text
+    category: source
+    placeholder: 'E.g: my-pod'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: dst_name
+    name: Name
+    component: text
+    category: destination
+    placeholder: 'E.g: my-pod'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: src_kind
+    name: Kind
+    component: autocomplete
+    autoCompleteAddsQuotes: true
+    category: source
+    placeholder: 'E.g: Pod, Service'
+  - id: dst_kind
+    name: Kind
+    component: autocomplete
+    autoCompleteAddsQuotes: true
+    category: destination
+    placeholder: 'E.g: Pod, Service'
+  - id: src_owner_name
+    name: Owner Name
+    component: text
+    category: source
+    placeholder: 'E.g: my-deployment'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: dst_owner_name
+    name: Owner Name
+    component: text
+    category: destination
+    placeholder: 'E.g: my-deployment'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: src_zone
+    name: Zone
+    component: autocomplete
+    category: source
+    hint: Specify a single zone.
+  - id: dst_zone
+    name: Zone
+    component: autocomplete
+    category: destination
+    hint: Specify a single zone.
+  - id: src_subnet_label
+    name: Subnet Label
+    component: autocomplete
+    category: source
+    hint: Specify a subnet label, or an empty string to get unmatched sources.
+  - id: dst_subnet_label
+    name: Subnet Label
+    component: autocomplete
+    category: destination
+    hint: Specify a subnet label, or an empty string to get unmatched destinations.
+  - id: src_resource
+    name: Resource
+    component: autocomplete
+    category: source
+    placeholder: 'E.g: Pod.default.my-pod'
+    hint: Specify an existing resource from its kind, namespace and name.
+    examples: |-
+      Specify a kind, namespace and name from existing:
+              - Select kind first from suggestions
+              - Then Select namespace from suggestions
+              - Finally select name from suggestions
+              You can also directly specify a kind, namespace and name like pod.openshift.apiserver
+  - id: dst_resource
+    name: Resource
+    component: autocomplete
+    category: destination
+    placeholder: 'E.g: Pod.default.my-pod'
+    hint: Specify an existing resource from its kind, namespace and name.
+    examples: |-
+      Specify a kind, namespace and name from existing:
+              - Select kind first from suggestions
+              - Then Select namespace from suggestions
+              - Finally select name from suggestions
+              You can also directly specify a kind, namespace and name like pod.openshift.apiserver
+  - id: src_address
+    name: IP
+    component: text
+    category: source
+    hint: Specify a single IP or range.
+    placeholder: 'E.g: 192.0.2.0'
+    examples: |-
+      Specify IP following one of these rules:
+          - A single IPv4 or IPv6 address like 192.0.2.0, ::1
+          - An IP address range like 192.168.0.1-192.189.10.12, 2001:db8::1-2001:db8::8
+          - A CIDR specification like 192.51.100.0/24, 2001:db8::/32
+  - id: dst_address
+    name: IP
+    component: text
+    category: destination
+    hint: Specify a single IP or range.
+    placeholder: 'E.g: 192.0.2.0'
+    examples: |-
+      Specify IP following one of these rules:
+          - A single IPv4 or IPv6 address like 192.0.2.0, ::1
+          - An IP address range like 192.168.0.1-192.189.10.12, 2001:db8::1-2001:db8::8
+          - A CIDR specification like 192.51.100.0/24, 2001:db8::/32
+  - id: src_port
+    name: Port
+    component: autocomplete
+    category: source
+    hint: Specify a single port number or name.
+    placeholder: 'E.g: 80'
+    examples: |-
+      Specify a single port following one of these rules:
+              - A port number like 80, 21
+              - A IANA name like HTTP, FTP
+    docUrl: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+  - id: dst_port
+    name: Port
+    component: autocomplete
+    category: destination
+    hint: Specify a single port number or name.
+    placeholder: 'E.g: 80'
+    examples: |-
+      Specify a single port following one of these rules:
+              - A port number like 80, 21
+              - A IANA name like HTTP, FTP
+    docUrl: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+  - id: src_mac
+    name: MAC
+    component: text
+    category: source
+    placeholder: 'E.g: 42:01:0A:00:00:01'
+    hint: Specify a single MAC address.
+  - id: dst_mac
+    name: MAC
+    component: text
+    category: destination
+    placeholder: 'E.g: 42:01:0A:00:00:01'
+    hint: Specify a single MAC address.
+  - id: src_host_address
+    name: Node IP
+    component: text
+    category: source
+    placeholder: 'E.g: 10.0.0.1'
+    hint: Specify a single IP or range.
+    examples: |-
+      Specify IP following one of these rules:
+          - A single IPv4 or IPv6 address like 192.0.2.0, ::1
+          - An IP address range like 192.168.0.1-192.189.10.12, 2001:db8::1-2001:db8::8
+          - A CIDR specification like 192.51.100.0/24, 2001:db8::/32
+  - id: dst_host_address
+    name: Node IP
+    component: text
+    category: destination
+    placeholder: 'E.g: 10.0.0.1'
+    hint: Specify a single IP or range.
+    examples: |-
+      Specify IP following one of these rules:
+          - A single IPv4 or IPv6 address like 192.0.2.0, ::1
+          - An IP address range like 192.168.0.1-192.189.10.12, 2001:db8::1-2001:db8::8
+          - A CIDR specification like 192.51.100.0/24, 2001:db8::/32
+  - id: src_host_name
+    name: Node Name
+    component: text
+    category: source
+    placeholder: 'E.g: my-node'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: dst_host_name
+    name: Node Name
+    component: text
+    category: destination
+    placeholder: 'E.g: my-node'
+    hint: Specify a single kubernetes name.
+    examples: |-
+      Specify a single kubernetes name following these rules:
+          - Containing any alphanumeric, hyphen, underscrore or dot character
+          - Partial text like cluster, cluster-image, image-registry
+          - Exact match using quotes like "cluster-image-registry"
+          - Case sensitive match using quotes like "Deployment"
+          - Starting text like cluster, "cluster-*"
+          - Ending text like "*-registry"
+          - Pattern like "cluster-*-registry", "c*-*-r*y", -i*e-
+  - id: protocol
+    name: Protocol
+    component: autocomplete
+    placeholder: 'E.g: TCP, UDP'
+    hint: Specify a single protocol number or name.
+    examples: |-
+      Specify a single protocol following one of these rules:
+              - A protocol number like 6, 17
+              - A IANA name like TCP, UDP
+    docUrl: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+  - id: dscp
+    name: DSCP
+    component: autocomplete
+    hint: Specify a Differentiated Services Code Point number or name.
+    examples: |-
+      Specify a Differentiated Services Code Point following one of these rules:
+              - A DSCP number like 8, 10
+              - A service class name like Low-Priority Data, High-Throughput Data
+  - id: icmp_type
+    name: ICMP type
+    component: number
+    hint: Specify an ICMP type value as integer number.
+  - id: icmp_code
+    name: ICMP code
+    component: number
+    hint: Specify an ICMP code value as integer number.
+  - id: tcp_flags
+    name: TCP flags
+    component: autocomplete
+    hint: Specify a TCP flags value as integer number.
+    examples: |-
+      Logical OR combination of unique TCP flags comprised in the flow, as per RFC-9293, with additional custom flags
+      users can specify either numeric value or string representation of the flags as follows :
+      - FIN or 1,
+      - SYN or 2,
+      - RST or 4,
+      - PSH or 8,
+      - ACK or 16,
+      - URG or 32,
+      - ECE or 64,
+      - CWR or 128,
+      - SYN_ACK or 256,
+      - FIN_ACK or 512,
+      - RST_ACK or 1024,
+  - id: node_direction
+    name: Node Direction
+    component: autocomplete
+    placeholder: 'E.g: Ingress, Egress, Inner'
+    hint: Specify the interpreted direction of the Flow observed at the Node observation point.
+  - id: flow_layer
+    name: Flow layer
+    component: text
+    placeholder: 'Either infra or app'
+    hint: Specify the layer of Flow.
+  - id: interfaces
+    name: Network interfaces
+    component: text
+    placeholder: 'E.g: br-ex, ovn-k8s-mp0'
+    hint: Specify a network interface.
+  - id: ifdirections
+    name: Interface Directions
+    component: autocomplete
+    placeholder: 'E.g: Ingress, Egress'
+    hint: Specify the direction of the Flow observed at the network interface observation point.
+  - id: id
+    name: Conversation Id
+    component: text
+    hint: Specify a single conversation hash Id.
+  - id: pkt_drop_state
+    name: Packet drop TCP state
+    component: autocomplete
+    placeholder: 'E.g: ESTABLISHED, SYN_SENT, SYN_RECV'
+    hint: Specify a single TCP state.
+    examples: |-
+      Specify a single TCP state name like:
+              - A _LINUX_TCP_STATES_H number like 1, 2, 3
+              - A _LINUX_TCP_STATES_H TCP name like ESTABLISHED, SYN_SENT, SYN_RECV
+    docUrl: https://github.com/torvalds/linux/blob/master/include/net/tcp_states.h
+  - id: pkt_drop_cause
+    name: Packet drop latest cause
+    component: autocomplete
+    placeholder: 'E.g: NO_SOCKET, PKT_TOO_SMALL'
+    hint: Specify a single packet drop cause.
+    examples: |-
+      Specify a single packet drop cause like:
+              - A _LINUX_DROPREASON_CORE_H number like 2, 3, 4
+              - A _LINUX_DROPREASON_CORE_H SKB_DROP_REASON name like NOT_SPECIFIED, NO_SOCKET, PKT_TOO_SMALL
+    docUrl: https://github.com/torvalds/linux/blob/master/include/net/dropreason-core.h
+  - id: dns_id
+    name: DNS Id
+    component: number
+    hint: Specify a single DNS Id.
+  - id: dns_latency
+    name: DNS Latency
+    component: number
+    hint: Specify a DNS Latency in miliseconds.
+  - id: dns_flag_response_code
+    name: DNS Response Code
+    component: autocomplete
+    hint: Specify a single DNS RCODE name.
+    placeholder: 'E.g: NoError, NXDomain, NotAuth'
+    examples: |-
+      Specify a single DNS RCODE name like:
+              - A IANA RCODE number like 0, 3, 9
+              - A IANA RCODE name like NoError, NXDomain, NotAuth
+    docUrl: https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-6
+  - id: dns_errno
+    name: DNS Error
+    component: autocomplete
+    hint: Specify a single DNS error number.
+  - id: time_flow_rtt
+    name: Flow RTT
+    component: number
+    hint: Specify a TCP smoothed Round Trip Time in nanoseconds.
+  - id: network_events
+    name: Network events flow monitoring
+    component: text
+    hint: Specify a single network event.
+# Fields definition, used to generate documentation
+fields:
+  - name: TimeFlowStartMs
+    type: number
+    description: Start timestamp of this flow, in milliseconds
+  - name: TimeFlowEndMs
+    type: number
+    description: End timestamp of this flow, in milliseconds
+  - name: TimeReceived
+    type: number
+    description: Timestamp when this flow was received and processed by the flow collector, in seconds
+  - name: SrcK8S_Name
+    type: string
+    description: Name of the source Kubernetes object, such as Pod name, Service name or Node name.
+  - name: SrcK8S_Type
+    type: string
+    description: Kind of the source Kubernetes object, such as Pod, Service or Node.
+  - name: SrcK8S_OwnerName
+    type: string
+    description: Name of the source owner, such as Deployment name, StatefulSet name, etc.
+  - name: SrcK8S_OwnerType
+    type: string
+    description: Kind of the source owner, such as Deployment, StatefulSet, etc.
+  - name: SrcK8S_Namespace
+    type: string
+    description: Source namespace
+  - name: SrcAddr
+    type: string
+    description: Source IP address (ipv4 or ipv6)
+  - name: SrcPort
+    type: number
+    description: Source port
+  - name: SrcMac
+    type: string
+    description: Source MAC address
+  - name: SrcK8S_HostIP
+    type: string
+    description: Source node IP
+  - name: SrcK8S_HostName
+    type: string
+    description: Source node name
+  - name: SrcK8S_Zone
+    type: string
+    description: Source availability zone
+  - name: SrcSubnetLabel
+    type: string
+    description: Source subnet label
+  - name: DstK8S_Name
+    type: string
+    description: Name of the destination Kubernetes object, such as Pod name, Service name or Node name.
+  - name: DstK8S_Type
+    type: string
+    description: Kind of the destination Kubernetes object, such as Pod, Service or Node.
+  - name: DstK8S_OwnerName
+    type: string
+    description: Name of the destination owner, such as Deployment name, StatefulSet name, etc.
+  - name: DstK8S_OwnerType
+    type: string
+    description: Kind of the destination owner, such as Deployment, StatefulSet, etc.
+  - name: DstK8S_Namespace
+    type: string
+    description: Destination namespace
+  - name: DstAddr
+    type: string
+    description: Destination IP address (ipv4 or ipv6)
+  - name: DstPort
+    type: number
+    description: Destination port
+  - name: DstMac
+    type: string
+    description: Destination MAC address
+  - name: DstK8S_HostIP
+    type: string
+    description: Destination node IP
+  - name: DstK8S_HostName
+    type: string
+    description: Destination node name
+  - name: DstK8S_Zone
+    type: string
+    description: Destination availability zone
+  - name: DstSubnetLabel
+    type: string
+    description: Destination subnet label
+  - name: K8S_FlowLayer
+    type: string
+    description: "Flow layer: 'app' or 'infra'"
+  - name: Proto
+    type: number
+    description: L4 protocol
+  - name: Dscp
+    type: number
+    description: Differentiated Services Code Point (DSCP) value
+  - name: IcmpType
+    type: number
+    description: ICMP type
+  - name: IcmpCode
+    type: number
+    description: ICMP code
+  - name: Duplicate
+    type: boolean
+    description: Indicates if this flow was also captured from another interface on the same host
+  - name: FlowDirection
+    type: number
+    description: |
+      Flow interpreted direction from the node observation point. Can be one of: +
+      - 0: Ingress (incoming traffic, from the node observation point) +
+      - 1: Egress (outgoing traffic, from the node observation point) +
+      - 2: Inner (with the same source and destination node)
+  - name: IfDirections
+    type: number
+    description: |
+      Flow directions from the network interface observation point. Can be one of: +
+      - 0: Ingress (interface incoming traffic) +
+      - 1: Egress (interface outgoing traffic)
+  - name: Interfaces
+    type: string
+    description: Network interfaces
+  - name: Flags
+    type: number
+    description: |
+      Logical OR combination of unique TCP flags comprised in the flow, as per RFC-9293, with additional custom flags to represent the following per-packet combinations: +
+      - SYN+ACK (0x100) +
+      - FIN+ACK (0x200) +
+      - RST+ACK (0x400)
+  - name: Bytes
+    type: number
+    description: Number of bytes
+  - name: Packets
+    type: number
+    description: Number of packets
+  - name: PktDropBytes
+    type: number
+    description: Number of bytes dropped by the kernel
+  - name: PktDropPackets
+    type: number
+    description: Number of packets dropped by the kernel
+  - name: PktDropLatestState
+    type: string
+    description: TCP state on last dropped packet
+    filter: pkt_drop_state # couldn't guess from config
+  - name: PktDropLatestDropCause
+    type: string
+    description: Latest drop cause
+    filter: pkt_drop_cause # couldn't guess from config
+  - name: PktDropLatestFlags
+    type: number
+    description: TCP flags on last dropped packet
+  - name: DnsId
+    type: number
+    description: DNS record id
+  - name: DnsLatencyMs
+    type: number
+    description: Time between a DNS request and response, in milliseconds
+  - name: DnsFlags
+    type: number
+    description: DNS flags for DNS record
+  - name: DnsFlagsResponseCode
+    type: string
+    description: Parsed DNS header RCODEs name
+  - name: DnsErrno
+    type: number
+    description: Error number returned from DNS tracker ebpf hook function
+  - name: TimeFlowRttNs
+    type: number
+    description: TCP Smoothed Round Trip Time (SRTT), in nanoseconds
+  - name: NetworkEvents
+    type: string
+    description: Network events flow monitoring
+  - name: K8S_ClusterName
+    type: string
+    description: Cluster name or identifier
+  - name: _RecordType
+    type: string
+    description: "Type of record: 'flowLog' for regular flow logs, or 'newConnection', 'heartbeat', 'endConnection' for conversation tracking"
+  - name: _HashId
+    type: string
+    description: In conversation tracking, the conversation identifier

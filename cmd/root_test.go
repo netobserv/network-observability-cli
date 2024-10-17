@@ -76,13 +76,17 @@ func TestDefaultArguments(t *testing.T) {
 	assert.Empty(t, options)
 }
 
-func setup() {
+func setup(t *testing.T) {
 	// reset time to startup time
 	resetTime()
 
 	// clear filters and previous flows
 	regexes = []string{}
 	lastFlows = []config.GenericMap{}
+
+	// load config
+	err := LoadConfig()
+	assert.Equal(t, nil, err)
 }
 
 func resetTime() {

@@ -181,23 +181,23 @@ func runPacketCaptureOnAddr(port int, filename string) {
 
 func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {
 	var io types.InterfaceOptions
-	srcType := toText(*genericMap, "SrcK8S_Type").(string)
+	srcType := toValue(*genericMap, "SrcK8S_Type").(string)
 	if srcType != emptyText {
 		io = types.InterfaceOptions{
 			Name: fmt.Sprintf(
 				"%s: %s -> %s: %s",
 				srcType,
-				toText(*genericMap, "SrcK8S_Name"),
-				toText(*genericMap, "DstK8S_Type"),
-				toText(*genericMap, "DstK8S_Name")),
+				toValue(*genericMap, "SrcK8S_Name"),
+				toValue(*genericMap, "DstK8S_Type"),
+				toValue(*genericMap, "DstK8S_Name")),
 			Description: fmt.Sprintf(
 				"%s: %s Namespace: %s -> %s: %s Namespace: %s",
-				toText(*genericMap, "SrcK8S_OwnerType"),
-				toText(*genericMap, "SrcK8S_OwnerName"),
-				toText(*genericMap, "SrcK8S_Namespace"),
-				toText(*genericMap, "DstK8S_OwnerType"),
-				toText(*genericMap, "DstK8S_OwnerName"),
-				toText(*genericMap, "DstK8S_Namespace"),
+				toValue(*genericMap, "SrcK8S_OwnerType"),
+				toValue(*genericMap, "SrcK8S_OwnerName"),
+				toValue(*genericMap, "SrcK8S_Namespace"),
+				toValue(*genericMap, "DstK8S_OwnerType"),
+				toValue(*genericMap, "DstK8S_OwnerName"),
+				toValue(*genericMap, "DstK8S_Namespace"),
 			),
 		}
 	} else {
