@@ -181,6 +181,10 @@ install-commands: commands ## Generate plugins and add them to /usr/bin/
 docs: oc-commands ## Generate asciidoc
 	./scripts/generate-doc.sh
 
+.PHONY: update-config
+update-config: ## Update config from operator repo
+	./scripts/update-config.sh
+
 .PHONY: release
 release: clean ## Generate tar.gz containing krew plugin and display krew updated index
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
@@ -239,4 +243,5 @@ endif
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+include .mk/dev.mk
 include .mk/shortcuts.mk

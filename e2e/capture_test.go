@@ -70,10 +70,10 @@ func TestFlowCapture(t *testing.T) {
 			// check that CLI is running
 			assert.Contains(t, str, "Running network-observability-cli as Flow Capture")
 			assert.Contains(t, str, "Time")
-			assert.Contains(t, str, "SrcName")
-			assert.Contains(t, str, "SrcType")
-			assert.Contains(t, str, "DstName")
-			assert.Contains(t, str, "DstType")
+			assert.Contains(t, str, "Src Name")
+			assert.Contains(t, str, "Src Namespace")
+			assert.Contains(t, str, "Dst Name")
+			assert.Contains(t, str, "Dst Namespace")
 			// check that script terminated
 			assert.Contains(t, str, "command terminated")
 			return ctx
