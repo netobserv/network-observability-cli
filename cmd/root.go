@@ -103,6 +103,11 @@ func onInit() {
 		log.Fatalf("specified nodes names doesn't match ports length")
 	}
 
+	err := LoadConfig()
+	if err != nil {
+		log.Fatalf("can't load config from yaml: %v", err)
+	}
+
 	log.Infof("Running network-observability-cli\nLog level: %s\nFilter(s): %s", logLevel, filter)
 	showKernelVersion()
 
