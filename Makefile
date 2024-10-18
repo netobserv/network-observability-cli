@@ -30,8 +30,8 @@ FILES_OUTPUT_DIR ?= output
 OUTPUT := $(DIST_DIR)/$(NAME)
 
 # Available commands for development with args
-COMMANDS = flows packets cleanup
-COMMAND_ARGS ?=
+COMMANDS = flows packets metrics follow stop copy cleanup version
+COMMAND_ARGS ?= 
 
 # Get either oc (favorite) or kubectl paths
 K8S_CLI_BIN_PATH = $(shell which oc 2>/dev/null || which kubectl)

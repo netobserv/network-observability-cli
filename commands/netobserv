@@ -9,9 +9,19 @@ if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
 # prompt copy by default
 if [ -z "${copy+x}" ]; then copy="prompt"; fi
+# run foreground by default
+if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
 
-# interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
-filter=""
+# options such as filters, background etc
+options=""
+
+# namespace for this run
+namespace="netobserv-cli"
+
+if [ -n "$NETOBSERV_NAMESPACE" ]; then
+  echo "using custom namespace $NETOBSERV_NAMESPACE"
+  namespace="$NETOBSERV_NAMESPACE"
+fi
 
 # CLI image to use
 img="quay.io/netobserv/network-observability-cli:main"
@@ -43,7 +53,7 @@ function flows() {
       exit 0 ;;
     *)
       shift # remove first argument
-      filter="$*"
+      options="$*"
       # run flows command
       command="flows" ;;
   esac
@@ -56,9 +66,22 @@ function packets() {
       exit 0 ;;
     *)
       shift # remove first argument
-      filter="$*"
+      options="$*"
       # run packets command
       command="packets" ;;
+  esac
+}
+
+function metrics() {
+  case "$2" in
+    "help")
+      metrics_usage
+      exit 0 ;;
+    *)
+      shift # remove first argument
+      options="$*"
+      # run metrics command
+      command="metrics" ;;
   esac
 }
 
@@ -66,19 +89,25 @@ case "$1" in
 "help")
     # display Help
     echo
-    echo "Netobserv allows you to capture flow and packets from your cluster."
+    echo "Netobserv allows you to capture flow, packets and metrics from your cluster."
     echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
     echo
-    echo "Syntax: netobserv [flows|packets|cleanup] [options]"
+    echo "Syntax: netobserv [flows|packets|metrics|follow|stop|copy|cleanup|version] [options]"
     echo
     echo "commands:"
-    echo "  flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'."
+    echo "  flows      Capture flows information in JSON format using collector pod."
     echo "        Options:"
     flows_usage
-    echo "  packets    Capture packets information in pcap format."
+    echo "  packets    Capture packets information in pcap format using collector pod."
     echo "        Options:"
     packets_usage
-    echo "  cleanup    Remove netobserv components."
+    echo "  metrics      Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
+    echo "        Options:"
+    metrics_usage
+    echo "  follow     Follow collector logs when running in background."
+    echo "  stop       Stop collection by removing agent daemonset."
+    echo "  copy       Copy collector generated files locally."
+    echo "  cleanup    Remove netobserv components and configurations."
     echo "  version    Print software version."
     echo
     exit 0 ;;
@@ -90,6 +119,20 @@ case "$1" in
     flows $* ;;
 "packets")
     packets $* ;;
+"metrics")
+    metrics $* ;;
+"follow")
+    # run follow command
+    follow
+    exit 0 ;;
+"stop")
+    # run deleteDaemonset command
+    deleteDaemonset
+    exit 0 ;;
+"copy")
+    # run copy output command
+    copyOutput
+    exit 0 ;;
 "cleanup")
     # run cleanup command
     cleanup
@@ -101,24 +144,47 @@ esac
 
 trap cleanup EXIT
 
-setup $command $filter
+setup $command $options
 
-echo "Running network-observability-cli get-$command... "
-${K8S_CLI_BIN} run \
-  -n netobserv-cli \
-  collector \
-  --image=$img\
-  --image-pull-policy='Always' \
-  --restart='Never' \
-  --command -- sleep infinity
+if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+  runCommand="sleep infinity"
+  execCommand="/network-observability-cli get-$command ${options:+"--options" "${options//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
+  if [[ "$runBackground" == "true" ]]; then
+    runCommand="$execCommand & $runCommand"
+    execCommand=""
+  fi
 
-${K8S_CLI_BIN} wait \
-  -n netobserv-cli \
-  --for=condition=Ready pod/collector || exit 1
+  echo "Running network-observability-cli get-$command... "
+  ${K8S_CLI_BIN} run \
+    -n $namespace \
+    collector \
+    --image=$img\
+    --image-pull-policy='Always' \
+    --overrides='{ "spec": { "serviceAccount": "netobserv-cli" }  }' \
+    --restart='Never' \
+    --command -- $runCommand
 
-captureStarted=true
+  ${K8S_CLI_BIN} wait \
+    -n $namespace \
+    --for=condition=Ready pod/collector || exit 1
 
-${K8S_CLI_BIN} exec -i --tty \
-  -n netobserv-cli \
-  collector \
-  -- /network-observability-cli get-$command ${filter:+"--filter" "${filter//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes
+  captureStarted=true
+
+  if [ -n "${execCommand}" ]; then
+    ${K8S_CLI_BIN} exec -i --tty \
+      -n $namespace \
+      collector \
+      -- $execCommand
+  else 
+    echo "Background capture started. Use 'oc netobserv follow' to see it's progress."
+  fi
+elif [ "$command" = "metrics" ]; then
+  runBackground="true"
+  echo "Metrics capture started."
+  consoleURL="$(oc whoami --show-console)"
+  echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
+  echo "Use 'oc netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
+else
+  echo "Unexpected exception occured on $command"
+  exit 1
+fi
