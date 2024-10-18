@@ -60,6 +60,9 @@ d
 sed -i.bak '/packetAgentYAMLContent/{r ./res/packet-capture.yml
 d
 }' ./tmp/functions.sh
+sed -i.bak '/metricAgentYAMLContent/{r ./res/metric-capture.yml
+d
+}' ./tmp/functions.sh
 sed -i.bak '/collectorServiceYAMLContent/{r ./res/collector-service.yml
 d
 }' ./tmp/functions.sh
@@ -73,8 +76,7 @@ if [ -z "$3" ]; then
   echo "pull policy not provided, keeping current ones"
 else
   echo "updating CLI pull policy to $3"
-  sed -i.bak "s/--image-pull-policy=.*/--image-pull-policy='$3' \\\\/" ./tmp/oc-netobserv-flows
-  sed -i.bak "s/--image-pull-policy=.*/--image-pull-policy='$3' \\\\/" ./tmp/oc-netobserv-packets
+  sed -i.bak "s/--image-pull-policy=.*/--image-pull-policy='$3' \\\\/" ./tmp/oc-netobserv
 fi
 
 rm ./tmp/functions.sh

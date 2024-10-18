@@ -30,7 +30,7 @@ FILES_OUTPUT_DIR ?= output
 OUTPUT := $(DIST_DIR)/$(NAME)
 
 # Available commands for development with args
-COMMANDS = flows packets cleanup
+COMMANDS = flows packets metrics follow stop copy cleanup version
 COMMAND_ARGS ?= 
 
 # Get either oc (favorite) or kubectl paths

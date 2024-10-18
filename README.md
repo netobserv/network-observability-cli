@@ -1,9 +1,11 @@
 # Network Observability CLI
 
-network-observability-cli is a lightweight Flow and Packet visualization tool.
+network-observability-cli is a lightweight Flow, Packet and Metrics visualization tool.
 It deploys [NetObserv eBPF agent](https://github.com/netobserv/netobserv-ebpf-agent) on your k8s cluster to collect flows or packets from nodes network interfaces
 and streams data to a local collector for analysis and visualization.
 Output files are generated under `output/flow` and `output/pcap` directories per host name
+
+On Openshift environments, you can also capture metrics in your monitoring stack and display a fully configured dashboard.
 
 ## Prerequisites
 
@@ -44,7 +46,7 @@ USER=netobserv VERSION=dev make images
 Run the following command to start capturing flows, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-USER=netobserv VERSION=dev COMMAND_ARGS=br-ex make flows
+USER=netobserv VERSION=dev COMMAND_ARGS=--interfaces=br-ex make flows
 ```
 
 ![flows](./img/flow-table.png)
@@ -107,24 +109,34 @@ or `dbeaver`:
 Run the following command to start capturing packets, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 
 ```bash
-USER=netobserv VERSION=dev COMMAND_ARGS=tcp,80 make packets
+USER=netobserv VERSION=dev COMMAND_ARGS="--protocol=TCP --port=80" make packets
 ```
 
-![packets](./img/packet-table.png)
-
-It will display a table view with latest packets collected and write data under output/pcap directory.
+Similarly to flow capture, it will display a table view with latest flows. However, it will collect packets and write data under output/pcap directory.
 To stop capturing press Ctrl-C.
 
-This will write pcap into a single file located in `./output/pcap/<CAPTURE_DATE_TIME>.pcap` that can be opened with Wireshark for example:
+This will write pcapng into a single file located in `./output/pcap/<CAPTURE_DATE_TIME>.pcapng` that can be opened with Wireshark for example:
 
 ![wireshark](./img/wireshark.png)
 
+### Metrics dashboard (OCP only)
+
+Run the following command to start capturing metrics, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+```bash
+USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pktdrop="true" --enable_dns="true" --enable_rtt="true"' make metrics
+```
+
+![metrics](./img/metrics-dashboard.png)
+
+It will generate a monitoring dashboard called "NetObserv / On Demand" in your Openshift cluster.
+The url to access it is automatically generated from the CLI. Simply clic on the link to open the page.
+
 ### Cleanup
 
-The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if an error occurs.
+The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if running in background or an error occurs.
 
 ```bash
-./commands/netobserv-cleanup
+USER=netobserv VERSION=dev make cleanup
 ```
 
 ## Extending OpenShift or Kubernetes CLI with plugins
