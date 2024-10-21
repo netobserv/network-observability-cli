@@ -9,12 +9,28 @@ if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
 # prompt copy by default
 if [ -z "${copy+x}" ]; then copy="prompt"; fi
+# run foreground by default
+if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
+
+# force skipping cleanup
+skipCleanup=false
 
 # get either oc (favorite) or kubectl paths
 # this is used only when calling commands directly
 # else it will be overridden by inject.sh
-K8S_CLI_BIN_PATH=$( which oc 2>/dev/null || which kubectl 2>/dev/null )
-K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
+K8S_CLI_BIN_PATH=$(which oc 2>/dev/null || which kubectl 2>/dev/null)
+K8S_CLI_BIN=$(basename "${K8S_CLI_BIN_PATH}")
+
+# namespace for this run
+namespace="netobserv-cli"
+
+if [ -n "$NETOBSERV_NAMESPACE" ]; then
+  echo "using custom namespace $NETOBSERV_NAMESPACE"
+  namespace="$NETOBSERV_NAMESPACE"
+fi
+
+# collector target host
+targetHost="collector.$namespace.svc.cluster.local"
 
 # eBPF agent image to use
 agentImg="quay.io/netobserv/netobserv-ebpf-agent:main"
@@ -31,6 +47,7 @@ function loadYAMLs() {
   if [ -f ./res/namespace.yml ]; then
     namespaceYAML="$(cat ./res/namespace.yml)"
   fi
+  namespaceYAML="${namespaceYAML/"{{NAME}}"/${namespace}}"
 
   saYAML='
     saYAMLContent
@@ -38,6 +55,7 @@ function loadYAMLs() {
   if [ -f ./res/service-account.yml ]; then
     saYAML="$(cat ./res/service-account.yml)"
   fi
+  saYAML="${saYAML//"{{NAMESPACE}}"/${namespace}}"
 
   flowAgentYAML='
     flowAgentYAMLContent
@@ -45,6 +63,8 @@ function loadYAMLs() {
   if [ -f ./res/flow-capture.yml ]; then
     flowAgentYAML="$(cat ./res/flow-capture.yml)"
   fi
+  flowAgentYAML="${flowAgentYAML/"{{NAMESPACE}}"/${namespace}}"
+  flowAgentYAML="${flowAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   flowAgentYAML="${flowAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   packetAgentYAML='
@@ -53,7 +73,18 @@ function loadYAMLs() {
   if [ -f ./res/packet-capture.yml ]; then
     packetAgentYAML="$(cat ./res/packet-capture.yml)"
   fi
+  packetAgentYAML="${packetAgentYAML/"{{NAMESPACE}}"/${namespace}}"
+  packetAgentYAML="${packetAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   packetAgentYAML="${packetAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
+
+  metricAgentYAML='
+    metricAgentYAMLContent
+  '
+  if [ -f ./res/metric-capture.yml ]; then
+    metricAgentYAML="$(cat ./res/metric-capture.yml)"
+  fi
+  metricAgentYAML="${metricAgentYAML//"{{NAMESPACE}}"/${namespace}}"
+  metricAgentYAML="${metricAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   collectorServiceYAML='
     collectorServiceYAMLContent
@@ -61,30 +92,49 @@ function loadYAMLs() {
   if [ -f ./res/collector-service.yml ]; then
     collectorServiceYAML="$(cat ./res/collector-service.yml)"
   fi
+  collectorServiceYAML="${collectorServiceYAML/"{{NAMESPACE}}"/${namespace}}"
+
+  smYAML='
+    smYAMLContent
+  '
+  if [ -f ./res/service-monitor.yml ]; then
+    smYAML="$(cat ./res/service-monitor.yml)"
+  fi
+  smYAML="${smYAML//"{{NAMESPACE}}"/${namespace}}"
 }
 
 function clusterIsReady() {
-    # use oc whoami as connectivity check by default and fallback to kubectl get all if needed
-    K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} whoami"
-    if [ "${K8S_CLI_BIN}" = "kubectl" ]; then
-      K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} get all"
-    fi
-    if ${K8S_CLI_CONNECTIVITY} 2>&1 || ${K8S_CLI_BIN} cluster-info | grep -q "Kubernetes control plane"; then
-      return 0
-    else
-      return 1
-    fi
+  # use oc whoami as connectivity check by default and fallback to kubectl get all if needed
+  K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} whoami"
+  if [ "${K8S_CLI_BIN}" = "kubectl" ]; then
+    K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} get all"
+  fi
+  if ${K8S_CLI_CONNECTIVITY} 2>&1 || ${K8S_CLI_BIN} cluster-info | grep -q "Kubernetes control plane"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function namespaceFound() {
+  # ensure namespace doesn't exist, else we should not override content
+  if ${K8S_CLI_BIN} get namespace "$namespace" --ignore-not-found=true | grep -q "$namespace"; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
+METRICS_MANIFEST_FILE="metric-capture.yml"
 MANIFEST_OUTPUT_PATH="tmp"
 
 function setup {
   echo "Setting up... "
 
   # check for mandatory arguments
-  if ! [[ $1 =~ flows|packets ]]; then
+  if ! [[ $1 =~ flows|packets|metrics ]]; then
     echo "invalid setup argument"
     return
   fi
@@ -94,81 +144,157 @@ function setup {
     exit 1
   fi
 
+  if namespaceFound; then
+    printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
+    skipCleanup="true"
+    exit 1
+  fi
+
   # load yaml files
   loadYAMLs
 
   # apply yamls
-  echo "creating netobserv-cli namespace"
+  echo "creating $namespace namespace"
   echo "$namespaceYAML" | ${K8S_CLI_BIN} apply -f -
 
   echo "creating service account"
   echo "$saYAML" | ${K8S_CLI_BIN} apply -f -
 
-  echo "creating collector service"
-  echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
-
   if [ "$1" = "flows" ]; then
+    echo "creating collector service"
+    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
     shift
     echo "creating flow-capture agents:"
     if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-      mkdir -p ${MANIFEST_OUTPUT_PATH} > /dev/null
+      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
     fi
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
-    echo "${flowAgentYAML}" > ${manifest}
+    echo "${flowAgentYAML}" >${manifest}
     options="$*"
     check_args_and_apply "$options" "$manifest" "flows"
   elif [ "$1" = "packets" ]; then
+    echo "creating collector service"
+    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
     shift
     echo "creating packet-capture agents"
     if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-      mkdir -p ${MANIFEST_OUTPUT_PATH} > /dev/null
+      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
     fi
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
-    echo "${packetAgentYAML}" > ${manifest}
+    echo "${packetAgentYAML}" >${manifest}
     options="$*"
     check_args_and_apply "$options" "$manifest" "packets"
+  elif [ "$1" = "metrics" ]; then
+    echo "creating service monitor"
+    echo "$smYAML" | ${K8S_CLI_BIN} apply -f -
+    shift
+    echo "creating metric-capture agents:"
+    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
+      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
+    fi
+    manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
+    echo "${metricAgentYAML}" >${manifest}
+    options="$*"
+    check_args_and_apply "$options" "$manifest" "metrics"
   fi
+}
+
+function follow {
+  ${K8S_CLI_BIN} logs collector -n "$namespace" -f
 }
 
 function copyOutput {
   echo "Copying collector output files..."
   mkdir -p ./output
-  ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
+  ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
+}
+
+function deleteServiceMonitor {
+  printf "\nDeleting service monitor... "
+  ${K8S_CLI_BIN} delete servicemonitor netobserv-cli -n "$namespace" --ignore-not-found=true
+}
+
+function deleteDashboardCM {
+  printf "\nDeleting dashboard configmap... "
+  ${K8S_CLI_BIN} delete configmap netobserv-cli -n openshift-config-managed --ignore-not-found=true
+}
+
+function deleteDaemonset {
+  printf "\nDeleting daemonset... "
+  ${K8S_CLI_BIN} delete daemonset netobserv-cli -n "$namespace" --ignore-not-found=true
+}
+
+function deletePod {
+  printf "\nDeleting pod... "
+  ${K8S_CLI_BIN} delete pod collector -n "$namespace" --ignore-not-found=true
+}
+
+function deleteNamespace {
+  printf "\nDeleting namespace... "
+  ${K8S_CLI_BIN} delete namespace "$namespace" --ignore-not-found=true
 }
 
 function cleanup {
+  if [[ "$runBackground" == "true" || "$skipCleanup" == "true" ]]; then
+    return
+  fi
+
   # shellcheck disable=SC2034
   if clusterIsReady; then
     if [ "$captureStarted" = false ]; then
-      echo "Can't copy since capture didn't start"
+      echo "Copy skipped"
     elif [[ "$isE2E" = true || "$copy" = true ]]; then
       copyOutput
     elif [ "$copy" = "prompt" ]; then
       while true; do
-          read -rp "Copy the capture output locally ?" yn
-          case $yn in
-              [Yy]* ) copyOutput; break;;
-              [Nn]* ) echo "copy skipped"; break;;
-              * ) echo "Please answer yes or no.";;
-          esac
+        read -rp "Copy the capture output locally ?" yn
+        case $yn in
+        [Yy]*)
+          copyOutput
+          break
+          ;;
+        [Nn]*)
+          echo "copy skipped"
+          break
+          ;;
+        *) echo "Please answer yes or no." ;;
+        esac
       done
     fi
 
-    printf "\nCleaning up... "
-    ${K8S_CLI_BIN} delete namespace netobserv-cli
+    printf "\nCleaning up..."
+    deleteServiceMonitor
+    deleteDashboardCM
+    deleteDaemonset
+    deletePod
+    deleteNamespace
+    printf "\n"
   else
     echo "Cleanup namespace skipped"
     return
   fi
 }
 
-function common_usage {
-  # general options
+function features_usage {
+  # agent features
+  echo "          --enable_pktdrop:         enable packet drop                         (default: false)"
+  echo "          --enable_dns:             enable DNS tracking                        (default: false)"
+  echo "          --enable_rtt:             enable RTT tracking                        (default: false)"
+  echo "          --enable_network_events:  enable Network events monitoring           (default: false)"
+  echo "          --enable_filter:          enable flow filter                         (default: false)"
+}
+
+function collector_usage {
+  # collector options
   echo "          --log-level:              components logs                            (default: info)"
   echo "          --max-time:               maximum capture time                       (default: 5m)"
   echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
+  echo "          --background:             run in background                          (default: false)"
   echo "          --copy:                   copy the output files locally              (default: prompt)"
-  # filters
+}
+
+function filters_usage {
+  # agent filters
   echo "          --direction:              filter direction                           (default: n/a)"
   echo "          --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
   echo "          --protocol:               filter protocol                            (default: n/a)"
@@ -189,23 +315,27 @@ function common_usage {
   echo "          --drops:                  filter flows with only dropped packets     (default: false)"
 }
 
-function flows_usage {
-  # features
-  echo "          --enable_pktdrop:         enable packet drop                         (default: false)"
-  echo "          --enable_dns:             enable DNS tracking                        (default: false)"
-  echo "          --enable_rtt:             enable RTT tracking                        (default: false)"
-  echo "          --enable_network_events:  enable Network events monitoring           (default: false)"
-  echo "          --enable_filter:          enable flow filter                         (default: false)"
-  # common
-  common_usage
+function specific_filters_usage {
   # specific filters
   echo "          --interfaces:             interfaces to monitor                      (default: n/a)"
+}
 
+function flows_usage {
+  features_usage
+  collector_usage
+  filters_usage
+  specific_filters_usage
 }
 
 function packets_usage {
-  # common
-  common_usage
+  collector_usage
+  filters_usage
+}
+
+function metrics_usage {
+  features_usage
+  filters_usage
+  specific_filters_usage
 }
 
 function edit_manifest() {
@@ -279,11 +409,11 @@ function edit_manifest() {
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ACTION\").value|=\"$2\"" "$3"
     ;;
   "filter_tcp_flags")
-  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
-  ;;
- "filter_pkt_drops")
-  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
-  ;;
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
+    ;;
+  "filter_pkt_drops")
+    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
+    ;;
   "log_level")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
     ;;
@@ -293,185 +423,189 @@ function edit_manifest() {
 # Check if the arguments are valid
 #$1: options
 #$2: manifest
-#$3: either flows or packets
+#$3: flows, packets or metrics
 function check_args_and_apply() {
-    # Iterate through the command-line arguments
-    for option in $1; do
-        key="${option%%=*}"
-        value="${option#*=}"
-        case "$key" in
-            --copy) # Copy or skip without prompt
-                if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
-                  echo "param: $key, param_value: $value"
-                  copy="$value"
-                else
-                  echo "invalid value for --copy"
-                fi
-                ;;
-            --interfaces) # Interfaces
-                edit_manifest "interfaces" "$value" "$2"
-                ;;
-            --enable_pktdrop) # Enable packet drop
-                if [[ "$3" == "flows" ]]; then
-                  if [[ "$value" == "true" || "$value" == "false" ]]; then
-                    edit_manifest "pktdrop_enable" "$value" "$2"
-                  else
-                    echo "invalid value for --enable_pktdrop"
-                  fi
-                else
-                  echo "--enable_pktdrop is invalid option for packets"
-                  exit 1
-                fi
-                ;;
-            --enable_dns) # Enable DNS
-                if [[ "$3" == "flows" ]]; then
-                  if [[ "$value" == "true" || "$value" == "false" ]]; then
-                    edit_manifest "dns_enable" "$value" "$2"
-                  else
-                    echo "invalid value for --enable_dns"
-                  fi
-                else
-                  echo "--enable_dns is invalid option for packets"
-                  exit 1
-                fi
-                ;;
-            --enable_rtt) # Enable RTT
-                if [[ "$3" == "flows" ]]; then
-                  if [[ "$value" == "true" || "$value" == "false" ]]; then
-                    edit_manifest "rtt_enable" "$value" "$2"
-                  else
-                    echo "invalid value for --enable_rtt"
-                  fi
-                else
-                  echo "--enable_rtt is invalid option for packets"
-                  exit 1
-                fi
-                ;;
-            --enable_network_events) # Enable Network events monitoring
-                if [[ "$3" == "flows" ]]; then
-                  if [[ "$value" == "true" || "$value" == "false" ]]; then
-                    edit_manifest "network_events_enable" "$value" "$2"
-                  else
-                    echo "invalid value for --enable_network_events"
-                  fi
-                else
-                  echo "--enable_network_events is invalid option for packets"
-                  exit 1
-                fi
-                ;;
-            --enable_filter) # Enable flow filter
-                if [[ "$3" == "flows" ]]; then
-                  if [[ "$value" == "true" || "$value" == "false" ]]; then
-                    edit_manifest "filter_enable" "$value" "$2"
-                  else
-                    echo "invalid value for --enable_filter"
-                  fi
-                else
-                  echo "--enable_filter is invalid option for packets"
-                  exit 1
-                fi
-                ;;
-            --direction) # Configure filter direction
-                if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
-                  edit_manifest "filter_direction" "$value" "$2"
-                else
-                  echo "invalid value for --direction"
-                fi
-                ;;
-            --cidr) # Configure flow CIDR
-                edit_manifest "filter_cidr" "$value" "$2"
-                ;;
-            --protocol) # Configure filter protocol
-                if [[ "$value" == "TCP" || "$value" == "UDP" || "$value" == "SCTP" || "$value" == "ICMP" || "$value" == "ICMPv6" ]]; then
-                  edit_manifest "filter_protocol" "$value" "$2"
-                else
-                  echo "invalid value for --protocol"
-                fi
-                ;;
-            --sport) # Configure filter source port
-                edit_manifest "filter_sport" "$value" "$2"
-                ;;
-            --dport) # Configure filter destination port
-                edit_manifest "filter_dport" "$value" "$2"
-                ;;
-            --port) # Configure filter port
-                edit_manifest "filter_port" "$value" "$2"
-                ;;
-            --sport_range) # Configure filter source port range
-                edit_manifest "filter_sport_range" "$value" "$2"
-                ;;
-            --dport_range) # Configure filter destination port range
-                edit_manifest "filter_dport_range" "$value" "$2"
-                ;;
-            --port_range) # Configure filter port range
-                edit_manifest "filter_port_range" "$value" "$2"
-                ;;
-            --sports) # Configure filter source two ports using ","
-                edit_manifest "filter_sports" "$value" "$2"
-                ;;
-            --dports) # Configure filter destination two ports using ","
-                edit_manifest "filter_dports" "$value" "$2"
-                ;;
-            --ports) # Configure filter on two ports usig "," can either be srcport or dstport
-                edit_manifest "filter_ports" "$value" "$2"
-                ;;
-            --tcp_flags) # Configure filter TCP flags
-              if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
-                edit_manifest "filter_tcp_flags" "$value" "$2"
-              else
-                echo "invalid value for --tcp_flags"
-              fi
-              ;;
-            --drops) # Filter packet drops
-                if [[ "$value" == "true" || "$value" == "false" ]]; then
-                  edit_manifest "filter_pkt_drops" "$value" "$2"
-                else
-                  echo "invalid value for --drops"
-                fi
-                ;;
-            --icmp_type) # ICMP type
-                edit_manifest "filter_icmp_type" "$value" "$2"
-                ;;
-            --icmp_code) # ICMP code
-                edit_manifest "filter_icmp_code" "$value" "$2"
-                ;;
-            --peer_ip) # Peer IP
-                edit_manifest "filter_peer_ip" "$value" "$2"
-                ;;
-            --action) # Filter action
-                if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
-                  edit_manifest "filter_action" "$value" "$2"
-                else
-                  echo "invalid value for --action"
-                fi
-                ;;
-            --log-level) # Log level
-                if [[ "$value" == "trace" || "$value" == "debug" || "$value" == "info" || "$value" == "warn" || "$value" == "error" || "$value" == "fatal" || "$value" == "panic" ]]; then
-                  edit_manifest "log_level" "$value" "$2"
-                  logLevel=$value
-                  filter=${filter/$key=$logLevel/}
-                else
-                  echo "invalid value for --action"
-                fi
-                ;;
-            --max-time) # Max time
-                echo "param: $key, param_value: $value"
-                maxTime=$value
-                filter=${filter/$key=$maxTime/}
-                ;;
-            --max-bytes) # Max bytes
-                echo "param: $key, param_value: $value"
-                maxBytes=$value
-                filter=${filter/$key=$maxBytes/}
-                ;;
-            *) # Invalid option
-                echo "Invalid option: $key" >&2
-                exit 1
-                ;;
-        esac
-    done
+  # Iterate through the command-line arguments
+  for option in $1; do
+    key="${option%%=*}"
+    value="${option#*=}"
+    case "$key" in
+    --background) # Run command in background
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        runBackground="$value"
+      else
+        echo "invalid value for --background"
+      fi
+      ;;
+    --copy) # Copy or skip without prompt
+      if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
+        copy="$value"
+      else
+        echo "invalid value for --copy"
+      fi
+      ;;
+    --interfaces) # Interfaces
+      edit_manifest "interfaces" "$value" "$2"
+      ;;
+    --enable_pktdrop) # Enable packet drop
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "pktdrop_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_pktdrop"
+        fi
+      else
+        echo "--enable_pktdrop is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    --enable_dns) # Enable DNS
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "dns_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_dns"
+        fi
+      else
+        echo "--enable_dns is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    --enable_rtt) # Enable RTT
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "rtt_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_rtt"
+        fi
+      else
+        echo "--enable_rtt is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    --enable_network_events) # Enable Network events monitoring
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "network_events_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_network_events"
+        fi
+      else
+        echo "--enable_network_events is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    --enable_filter) # Enable flow filter
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "filter_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_filter"
+        fi
+      else
+        echo "--enable_filter is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    --direction) # Configure filter direction
+      if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
+        edit_manifest "filter_direction" "$value" "$2"
+      else
+        echo "invalid value for --direction"
+      fi
+      ;;
+    --cidr) # Configure flow CIDR
+      edit_manifest "filter_cidr" "$value" "$2"
+      ;;
+    --protocol) # Configure filter protocol
+      if [[ "$value" == "TCP" || "$value" == "UDP" || "$value" == "SCTP" || "$value" == "ICMP" || "$value" == "ICMPv6" ]]; then
+        edit_manifest "filter_protocol" "$value" "$2"
+      else
+        echo "invalid value for --protocol"
+      fi
+      ;;
+    --sport) # Configure filter source port
+      edit_manifest "filter_sport" "$value" "$2"
+      ;;
+    --dport) # Configure filter destination port
+      edit_manifest "filter_dport" "$value" "$2"
+      ;;
+    --port) # Configure filter port
+      edit_manifest "filter_port" "$value" "$2"
+      ;;
+    --sport_range) # Configure filter source port range
+      edit_manifest "filter_sport_range" "$value" "$2"
+      ;;
+    --dport_range) # Configure filter destination port range
+      edit_manifest "filter_dport_range" "$value" "$2"
+      ;;
+    --port_range) # Configure filter port range
+      edit_manifest "filter_port_range" "$value" "$2"
+      ;;
+    --sports) # Configure filter source two ports using ","
+      edit_manifest "filter_sports" "$value" "$2"
+      ;;
+    --dports) # Configure filter destination two ports using ","
+      edit_manifest "filter_dports" "$value" "$2"
+      ;;
+    --ports) # Configure filter on two ports usig "," can either be srcport or dstport
+      edit_manifest "filter_ports" "$value" "$2"
+      ;;
+    --tcp_flags) # Configure filter TCP flags
+      if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
+        edit_manifest "filter_tcp_flags" "$value" "$2"
+      else
+        echo "invalid value for --tcp_flags"
+      fi
+      ;;
+    --drops) # Filter packet drops
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        edit_manifest "filter_pkt_drops" "$value" "$2"
+      else
+        echo "invalid value for --drops"
+      fi
+      ;;
+    --icmp_type) # ICMP type
+      edit_manifest "filter_icmp_type" "$value" "$2"
+      ;;
+    --icmp_code) # ICMP code
+      edit_manifest "filter_icmp_code" "$value" "$2"
+      ;;
+    --peer_ip) # Peer IP
+      edit_manifest "filter_peer_ip" "$value" "$2"
+      ;;
+    --action) # Filter action
+      if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
+        edit_manifest "filter_action" "$value" "$2"
+      else
+        echo "invalid value for --action"
+      fi
+      ;;
+    --log-level) # Log level
+      if [[ "$value" == "trace" || "$value" == "debug" || "$value" == "info" || "$value" == "warn" || "$value" == "error" || "$value" == "fatal" || "$value" == "panic" ]]; then
+        edit_manifest "log_level" "$value" "$2"
+        logLevel=$value
+        filter=${filter/$key=$logLevel/}
+      else
+        echo "invalid value for --action"
+      fi
+      ;;
+    --max-time) # Max time
+      maxTime=$value
+      filter=${filter/$key=$maxTime/}
+      ;;
+    --max-bytes) # Max bytes
+      maxBytes=$value
+      filter=${filter/$key=$maxBytes/}
+      ;;
+    *) # Invalid option
+      echo "Invalid option: $key" >&2
+      exit 1
+      ;;
+    esac
+  done
 
-    ${K8S_CLI_BIN} apply -f "$2"
-    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
-    rm -rf ${MANIFEST_OUTPUT_PATH}
+  ${K8S_CLI_BIN} apply -f "$2"
+  ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
+  rm -rf ${MANIFEST_OUTPUT_PATH}
 }
