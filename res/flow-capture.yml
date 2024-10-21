@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: netobserv-cli
-  namespace: netobserv-cli
+  namespace: "{{NAMESPACE}}"
   labels:
     app: netobserv-cli
 spec:
@@ -131,7 +131,7 @@ spec:
                       "write":{
                           "type":"grpc",
                           "grpc":{
-                            "targetHost":"collector.netobserv-cli.svc.cluster.local",
+                            "targetHost":"{{TARGET_HOST}}",
                             "targetPort":9999
                           }
                       }

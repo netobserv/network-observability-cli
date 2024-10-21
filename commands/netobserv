@@ -9,9 +9,19 @@ if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
 # prompt copy by default
 if [ -z "${copy+x}" ]; then copy="prompt"; fi
+# run foreground by default
+if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
 
-# interface filter such as 'br-ex' or pcap filter such as 'tcp,80'
-filter=""
+# options such as filters, background etc
+options=""
+
+# namespace for this run
+namespace="netobserv-cli"
+
+if [ -n "$NETOBSERV_NAMESPACE" ]; then
+  echo "using custom namespace $NETOBSERV_NAMESPACE"
+  namespace="$NETOBSERV_NAMESPACE"
+fi
 
 # CLI image to use
 img="quay.io/netobserv/network-observability-cli:main"
@@ -43,7 +53,7 @@ function flows() {
       exit 0 ;;
     *)
       shift # remove first argument
-      filter="$*"
+      options="$*"
       # run flows command
       command="flows" ;;
   esac
@@ -56,7 +66,7 @@ function packets() {
       exit 0 ;;
     *)
       shift # remove first argument
-      filter="$*"
+      options="$*"
       # run packets command
       command="packets" ;;
   esac
@@ -72,12 +82,15 @@ case "$1" in
     echo "Syntax: netobserv [flows|packets|cleanup] [options]"
     echo
     echo "commands:"
-    echo "  flows      Capture flows information. You can specify an optional interface name as filter such as 'netobserv flows br-ex'."
+    echo "  flows      Capture flows information in JSON format."
     echo "        Options:"
     flows_usage
     echo "  packets    Capture packets information in pcap format."
     echo "        Options:"
     packets_usage
+    echo "  follow     Follow collector logs when running in background."
+    echo "  stop       Stop collection by removing agent daemonset."
+    echo "  copy       Copy generated files locally."
     echo "  cleanup    Remove netobserv components."
     echo "  version    Print software version."
     echo
@@ -90,6 +103,18 @@ case "$1" in
     flows $* ;;
 "packets")
     packets $* ;;
+"follow")
+    # run follow command
+    follow
+    exit 0 ;;
+"stop")
+    # run deleteDaemonset command
+    deleteDaemonset
+    exit 0 ;;
+"copy")
+    # run copy output command
+    copyOutput
+    exit 0 ;;
 "cleanup")
     # run cleanup command
     cleanup
@@ -101,24 +126,36 @@ esac
 
 trap cleanup EXIT
 
-setup $command $filter
+setup $command $options
+
+runCommand="sleep infinity"
+execCommand="/network-observability-cli get-$command ${options:+"--options" "${options//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
+if [[ "$runBackground" == "true" ]]; then
+  runCommand="$execCommand & $runCommand"
+  execCommand=""
+fi
 
 echo "Running network-observability-cli get-$command... "
 ${K8S_CLI_BIN} run \
-  -n netobserv-cli \
+  -n $namespace \
   collector \
   --image=$img\
   --image-pull-policy='Always' \
+  --overrides='{ "spec": { "serviceAccount": "netobserv-cli" }  }' \
   --restart='Never' \
-  --command -- sleep infinity
+  --command -- $runCommand
 
 ${K8S_CLI_BIN} wait \
-  -n netobserv-cli \
+  -n $namespace \
   --for=condition=Ready pod/collector || exit 1
 
 captureStarted=true
 
-${K8S_CLI_BIN} exec -i --tty \
-  -n netobserv-cli \
-  collector \
-  -- /network-observability-cli get-$command ${filter:+"--filter" "${filter//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes
+if [ -n "${execCommand}" ]; then
+  ${K8S_CLI_BIN} exec -i --tty \
+    -n $namespace \
+    collector \
+    -- $execCommand
+else 
+  echo "Background capture started. Use 'oc netobserv follow' to see it's progress."
+fi
