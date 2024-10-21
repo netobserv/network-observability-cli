@@ -101,7 +101,7 @@ case "$1" in
     echo "  packets    Capture packets information in pcap format using collector pod."
     echo "        Options:"
     packets_usage
-    echo "  metrics      Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
+    echo "  metrics    Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
     echo "        Options:"
     metrics_usage
     echo "  follow     Follow collector logs when running in background."
