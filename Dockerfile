@@ -24,7 +24,14 @@ COPY res/ res/
 COPY scripts/ scripts/
 COPY Makefile Makefile
 COPY .mk/ .mk/
-# Embed commands in case users want to pull it from collector image
+
+# Install oc to allow collector to run commands
+RUN set -x; \
+    OC_TAR_URL="https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/latest/openshift-client-linux.tar.gz" && \
+    curl -L -q -o /tmp/oc.tar.gz "$OC_TAR_URL" && \
+    tar -C /tmp -xvf /tmp/oc.tar.gz oc kubectl
+
+# Embedd commands in case users want to pull it from collector image
 RUN USER=netobserv VERSION=main make oc-commands
 
 # Prepare output dir
@@ -34,15 +41,10 @@ RUN mkdir -p output
 FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.4
 WORKDIR /
 
-# Install oc to allow collector to run commands
-RUN set -x; \
-    OC_TAR_URL="https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/latest/openshift-client-linux.tar.gz" && \
-    curl -L -q -o /tmp/oc.tar.gz "$OC_TAR_URL" && \
-    tar -C /usr/bin/ -xvf /tmp/oc.tar.gz oc && \
-    ln -sf /usr/bin/oc /usr/bin/kubectl && \
-    rm -f /tmp/oc.tar.gz
-
 COPY --from=builder /opt/app-root/build .
+COPY --from=builder /opt/app-root/build .
+COPY --from=builder /tmp/oc /usr/bin/oc
+COPY --from=builder /tmp/kubectl /usr/bin/kubectl
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 USER 65532:65532
 
