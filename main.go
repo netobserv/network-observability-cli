@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	BuildVersion string
-	BuildDate    string
+	buildVersion = "unknown"
+	buildDate    = "unknown"
 )
 
 func main() {
 	// Initial log message
-	fmt.Printf("Starting %s:\n=====\nBuild Version: %s\nBuild Date: %s\n\n",
-		filepath.Base(os.Args[0]), BuildVersion, BuildDate)
+	fmt.Printf("Starting %s:\n=====\nBuild version: %s\nBuild date: %s\n\n",
+		filepath.Base(os.Args[0]), buildVersion, buildDate)
 
 	err := cmd.Execute()
 	if err != nil {

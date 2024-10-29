@@ -5,8 +5,7 @@ ARG TARGETARCH=amd64
 FROM docker.io/library/golang:1.22 as builder
 
 ARG TARGETARCH
-ARG TARGETPLATFORM
-ARG VERSION="unknown"
+ARG LDFLAGS
 
 WORKDIR /opt/app-root
 
@@ -15,16 +14,17 @@ COPY main.go main.go
 COPY go.mod go.mod
 COPY go.sum go.sum
 COPY commands/ commands/
-COPY res/ res/
-COPY scripts/ scripts/
 COPY vendor/ vendor/
-COPY Makefile Makefile
-COPY .mk/ .mk/
 
 # Build collector
-RUN GOARCH=$TARGETARCH make compile
+RUN GOARCH=$TARGETARCH go build -ldflags "$LDFLAGS" -mod vendor -a -o build/network-observability-cli
 
-# Embedd commands in case users want to pull it from collector image
+# We still need Makefile & resources for oc-commands; copy them after go build for caching
+COPY res/ res/
+COPY scripts/ scripts/
+COPY Makefile Makefile
+COPY .mk/ .mk/
+# Embed commands in case users want to pull it from collector image
 RUN USER=netobserv VERSION=main make oc-commands
 
 # Prepare output dir
