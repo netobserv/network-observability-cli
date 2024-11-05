@@ -13,13 +13,13 @@ COPY cmd cmd
 COPY main.go main.go
 COPY go.mod go.mod
 COPY go.sum go.sum
-COPY commands/ commands/
 COPY vendor/ vendor/
 
 # Build collector
 RUN GOARCH=$TARGETARCH go build -ldflags "$LDFLAGS" -mod vendor -a -o build/network-observability-cli
 
 # We still need Makefile & resources for oc-commands; copy them after go build for caching
+COPY commands/ commands/
 COPY res/ res/
 COPY scripts/ scripts/
 COPY Makefile Makefile
