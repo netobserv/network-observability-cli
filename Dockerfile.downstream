@@ -1,8 +1,9 @@
 # We do not use --platform feature to auto fill this ARG because of incompatibility between podman and docker
 ARG TARGETARCH=amd64
+ARG COMMIT
 
 # Build the manager binary
-FROM docker.io/library/golang:1.22 as builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.22.5-202407301806.g4c8b32d.el9 as builder
 
 ARG TARGETARCH
 ARG TARGETPLATFORM
@@ -38,3 +39,13 @@ COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 USER 65532:65532
 
 ENTRYPOINT ["/network-observability-cli"]
+
+LABEL com.redhat.component="network-observability-cli-container"
+LABEL name="network-observability-cli"
+LABEL io.k8s.display-name="Network Observability CLI"
+LABEL io.k8s.description="Network Observability CLI"
+LABEL summary="Network Observability CLI"
+LABEL maintainer="support@redhat.com"
+LABEL io.openshift.tags="network-observability-cli"
+LABEL upstream-vcs-type="git"
+LABEL upstream-vcs-ref="$COMMIT"
