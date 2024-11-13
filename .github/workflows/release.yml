@@ -42,7 +42,7 @@ jobs:
           password: ${{ secrets.QUAY_SECRET }}
           registry: quay.io
       - name: build and push manifest with images
-        run: MULTIARCH_TARGETS="${{ env.WF_MULTIARCH_TARGETS }}" IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} make images
+        run: MULTIARCH_TARGETS="${{ env.WF_MULTIARCH_TARGETS }}" IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} CLEAN_BUILD=1 make images
       - name: build plugin artifact
         run: IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} make release
       - name: create github release
