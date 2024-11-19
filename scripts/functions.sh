@@ -303,19 +303,22 @@ function edit_manifest() {
     yq e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
 
     # define rules from arg
+    IFS=',' read -ra regexes <<<"$2"
     rules=()
-    for regex in $(echo $2 | tr "," "\n"); do
-      keyValue=(${regex//"~"/ })
+    for regex in "${regexes[@]}"; do
+      IFS='~' read -ra keyValue <<<"$regex"
       key=${keyValue[0]}
       value=${keyValue[1]}
       echo "key: $key value: $value"
       rules+=("{\"type\":\"keep_entry_if_regex_match\",\"keepEntry\":{\"input\":\"$key\",\"value\":\"$value\"}}")
     done
-    echo "rules: ${rules[@]}"
-    rules=$(echo "${rules[@]}" | sed "s/ /,/g")
+    rulesStr=$(
+      IFS=,
+      echo "${rules[*]}"
+    )
 
     # add filter param & pipeline
-    yq e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rules]}]}}}" "$json"
+    yq e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}]}}}" "$json"
     yq e -oj --inplace ".pipeline += {\"name\":\"filter\",\"follows\":\"enrich\"}" "$json"
 
     # add send step back
@@ -480,7 +483,7 @@ function check_args_and_apply() {
     --regexes) # Filter using regexes
       valueCount=$(grep -o "~" <<<"$value" | wc -l)
       splitterCount=$(grep -o "," <<<"$value" | wc -l)
-      if [[ valueCount > 0 && $((valueCount)) == $((splitterCount + 1)) ]]; then
+      if [[ ${valueCount} -gt 0 && $((valueCount)) == $((splitterCount + 1)) ]]; then
         edit_manifest "filter_regexes" "$value" "$2"
       else
         echo "invalid value for --regexes"
