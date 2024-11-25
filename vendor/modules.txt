@@ -201,8 +201,8 @@ github.com/spf13/pflag
 # github.com/stretchr/testify v1.9.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
-# github.com/vladimirvivien/gexe v0.3.0
-## explicit; go 1.22
+# github.com/vladimirvivien/gexe v0.4.1
+## explicit; go 1.23
 github.com/vladimirvivien/gexe
 github.com/vladimirvivien/gexe/exec
 github.com/vladimirvivien/gexe/fs

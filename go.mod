@@ -1,8 +1,7 @@
 module github.com/netobserv/network-observability-cli
 
 go 1.22.3
-
-toolchain go1.22.4
+toolchain go1.23.3
 
 require (
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
@@ -68,7 +67,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/segmentio/kafka-go v0.4.47 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/vladimirvivien/gexe v0.3.0
+	github.com/vladimirvivien/gexe v0.4.1
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
