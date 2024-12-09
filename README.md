@@ -115,7 +115,7 @@ USER=netobserv VERSION=dev COMMAND_ARGS="--protocol=TCP --port=80" make packets
 Similarly to flow capture, it will display a table view with latest flows. However, it will collect packets and write data under output/pcap directory.
 To stop capturing press Ctrl-C.
 
-This will write pcapng into a single file located in `./output/pcap/<CAPTURE_DATE_TIME>.pcapng` that can be opened with Wireshark for example:
+This will write [pcapng](https://wiki.wireshark.org/Development/PcapNg) into a single file located in `./output/pcap/<CAPTURE_DATE_TIME>.pcapng` that can be opened with Wireshark for example:
 
 ![wireshark](./img/wireshark.png)
 
