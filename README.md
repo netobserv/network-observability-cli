@@ -129,7 +129,7 @@ USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pktdrop="true" --enable_dns="t
 ![metrics](./img/metrics-dashboard.png)
 
 It will generate a monitoring dashboard called "NetObserv / On Demand" in your Openshift cluster.
-The url to access it is automatically generated from the CLI. Simply clic on the link to open the page.
+The url to access it is automatically generated from the CLI. Simply click on the link to open the page.
 
 ### Cleanup
 
