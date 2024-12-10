@@ -93,7 +93,47 @@ function namespaceFound() {
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
 CONFIG_JSON_TEMP="config.json"
+CLUSTER_CONFIG="cluster-config-v1.yaml"
+NETWORK_CONFIG="cluster-network.yaml"
 MANIFEST_OUTPUT_PATH="tmp"
+
+function getSubnets() {
+  declare -n sn="$1"
+
+  # get cluster-config-v1 Configmap to retreive machine networks
+  installConfig=$(${K8S_CLI_BIN} get configmap cluster-config-v1 -n kube-system -o custom-columns=":data.install-config")
+  yaml="${MANIFEST_OUTPUT_PATH}/${CLUSTER_CONFIG}"
+  echo "$installConfig" >${yaml}
+
+  machines=$(yq e -oj '.networking.machineNetwork[] | select(has("cidr")).cidr' "$yaml")
+  if [ "${#machines}" -gt 0 ]; then
+    sn["Machines"]=$machines
+  fi
+
+  # get OCP cluster Network to retreive pod / services / external networks
+  networkConfig=$(${K8S_CLI_BIN} get network cluster -o yaml)
+  yaml="${MANIFEST_OUTPUT_PATH}/${NETWORK_CONFIG}"
+  echo "$networkConfig" >${yaml}
+
+  pods=$(yq e -oj '.spec.clusterNetwork[] | select(has("cidr")).cidr' "$yaml")
+  if [ "${#pods}" -gt 0 ]; then
+    sn["Pods"]=$pods
+  fi
+
+  services=$(yq e -oj '.spec.serviceNetwork[] | select(.)' "$yaml")
+  if [ "${#services}" -gt 0 ]; then
+    sn["Services"]=$services
+  fi
+
+  if [ "${#sn[@]}" -gt 0 ]; then
+    echo "Found subnets:"
+    for key in "${!sn[@]}"; do
+      echo "    $key: ${sn[$key]}"
+    done
+  else
+    echo "Didn't found subnets"
+  fi
+}
 
 function setup {
   echo "Setting up... "
@@ -222,6 +262,8 @@ function common_usage {
   echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
   echo "          --background:             run in background                          (default: false)"
   echo "          --copy:                   copy the output files locally              (default: prompt)"
+  # enrichment
+  echo "          --get-subnets:            get subnets informations                   (default: false)"
   # filters
   echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
   echo "          --direction:              filter direction                           (default: n/a)"
@@ -264,9 +306,27 @@ function packets_usage {
   common_usage
 }
 
+# get current config and save it to temp file
+function copyFLPConfig {
+  jsonContent=$(yq e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
+  # json temp file location is set as soon as this function is called
+  json="${MANIFEST_OUTPUT_PATH}/${CONFIG_JSON_TEMP}"
+  echo "$jsonContent" >${json}
+}
+
+# update FLP Config
+function updateFLPConfig {
+  # get json as string with escaped quotes
+  jsonContent=$(cat "$1")
+  jsonContent=${jsonContent//\"/\\\"}
+
+  # update FLP_CONFIG env
+  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$2"
+}
+
 function edit_manifest() {
-  ## replace the env variable in the manifest file
-  echo "env: $1, env_value: $2"
+  ## replace the configuration in the manifest file
+  echo "opt: $1, evalue: $2"
   case "$1" in
   "interfaces")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
@@ -282,6 +342,38 @@ function edit_manifest() {
     ;;
   "network_events_enable")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
+    ;;
+  "get_subnets")
+    if [[ "$2" == "true" ]]; then
+      declare -A subnets
+      getSubnets subnets
+
+      if [ "${#subnets[@]}" -gt 0 ]; then
+        copyFLPConfig "$3"
+
+        # get network enrich stage
+        enrichIndex=$(yq e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
+        enrichContent=$(yq e -oj ".parameters[$enrichIndex]" "$json")
+        enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
+        echo "$enrichContent" >${enrichJson}
+
+        # add rules to network
+        yq e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"SrcAddr\",\"output\":\"SrcSubnetLabel\"}}" "$enrichJson"
+        yq e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"DstAddr\",\"output\":\"DstSubnetLabel\"}}" "$enrichJson"
+
+        # add subnetLabels to network
+        yq e -oj --inplace ".transform.network.subnetLabels = []" "$enrichJson"
+        for key in "${!subnets[@]}"; do
+          yq e -oj --inplace ".transform.network.subnetLabels += {\"name\":\"$key\",\"cidrs\":[${subnets[$key]}]}" "$enrichJson"
+        done
+
+        # override network
+        enrichJsonStr=$(cat $enrichJson)
+        yq e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
+
+        updateFLPConfig "$json" "$3"
+      fi
+    fi
     ;;
   "filter_enable")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
@@ -341,10 +433,7 @@ function edit_manifest() {
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
     ;;
   "filter_regexes")
-    # get current config and save it to temp file
-    jsonContent=$(yq e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$3")
-    json="${MANIFEST_OUTPUT_PATH}/${CONFIG_JSON_TEMP}"
-    echo "$jsonContent" >${json}
+    copyFLPConfig "$3"
 
     # remove send step
     yq e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
@@ -371,12 +460,7 @@ function edit_manifest() {
     # add send step back
     yq e -oj --inplace ".pipeline += {\"name\":\"send\",\"follows\":\"filter\"}" "$json"
 
-    # get json as string with escaped quotes
-    jsonContent=$(cat $json)
-    jsonContent=${jsonContent//\"/\\\"}
-
-    # update FLP_CONFIG env
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$3"
+    updateFLPConfig "$json" "$3"
     ;;
   "log_level")
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
@@ -583,6 +667,13 @@ function check_args_and_apply() {
       else
         echo "invalid value for --node-selector. Use --node-selector=key:val instead."
         exit 1
+      fi
+      ;;
+    --get-subnets) # Get subnets
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        edit_manifest "get_subnets" "$value" "$2"
+      else
+        echo "invalid value for --get-subnets"
       fi
       ;;
     *) # Invalid option
