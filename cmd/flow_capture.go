@@ -45,16 +45,16 @@ var (
 	displays             = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 	display              = []string{standardDisplay}
 
-	noEnrichment           = "None"
-	exclusiveEnrichments   = []string{noEnrichment}
-	multiClusterEnrichment = "multiCluster"
-	zoneEnrichment         = "zones"
-	hostEnrichment         = "hosts"
-	ownerEnrichment        = "owners"
-	resourceEnrichment     = "resources"
-	subnetLabelEnrichment  = "subnetLabels"
-	enrichments            = []string{multiClusterEnrichment, zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment, subnetLabelEnrichment}
-	enrichment             = []string{resourceEnrichment}
+	noEnrichment          = "None"
+	exclusiveEnrichments  = []string{noEnrichment}
+	clusterEnrichment     = "Cluster"
+	zoneEnrichment        = "Zone"
+	hostEnrichment        = "Host"
+	ownerEnrichment       = "Owner"
+	resourceEnrichment    = "Resource"
+	subnetLabelEnrichment = "SubnetLabel"
+	enrichments           = []string{clusterEnrichment, zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment, subnetLabelEnrichment}
+	enrichment            = []string{resourceEnrichment}
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
@@ -277,6 +277,8 @@ func updateTable() {
 					var fieldMatch string
 					if enr == resourceEnrichment {
 						fieldMatch = "K8S_Name"
+					} else if enr == subnetLabelEnrichment {
+						fieldMatch = "SubnetLabel"
 					} else {
 						fieldMatch = fmt.Sprintf("K8S_%s", enr)
 					}
