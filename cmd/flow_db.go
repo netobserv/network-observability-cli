@@ -96,16 +96,17 @@ func insertFlowToDB(db *sql.DB, buf []byte) error {
 	}
 	// Insert message into database
 	var flowSQL string
-	if flow["PktDropPackets"] != 0 && flow["DnsId"] != 0 {
+	switch {
+	case flow["PktDropPackets"] != 0 && flow["DnsId"] != 0:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, PktDropLatestDropCause, PktDropBytes, PktDropPackets, DnsId, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	} else if flow["PktDropPackets"] != 0 {
+	case flow["PktDropPackets"] != 0:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, PktDropLatestDropCause, PktDropBytes, PktDropPackets, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	} else if flow["DnsId"] != 0 {
+	case flow["DnsId"] != 0:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, DnsId, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	} else {
+	default:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	}
@@ -116,26 +117,27 @@ func insertFlowToDB(db *sql.DB, buf []byte) error {
 		return fmt.Errorf("error preparing SQL: %v", err.Error())
 	}
 
-	if flow["PktDropLatestDropCause"] != 0 && flow["DnsId"] != 0 {
+	switch {
+	case flow["PktDropLatestDropCause"] != 0 && flow["DnsId"] != 0:
 		_, err = statement.Exec(
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
 			flow["PktDropLatestDropCause"], flow["PktDropBytes"], flow["PktDropPackets"],
 			flow["DnsId"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
 			flow["TimeFlowRttNs"])
-	} else if flow["PktDropLatestDropCause"] != 0 {
+	case flow["PktDropLatestDropCause"] != 0:
 		_, err = statement.Exec(
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
 			flow["PktDropLatestDropCause"], flow["PktDropBytes"], flow["PktDropPackets"],
 			flow["TimeFlowRttNs"])
-	} else if flow["DnsId"] != 0 {
+	case flow["DnsId"] != 0:
 		_, err = statement.Exec(
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
 			flow["DnsId"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
 			flow["TimeFlowRttNs"])
-	} else {
+	default:
 		_, err = statement.Exec(
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
