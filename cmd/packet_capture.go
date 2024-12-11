@@ -36,20 +36,24 @@ func runPacketCapture(_ *cobra.Command, _ []string) {
 	for i := range ports {
 		go func(idx int) {
 			defer wg.Done()
-			runPacketCaptureOnAddr(ports[idx], nodes[idx])
+			err := runPacketCaptureOnAddr(ports[idx], nodes[idx])
+			if err != nil {
+				// Only fatal error are returned
+				log.Fatal(err)
+			}
 		}(i)
 	}
 	wg.Wait()
 }
 
-func runPacketCaptureOnAddr(port int, filename string) {
+func runPacketCaptureOnAddr(port int, filename string) error {
 	if len(filename) > 0 {
 		log.Infof("Starting Packet Capture for %s...", filename)
 	} else {
 		log.Infof("Starting Packet Capture...")
-		filename = strings.Replace(
+		filename = strings.ReplaceAll(
 			currentTime().UTC().Format(time.RFC3339),
-			":", "", -1) // get rid of offensive colons
+			":", "") // get rid of offensive colons
 	}
 
 	var f *os.File
@@ -82,8 +86,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		log.Error("StartCollector failed:", err.Error())
-		log.Fatal(err)
+		return fmt.Errorf("StartCollector failed: %w", err)
 	}
 	log.Trace("Started collector")
 
@@ -103,14 +106,14 @@ func runPacketCaptureOnAddr(port int, filename string) {
 
 		if stopReceived {
 			log.Trace("Stop received")
-			return
+			return nil
 		}
 
 		genericMap := config.GenericMap{}
 		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
 			log.Error("Error while parsing json", err)
-			return
+			return nil
 		}
 		if !captureStarted {
 			log.Tracef("Parsed genericMap %v", genericMap)
@@ -134,7 +137,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			b, err := base64.StdEncoding.DecodeString(data.(string))
 			if err != nil {
 				log.Error("Error while decoding data", err)
-				return
+				return nil
 			}
 
 			// write enriched data as interface
@@ -143,7 +146,7 @@ func runPacketCaptureOnAddr(port int, filename string) {
 			// then append packet to file using totalPackets as unique id
 			err = pw.WriteEnhancedPacketBlock(totalPackets, ts, b, types.EnhancedPacketOptions{})
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 		} else {
 			if !captureStarted {
@@ -155,23 +158,24 @@ func runPacketCaptureOnAddr(port int, filename string) {
 		}
 
 		// terminate capture if max bytes reached
-		totalBytes = totalBytes + int64(len(fp.GenericMap.Value))
+		totalBytes += int64(len(fp.GenericMap.Value))
 		if totalBytes > maxBytes {
 			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-			return
+			return nil
 		}
-		totalPackets = totalPackets + 1
+		totalPackets++
 
 		// terminate capture if max time reached
 		now := currentTime()
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
-			return
+			return nil
 		}
 
 		captureStarted = true
 	}
+	return nil
 }
 
 func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {

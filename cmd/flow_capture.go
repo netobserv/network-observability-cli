@@ -52,7 +52,11 @@ var (
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	go scanner()
+	go func() {
+		scanner()
+		// scanner returns on exit request
+		os.Exit(0)
+	}()
 
 	captureType = "Flow"
 	wg := sync.WaitGroup{}
@@ -60,20 +64,24 @@ func runFlowCapture(_ *cobra.Command, _ []string) {
 	for i := range ports {
 		go func(idx int) {
 			defer wg.Done()
-			runFlowCaptureOnAddr(ports[idx], nodes[idx])
+			err := runFlowCaptureOnAddr(ports[idx], nodes[idx])
+			if err != nil {
+				// Only fatal errors are returned here
+				log.Fatal(err)
+			}
 		}(i)
 	}
 	wg.Wait()
 }
 
-func runFlowCaptureOnAddr(port int, filename string) {
+func runFlowCaptureOnAddr(port int, filename string) error {
 	if len(filename) > 0 {
 		log.Infof("Starting Flow Capture for %s...", filename)
 	} else {
 		log.Infof("Starting Flow Capture...")
-		filename = strings.Replace(
+		filename = strings.ReplaceAll(
 			currentTime().UTC().Format(time.RFC3339),
-			":", "", -1) // get rid of offensive colons
+			":", "") // get rid of offensive colons
 	}
 
 	var f *os.File
@@ -99,8 +107,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		log.Error("StartCollector failed:", err.Error())
-		log.Fatal(err)
+		return fmt.Errorf("StartCollector failed: %w", err)
 	}
 	log.Trace("Started collector")
 
@@ -121,7 +128,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 
 		if stopReceived {
 			log.Trace("Stop received")
-			return
+			return nil
 		}
 		// parse and display flow async
 		go parseGenericMapAndDisplay(fp.GenericMap.Value)
@@ -138,17 +145,17 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		if !captureStarted {
 			log.Trace("Wrote flows to json")
 		}
 
 		// terminate capture if max bytes reached
-		totalBytes = totalBytes + int64(bytes)
+		totalBytes += int64(bytes)
 		if totalBytes > maxBytes {
 			log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-			return
+			return nil
 		}
 
 		// terminate capture if max time reached
@@ -156,11 +163,12 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
-			return
+			return nil
 		}
 
 		captureStarted = true
 	}
+	return nil
 }
 
 func parseGenericMapAndDisplay(bytes []byte) {
@@ -191,7 +199,7 @@ func manageFlowsDisplay(genericMap config.GenericMap) {
 	if len(regexes) > 0 {
 		// regexes may change during the render so we make a copy first
 		rCopy := make([]string, len(regexes))
-		copy(rCopy[:], regexes)
+		copy(rCopy, regexes)
 		filtered := []config.GenericMap{}
 		for _, flow := range lastFlows {
 			match := true
@@ -411,82 +419,86 @@ func scanner() {
 		if err != nil {
 			panic(err)
 		}
-		if key == keyboard.KeyCtrlC || stopReceived {
+		switch {
+		case key == keyboard.KeyCtrlC, stopReceived:
 			log.Info("Ctrl-C pressed, exiting program.")
-
 			// exit program
-			os.Exit(0)
-		} else if key == keyboard.KeyArrowUp {
-			flowsToShow = flowsToShow + 1
-		} else if key == keyboard.KeyArrowDown {
+			return
+		case key == keyboard.KeyArrowUp:
+			flowsToShow++
+		case key == keyboard.KeyArrowDown:
 			if flowsToShow > 10 {
-				flowsToShow = flowsToShow - 1
+				flowsToShow--
 			}
-		} else if key == keyboard.KeyArrowRight {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
-				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay) {
+		case key == keyboard.KeyArrowRight:
+			switch {
+			case slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
+				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay):
 				display = []string{rawDisplay}
-			} else if slices.Contains(display, rawDisplay) {
+			case slices.Contains(display, rawDisplay):
 				display = []string{standardDisplay}
-			} else if slices.Contains(display, standardDisplay) {
+			case slices.Contains(display, standardDisplay):
 				display = []string{pktDropDisplay}
-			} else if slices.Contains(display, pktDropDisplay) {
+			case slices.Contains(display, pktDropDisplay):
 				display = []string{dnsDisplay}
-			} else if slices.Contains(display, dnsDisplay) {
+			case slices.Contains(display, dnsDisplay):
 				display = []string{networkEventsDisplay}
-			} else if slices.Contains(display, networkEventsDisplay) {
+			case slices.Contains(display, networkEventsDisplay):
 				display = []string{rttDisplay}
-			} else if slices.Contains(display, rttDisplay) {
+			case slices.Contains(display, rttDisplay):
 				display = []string{rawDisplay}
-			} else {
+			default:
 				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 			}
-		} else if key == keyboard.KeyArrowLeft {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) &&
-				slices.Contains(display, networkEventsDisplay) {
+		case key == keyboard.KeyArrowLeft:
+			switch {
+			case slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
+				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay):
 				display = []string{rttDisplay}
-			} else if slices.Contains(display, rttDisplay) {
+			case slices.Contains(display, rttDisplay):
 				display = []string{dnsDisplay}
-			} else if slices.Contains(display, dnsDisplay) {
+			case slices.Contains(display, dnsDisplay):
 				display = []string{pktDropDisplay}
-			} else if slices.Contains(display, pktDropDisplay) {
+			case slices.Contains(display, pktDropDisplay):
 				display = []string{networkEventsDisplay}
-			} else if slices.Contains(display, networkEventsDisplay) {
+			case slices.Contains(display, networkEventsDisplay):
 				display = []string{standardDisplay}
-			} else if slices.Contains(display, standardDisplay) {
+			case slices.Contains(display, standardDisplay):
 				display = []string{rawDisplay}
-			} else {
+			default:
 				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
 			}
-		} else if key == keyboard.KeyPgup {
-			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
+		case key == keyboard.KeyPgup:
+			switch {
+			case slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment):
 				enrichement = []string{noEnrichment}
-			} else if slices.Contains(enrichement, noEnrichment) {
+			case slices.Contains(enrichement, noEnrichment):
 				enrichement = []string{resourceEnrichment}
-			} else if slices.Contains(enrichement, resourceEnrichment) {
+			case slices.Contains(enrichement, resourceEnrichment):
 				enrichement = []string{ownerEnrichment}
-			} else if slices.Contains(enrichement, ownerEnrichment) {
+			case slices.Contains(enrichement, ownerEnrichment):
 				enrichement = []string{hostEnrichment}
-			} else if slices.Contains(enrichement, hostEnrichment) {
+			case slices.Contains(enrichement, hostEnrichment):
 				enrichement = []string{zoneEnrichment}
-			} else {
+			default:
 				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
 			}
-		} else if key == keyboard.KeyPgdn {
-			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
+		case key == keyboard.KeyPgdn:
+			switch {
+			case slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment):
 				enrichement = []string{zoneEnrichment}
-			} else if slices.Contains(enrichement, zoneEnrichment) {
+			case slices.Contains(enrichement, zoneEnrichment):
 				enrichement = []string{hostEnrichment}
-			} else if slices.Contains(enrichement, hostEnrichment) {
+			case slices.Contains(enrichement, hostEnrichment):
 				enrichement = []string{ownerEnrichment}
-			} else if slices.Contains(enrichement, ownerEnrichment) {
+			case slices.Contains(enrichement, ownerEnrichment):
 				enrichement = []string{resourceEnrichment}
-			} else if slices.Contains(enrichement, resourceEnrichment) {
+			case slices.Contains(enrichement, resourceEnrichment):
 				enrichement = []string{noEnrichment}
-			} else {
+			default:
 				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
 			}
-		} else if key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2 {
+		case key == keyboard.KeyBackspace, key == keyboard.KeyBackspace2:
 			if len(regexes) > 0 {
 				lastIndex := len(regexes) - 1
 				if len(regexes[lastIndex]) > 0 {
@@ -495,14 +507,14 @@ func scanner() {
 					regexes = regexes[:lastIndex]
 				}
 			}
-		} else if key == keyboard.KeyEnter {
+		case key == keyboard.KeyEnter:
 			regexes = append(regexes, "")
-		} else {
+		default:
 			if len(regexes) == 0 {
 				regexes = []string{string(char)}
 			} else {
 				lastIndex := len(regexes) - 1
-				regexes[lastIndex] = regexes[lastIndex] + string(char)
+				regexes[lastIndex] += string(char)
 			}
 		}
 		lastRefresh = startupTime
