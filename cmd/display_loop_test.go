@@ -7,6 +7,7 @@ import (
 )
 
 func TestDisplayLoop(t *testing.T) {
+	enrichment.current = 0
 	assert.Equal(t, []string{"None"}, enrichment.getNames())
 	assert.Equal(t, []string{"SrcAddr", "SrcPort", "DstAddr", "DstPort"}, enrichment.getCols())
 

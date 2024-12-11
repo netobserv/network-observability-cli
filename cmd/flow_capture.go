@@ -35,7 +35,7 @@ var (
 	lastFlows   = []config.GenericMap{}
 
 	features = displayLoop{
-		current: 6,
+		current: featureDefaultIndex,
 		all: []displayLoopItem{
 			{name: "Raw"},
 			{name: "Standard", columns: []string{"Dir", "Interfaces", "Proto", "Dscp", "Bytes", "Packets"}},
@@ -48,7 +48,7 @@ var (
 	}
 
 	enrichment = displayLoop{
-		current: 4,
+		current: enrichmentDefaultIndex,
 		all: []displayLoopItem{
 			{name: "None", columns: []string{"SrcAddr", "SrcPort", "DstAddr", "DstPort"}},
 			{name: "Zone", columns: []string{"SrcZone", "DstZone"}},
@@ -58,6 +58,11 @@ var (
 			{group: []string{"Zone", "Host", "Owner", "Resource"}},
 		},
 	}
+)
+
+const (
+	featureDefaultIndex    = 6 // All feats.
+	enrichmentDefaultIndex = 4 // Resources
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {

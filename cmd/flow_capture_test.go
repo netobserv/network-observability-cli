@@ -54,6 +54,7 @@ func TestFlowTableMultipleFlows(t *testing.T) {
 
 	// set display to standard without enrichment
 	features.current = 1
+	enrichment.current = 0
 
 	// set time and bytes per flow
 	flowTime := 1704063600000

@@ -83,6 +83,8 @@ func setup() {
 	// clear filters and previous flows
 	regexes = []string{}
 	lastFlows = []config.GenericMap{}
+	features.current = featureDefaultIndex
+	enrichment.current = enrichmentDefaultIndex
 }
 
 func resetTime() {
