@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -35,20 +34,30 @@ var (
 	regexes     = []string{}
 	lastFlows   = []config.GenericMap{}
 
-	rawDisplay           = "Raw"
-	standardDisplay      = "Standard"
-	pktDropDisplay       = "PktDrop"
-	dnsDisplay           = "DNS"
-	rttDisplay           = "RTT"
-	networkEventsDisplay = "NetworkEvents"
-	display              = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
+	features = displayLoop{
+		current: 6,
+		all: []displayLoopItem{
+			{name: "Raw"},
+			{name: "Standard", columns: []string{"Dir", "Interfaces", "Proto", "Dscp", "Bytes", "Packets"}},
+			{name: "PktDrop", columns: []string{"DropBytes", "DropPackets", "DropState", "DropCause"}},
+			{name: "DNS", columns: []string{"DnsId", "DnsLatency", "DnsRCode", "DnsErrno"}},
+			{name: "RTT", columns: []string{"RTT"}},
+			{name: "NetworkEvents", columns: []string{"NetworkEvents"}},
+			{group: []string{"PktDrop", "DNS", "RTT", "NetworkEvents"}},
+		},
+	}
 
-	noEnrichment       = "None"
-	zoneEnrichment     = "Zone"
-	hostEnrichment     = "Host"
-	ownerEnrichment    = "Owner"
-	resourceEnrichment = "Resource"
-	enrichement        = []string{resourceEnrichment}
+	enrichment = displayLoop{
+		current: 4,
+		all: []displayLoopItem{
+			{name: "None", columns: []string{"SrcAddr", "SrcPort", "DstAddr", "DstPort"}},
+			{name: "Zone", columns: []string{"SrcZone", "DstZone"}},
+			{name: "Host", columns: []string{"SrcHostName", "SrcHostName"}},
+			{name: "Owner", columns: []string{"SrcOwnerName", "SrcOwnerType", "DstOwnerName", "DstOwnerType"}},
+			{name: "Resource", columns: []string{"SrcName", "SrcType", "DstName", "DstType"}},
+			{group: []string{"Zone", "Host", "Owner", "Resource"}},
+		},
+	}
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
@@ -263,11 +272,11 @@ func updateTable() {
 				fmt.Printf("Filters: %s\n", filter)
 			}
 			fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
-			fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
-			fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+			fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(features.getNames(), ","))
+			fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichment.getNames(), ","))
 		}
 
-		if slices.Contains(display, rawDisplay) {
+		if features.current == 0 { // Raw
 			fmt.Print("Raw flow logs:\n")
 			for _, flow := range lastFlows {
 				fmt.Printf("%v\n", flow)
@@ -284,87 +293,8 @@ func updateTable() {
 			}
 
 			// enrichment fields
-			if !slices.Contains(enrichement, noEnrichment) {
-				if slices.Contains(enrichement, zoneEnrichment) {
-					cols = append(cols,
-						"SrcZone",
-						"DstZone",
-					)
-				}
-
-				if slices.Contains(enrichement, hostEnrichment) {
-					cols = append(cols,
-						"SrcHostName",
-						"DstHostName",
-					)
-				}
-
-				if slices.Contains(enrichement, ownerEnrichment) {
-					cols = append(cols,
-						"SrcOwnerName",
-						"SrcOwnerType",
-						"DstOwnerName",
-						"DstOwnerType",
-					)
-				}
-
-				if slices.Contains(enrichement, resourceEnrichment) {
-					cols = append(cols,
-						"SrcName",
-						"SrcType",
-						"DstName",
-						"DstType",
-					)
-				}
-			} else {
-				cols = append(cols,
-					"SrcAddr",
-					"SrcPort",
-					"DstAddr",
-					"DstPort",
-				)
-			}
-
-			// standard / feature fields
-			if !slices.Contains(display, standardDisplay) {
-				if slices.Contains(display, pktDropDisplay) {
-					cols = append(cols,
-						"DropBytes",
-						"DropPackets",
-						"DropState",
-						"DropCause",
-					)
-				}
-
-				if slices.Contains(display, dnsDisplay) {
-					cols = append(cols,
-						"DnsId",
-						"DnsLatency",
-						"DnsRCode",
-						"DnsErrno",
-					)
-				}
-
-				if slices.Contains(display, rttDisplay) {
-					cols = append(cols,
-						"RTT",
-					)
-				}
-				if slices.Contains(display, networkEventsDisplay) {
-					cols = append(cols,
-						"NetworkEvents",
-					)
-				}
-			} else {
-				cols = append(cols,
-					"Dir",
-					"Interfaces",
-					"Proto",
-					"Dscp",
-					"Bytes",
-					"Packets",
-				)
-			}
+			cols = append(cols, enrichment.getCols()...)
+			cols = append(cols, features.getCols()...)
 
 			colInterfaces := make([]interface{}, len(cols))
 			for i, c := range cols {
@@ -431,73 +361,13 @@ func scanner() {
 				flowsToShow--
 			}
 		case key == keyboard.KeyArrowRight:
-			switch {
-			case slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
-				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay):
-				display = []string{rawDisplay}
-			case slices.Contains(display, rawDisplay):
-				display = []string{standardDisplay}
-			case slices.Contains(display, standardDisplay):
-				display = []string{pktDropDisplay}
-			case slices.Contains(display, pktDropDisplay):
-				display = []string{dnsDisplay}
-			case slices.Contains(display, dnsDisplay):
-				display = []string{networkEventsDisplay}
-			case slices.Contains(display, networkEventsDisplay):
-				display = []string{rttDisplay}
-			case slices.Contains(display, rttDisplay):
-				display = []string{rawDisplay}
-			default:
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
-			}
+			features.next()
 		case key == keyboard.KeyArrowLeft:
-			switch {
-			case slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
-				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay):
-				display = []string{rttDisplay}
-			case slices.Contains(display, rttDisplay):
-				display = []string{dnsDisplay}
-			case slices.Contains(display, dnsDisplay):
-				display = []string{pktDropDisplay}
-			case slices.Contains(display, pktDropDisplay):
-				display = []string{networkEventsDisplay}
-			case slices.Contains(display, networkEventsDisplay):
-				display = []string{standardDisplay}
-			case slices.Contains(display, standardDisplay):
-				display = []string{rawDisplay}
-			default:
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
-			}
+			features.prev()
 		case key == keyboard.KeyPgup:
-			switch {
-			case slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment):
-				enrichement = []string{noEnrichment}
-			case slices.Contains(enrichement, noEnrichment):
-				enrichement = []string{resourceEnrichment}
-			case slices.Contains(enrichement, resourceEnrichment):
-				enrichement = []string{ownerEnrichment}
-			case slices.Contains(enrichement, ownerEnrichment):
-				enrichement = []string{hostEnrichment}
-			case slices.Contains(enrichement, hostEnrichment):
-				enrichement = []string{zoneEnrichment}
-			default:
-				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
-			}
+			enrichment.prev()
 		case key == keyboard.KeyPgdn:
-			switch {
-			case slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment):
-				enrichement = []string{zoneEnrichment}
-			case slices.Contains(enrichement, zoneEnrichment):
-				enrichement = []string{hostEnrichment}
-			case slices.Contains(enrichement, hostEnrichment):
-				enrichement = []string{ownerEnrichment}
-			case slices.Contains(enrichement, ownerEnrichment):
-				enrichement = []string{resourceEnrichment}
-			case slices.Contains(enrichement, resourceEnrichment):
-				enrichement = []string{noEnrichment}
-			default:
-				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
-			}
+			enrichment.next()
 		case key == keyboard.KeyBackspace, key == keyboard.KeyBackspace2:
 			if len(regexes) > 0 {
 				lastIndex := len(regexes) - 1
