@@ -120,8 +120,13 @@ trap cleanup EXIT
 
 setup $command $options
 
+# convert options to string
+optionStr="${options//--/}"
+optionStr="${optionStr// /|}"
+
+# prepare commands & args
 runCommand="sleep infinity"
-execCommand="/network-observability-cli get-$command ${options:+"--options" "${options//--/}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
+execCommand="/network-observability-cli get-$command ${optionStr:+"--options" "${optionStr}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
 if [[ "$runBackground" == "true" ]]; then
   runCommand="$execCommand & $runCommand"
   execCommand=""
