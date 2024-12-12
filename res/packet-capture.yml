@@ -130,7 +130,7 @@ spec:
                       "name":"send",
                       "follows":"enrich"
                     }
-                ],
+                ]
               }
         volumeMounts:
             - name: bpf-kernel-debug
