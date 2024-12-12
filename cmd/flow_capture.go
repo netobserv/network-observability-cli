@@ -159,7 +159,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
-				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+				log.Infof("Capture reached %s, exiting now...", maxTime)
 				return
 			}
 		}
