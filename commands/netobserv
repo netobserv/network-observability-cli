@@ -154,5 +154,8 @@ if [ -n "${execCommand}" ]; then
     collector \
     -- $execCommand
 else 
-  echo "Background capture started. Use 'oc netobserv follow' to see its progress."
+  echo "Background capture started. Use:"
+  echo " - '${K8S_CLI_BIN} netobserv follow' to see the capture progress"
+  echo " - '${K8S_CLI_BIN} netobserv copy' to copy the generated files locally"
+  echo " - '${K8S_CLI_BIN} netobserv cleanup' to remove the netobserv components"
 fi
