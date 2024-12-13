@@ -154,5 +154,5 @@ if [ -n "${execCommand}" ]; then
     collector \
     -- $execCommand
 else 
-  echo "Background capture started. Use 'oc netobserv follow' to see it's progress."
+  echo "Background capture started. Use 'oc netobserv follow' to see its progress."
 fi
