@@ -15,7 +15,7 @@ require (
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	gopkg.in/yaml.v3 v3.0.1
 	sigs.k8s.io/e2e-framework v0.4.0
 )
