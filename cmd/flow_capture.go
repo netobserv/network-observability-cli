@@ -37,18 +37,24 @@ var (
 
 	rawDisplay           = "Raw"
 	standardDisplay      = "Standard"
-	pktDropDisplay       = "PktDrop"
-	dnsDisplay           = "DNS"
-	rttDisplay           = "RTT"
-	networkEventsDisplay = "NetworkEvents"
-	display              = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
+	exclusiveDisplays    = []string{rawDisplay, standardDisplay}
+	pktDropDisplay       = "pktDrop"
+	dnsDisplay           = "dnsTracking"
+	rttDisplay           = "flowRTT"
+	networkEventsDisplay = "networkEvents"
+	displays             = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
+	display              = []string{standardDisplay}
 
-	noEnrichment       = "None"
-	zoneEnrichment     = "Zone"
-	hostEnrichment     = "Host"
-	ownerEnrichment    = "Owner"
-	resourceEnrichment = "Resource"
-	enrichement        = []string{resourceEnrichment}
+	noEnrichment          = "None"
+	exclusiveEnrichments  = []string{noEnrichment}
+	clusterEnrichment     = "Cluster"
+	zoneEnrichment        = "Zone"
+	hostEnrichment        = "Host"
+	ownerEnrichment       = "Owner"
+	resourceEnrichment    = "Resource"
+	subnetLabelEnrichment = "SubnetLabel"
+	enrichments           = []string{clusterEnrichment, zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment, subnetLabelEnrichment}
+	enrichment            = []string{resourceEnrichment}
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
@@ -222,27 +228,6 @@ func manageFlowsDisplay(genericMap config.GenericMap) {
 	mutex.Unlock()
 }
 
-func toSize(fieldName string) int {
-	switch fieldName {
-	case "SrcName", "DstName", "SrcOwnerName", "DstOwnerName", "SrcHostName", "DstHostName":
-		return 45
-	case "DropCause", "SrcAddr", "DstAddr":
-		return 40
-	case "DropState":
-		return 20
-	case "Time", "Interfaces", "SrcZone", "DstZone", "NetworkEvents":
-		return 16
-	case "DropBytes", "DropPackets", "SrcOwnerType", "DstOwnerType":
-		return 12
-	case "Dir":
-		return 10
-	case "Dscp", "SrcType", "DstType":
-		return 8
-	default:
-		return 6
-	}
-}
-
 func updateTable() {
 	// don't refresh terminal too often to avoid blinking
 	now := currentTime()
@@ -261,12 +246,12 @@ func updateTable() {
 			}
 			if strings.Contains(options, "background=true") {
 				fmt.Printf("Showing last: %d\n", flowsToShow)
-				fmt.Printf("Display: %s\n", strings.Join(display, ","))
-				fmt.Printf("Enrichment: %s\n", strings.Join(enrichement, ","))
+				fmt.Printf("Display: %s\n", toShortTitleStr(display))
+				fmt.Printf("Enrichment: %s\n", toShortTitleStr(enrichment))
 			} else {
 				fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
-				fmt.Printf("Display: %s	Use Left / Right keyboard arrows to cycle views\n", strings.Join(display, ","))
-				fmt.Printf("Enrichment: %s	Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", strings.Join(enrichement, ","))
+				fmt.Printf("Display: %s Use Left / Right keyboard arrows to cycle views\n", toShortTitleStr(display))
+				fmt.Printf("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", toShortTitleStr(enrichment))
 			}
 		}
 
@@ -282,45 +267,31 @@ func updateTable() {
 			columnFmt := color.New(color.FgHiYellow).SprintfFunc()
 
 			// main field, always show the end time
-			cols := []string{
-				"Time",
+			colIDs := []string{
+				"EndTime",
 			}
 
 			// enrichment fields
-			if !slices.Contains(enrichement, noEnrichment) {
-				if slices.Contains(enrichement, zoneEnrichment) {
-					cols = append(cols,
-						"SrcZone",
-						"DstZone",
-					)
-				}
+			if !slices.Contains(enrichment, noEnrichment) {
+				for _, enr := range enrichment {
+					var fieldMatch string
+					if enr == resourceEnrichment {
+						fieldMatch = "K8S_Name"
+					} else if enr == subnetLabelEnrichment {
+						fieldMatch = "SubnetLabel"
+					} else {
+						fieldMatch = fmt.Sprintf("K8S_%s", enr)
+					}
 
-				if slices.Contains(enrichement, hostEnrichment) {
-					cols = append(cols,
-						"SrcHostName",
-						"DstHostName",
-					)
-				}
-
-				if slices.Contains(enrichement, ownerEnrichment) {
-					cols = append(cols,
-						"SrcOwnerName",
-						"SrcOwnerType",
-						"DstOwnerName",
-						"DstOwnerType",
-					)
-				}
-
-				if slices.Contains(enrichement, resourceEnrichment) {
-					cols = append(cols,
-						"SrcName",
-						"SrcType",
-						"DstName",
-						"DstType",
-					)
+					for _, col := range cfg.Columns {
+						if strings.Contains(col.Field, fieldMatch) {
+							colIDs = append(colIDs, col.ID)
+						}
+					}
 				}
 			} else {
-				cols = append(cols,
+				// TODO: add a new flag in the config to identify these as default non enriched fields
+				colIDs = append(colIDs,
 					"SrcAddr",
 					"SrcPort",
 					"DstAddr",
@@ -330,37 +301,15 @@ func updateTable() {
 
 			// standard / feature fields
 			if !slices.Contains(display, standardDisplay) {
-				if slices.Contains(display, pktDropDisplay) {
-					cols = append(cols,
-						"DropBytes",
-						"DropPackets",
-						"DropState",
-						"DropCause",
-					)
-				}
-
-				if slices.Contains(display, dnsDisplay) {
-					cols = append(cols,
-						"DnsId",
-						"DnsLatency",
-						"DnsRCode",
-						"DnsErrno",
-					)
-				}
-
-				if slices.Contains(display, rttDisplay) {
-					cols = append(cols,
-						"RTT",
-					)
-				}
-				if slices.Contains(display, networkEventsDisplay) {
-					cols = append(cols,
-						"NetworkEvents",
-					)
+				for _, col := range cfg.Columns {
+					if slices.Contains(display, col.Feature) {
+						colIDs = append(colIDs, col.ID)
+					}
 				}
 			} else {
-				cols = append(cols,
-					"Dir",
+				// TODO: add a new flag in the config to identify these as default feature fields
+				colIDs = append(colIDs,
+					"FlowDirection",
 					"Interfaces",
 					"Proto",
 					"Dscp",
@@ -369,9 +318,9 @@ func updateTable() {
 				)
 			}
 
-			colInterfaces := make([]interface{}, len(cols))
-			for i, c := range cols {
-				colInterfaces[i] = c
+			colInterfaces := make([]interface{}, len(colIDs))
+			for i, id := range colIDs {
+				colInterfaces[i] = ToTableColName(id)
 			}
 			tbl := table.New(colInterfaces...)
 			if outputBuffer != nil {
@@ -381,13 +330,13 @@ func updateTable() {
 
 			// append most recent rows
 			for _, flow := range lastFlows {
-				tbl.AddRow(ToTableRow(flow, cols)...)
+				tbl.AddRow(ToTableRow(flow, colIDs)...)
 			}
 
 			// inserting empty row ensure minimum column sizes
 			emptyRow := []interface{}{}
-			for _, col := range cols {
-				emptyRow = append(emptyRow, strings.Repeat("-", toSize(col)))
+			for _, id := range colIDs {
+				emptyRow = append(emptyRow, strings.Repeat("-", ToTableColWidth(id)))
 			}
 			tbl.AddRow(emptyRow...)
 
@@ -405,6 +354,30 @@ func updateTable() {
 			}
 		}
 	}
+}
+
+func cycleOption(selection []string, exclusiveOptions []string, options []string, incr int) []string {
+	allOptions := slices.Concat(exclusiveOptions, options)
+
+	var index int
+	if len(selection) == 1 {
+		index = slices.Index(allOptions, selection[0])
+		if index+incr < 0 || index+incr > len(allOptions)-1 {
+			index = -1
+		} else {
+			index += incr
+		}
+	} else if incr < 0 {
+		index = len(allOptions) - 1
+	}
+
+	if index != -1 {
+		selection = []string{allOptions[index]}
+	} else {
+		selection = slices.Clone(options)
+	}
+
+	return selection
 }
 
 func scanner() {
@@ -433,69 +406,13 @@ func scanner() {
 				flowsToShow = flowsToShow - 1
 			}
 		} else if key == keyboard.KeyArrowRight {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) &&
-				slices.Contains(display, rttDisplay) && slices.Contains(display, networkEventsDisplay) {
-				display = []string{rawDisplay}
-			} else if slices.Contains(display, rawDisplay) {
-				display = []string{standardDisplay}
-			} else if slices.Contains(display, standardDisplay) {
-				display = []string{pktDropDisplay}
-			} else if slices.Contains(display, pktDropDisplay) {
-				display = []string{dnsDisplay}
-			} else if slices.Contains(display, dnsDisplay) {
-				display = []string{networkEventsDisplay}
-			} else if slices.Contains(display, networkEventsDisplay) {
-				display = []string{rttDisplay}
-			} else if slices.Contains(display, rttDisplay) {
-				display = []string{rawDisplay}
-			} else {
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
-			}
+			display = cycleOption(display, exclusiveDisplays, displays, 1)
 		} else if key == keyboard.KeyArrowLeft {
-			if slices.Contains(display, pktDropDisplay) && slices.Contains(display, dnsDisplay) && slices.Contains(display, rttDisplay) &&
-				slices.Contains(display, networkEventsDisplay) {
-				display = []string{rttDisplay}
-			} else if slices.Contains(display, rttDisplay) {
-				display = []string{dnsDisplay}
-			} else if slices.Contains(display, dnsDisplay) {
-				display = []string{pktDropDisplay}
-			} else if slices.Contains(display, pktDropDisplay) {
-				display = []string{networkEventsDisplay}
-			} else if slices.Contains(display, networkEventsDisplay) {
-				display = []string{standardDisplay}
-			} else if slices.Contains(display, standardDisplay) {
-				display = []string{rawDisplay}
-			} else {
-				display = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
-			}
+			display = cycleOption(display, exclusiveDisplays, displays, -1)
 		} else if key == keyboard.KeyPgup {
-			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
-				enrichement = []string{noEnrichment}
-			} else if slices.Contains(enrichement, noEnrichment) {
-				enrichement = []string{resourceEnrichment}
-			} else if slices.Contains(enrichement, resourceEnrichment) {
-				enrichement = []string{ownerEnrichment}
-			} else if slices.Contains(enrichement, ownerEnrichment) {
-				enrichement = []string{hostEnrichment}
-			} else if slices.Contains(enrichement, hostEnrichment) {
-				enrichement = []string{zoneEnrichment}
-			} else {
-				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
-			}
+			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, 1)
 		} else if key == keyboard.KeyPgdn {
-			if slices.Contains(enrichement, zoneEnrichment) && slices.Contains(enrichement, hostEnrichment) && slices.Contains(enrichement, ownerEnrichment) {
-				enrichement = []string{zoneEnrichment}
-			} else if slices.Contains(enrichement, zoneEnrichment) {
-				enrichement = []string{hostEnrichment}
-			} else if slices.Contains(enrichement, hostEnrichment) {
-				enrichement = []string{ownerEnrichment}
-			} else if slices.Contains(enrichement, ownerEnrichment) {
-				enrichement = []string{resourceEnrichment}
-			} else if slices.Contains(enrichement, resourceEnrichment) {
-				enrichement = []string{noEnrichment}
-			} else {
-				enrichement = []string{zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment}
-			}
+			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, -1)
 		} else if key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2 {
 			if len(regexes) > 0 {
 				lastIndex := len(regexes) - 1

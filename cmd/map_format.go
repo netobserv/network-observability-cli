@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,6 +13,20 @@ import (
 
 const (
 	emptyText = "n/a"
+)
+
+var (
+	// dictionnary to shorten long keywords at display
+	replacer = strings.NewReplacer(
+		"Source", "Src",
+		"Destination", "Dst",
+		"Direction", "Dir",
+		"MultiCluster", "Clusters",
+		"Response Code", "RCode",
+		"PktDrop", "Drop",
+		"DnsTracking", "DNS",
+		"FlowRTT", "RTT",
+	)
 )
 
 func toCount(genericMap config.GenericMap, fieldName string) interface{} {
@@ -385,7 +400,7 @@ func toDSCP(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
-func toText(genericMap config.GenericMap, fieldName string) interface{} {
+func toValue(genericMap config.GenericMap, fieldName string) interface{} {
 	v, ok := genericMap[fieldName]
 	if ok {
 		if reflect.TypeOf(v).Kind() == reflect.Slice {
@@ -416,67 +431,82 @@ func toTimeString(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func ToTableRow(genericMap config.GenericMap, cols []string) []interface{} {
+func toTitles(strs []string) []string {
+	titleCaseStrs := []string{}
+	for _, s := range strs {
+		titleCaseStrs = append(titleCaseStrs, fmt.Sprintf("%s%s", strings.ToUpper(s[:1]), s[1:]))
+	}
+	return titleCaseStrs
+}
+
+func toShortTitleStr(strs []string) string {
+	return replacer.Replace(strings.Join(toTitles(strs), ","))
+}
+
+func ToTableColName(id string) string {
+	name := id
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
+	if colIndex != -1 {
+		col := cfg.Columns[colIndex]
+		if col.Group != "" && !strings.Contains(col.Name, col.Group) {
+			name = fmt.Sprintf("%s %s", col.Group, col.Name)
+		} else {
+			name = col.Name
+		}
+	}
+	return replacer.Replace(name)
+}
+
+func ToTableColWidth(id string) int {
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
+	if colIndex != -1 {
+		return cfg.Columns[colIndex].Width
+	}
+	return 6
+}
+
+func toFieldName(id string) string {
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
+	if colIndex != -1 {
+		return cfg.Columns[colIndex].Field
+	}
+	return ""
+}
+
+func ToTableRow(genericMap config.GenericMap, colIDs []string) []interface{} {
 	row := []interface{}{}
 
-	for _, col := range cols {
-		// convert field name / value accordingly
-		switch col {
-		case "Time":
+	for _, colID := range colIDs {
+		// convert column id to its field accordingly
+		fieldName := toFieldName(colID)
+
+		switch colID {
+		case "EndTime":
 			if captureType == "Flow" {
 				row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
 			} else {
 				row = append(row, toTimeString(genericMap, "Time"))
 			}
-		case "SrcZone":
-			row = append(row, toText(genericMap, "SrcK8S_Zone"))
-		case "DstZone":
-			row = append(row, toText(genericMap, "DstK8S_Zone"))
-		case "SrcHostName":
-			row = append(row, toText(genericMap, "SrcK8S_HostName"))
-		case "DstHostName":
-			row = append(row, toText(genericMap, "DstK8S_HostName"))
-		case "SrcOwnerName":
-			row = append(row, toText(genericMap, "SrcK8S_OwnerName"))
-		case "SrcOwnerType":
-			row = append(row, toText(genericMap, "SrcK8S_OwnerType"))
-		case "DstOwnerName":
-			row = append(row, toText(genericMap, "DstK8S_OwnerName"))
-		case "DstOwnerType":
-			row = append(row, toText(genericMap, "DstK8S_OwnerType"))
-		case "SrcName":
-			row = append(row, toText(genericMap, "SrcK8S_Name"))
-		case "SrcType":
-			row = append(row, toText(genericMap, "SrcK8S_Type"))
-		case "DstName":
-			row = append(row, toText(genericMap, "DstK8S_Name"))
-		case "DstType":
-			row = append(row, toText(genericMap, "DstK8S_Type"))
-		case "Dir":
-			row = append(row, toDirection(genericMap, "FlowDirection"))
+		// special cases where autocompletes are involved
+		case "FlowDirection":
+			row = append(row, toDirection(genericMap, fieldName))
 		case "Proto":
-			row = append(row, toProto(genericMap, "Proto"))
+			row = append(row, toProto(genericMap, fieldName))
 		case "Dscp":
-			row = append(row, toDSCP(genericMap, "Dscp"))
+			row = append(row, toDSCP(genericMap, fieldName))
+		// bytes count
 		case "Bytes":
 			row = append(row, toCount(genericMap, "Bytes"))
-		case "DropBytes":
+		case "PktDropBytes":
 			row = append(row, toCount(genericMap, "PktDropBytes"))
-		case "DropPackets":
-			row = append(row, toText(genericMap, "PktDropPackets"))
-		case "DropState":
-			row = append(row, toText(genericMap, "PktDropLatestState"))
-		case "DropCause":
-			row = append(row, toText(genericMap, "PktDropLatestDropCause"))
-		case "DnsLatency":
-			row = append(row, toDuration(genericMap, "DnsLatencyMs", time.Millisecond))
-		case "DnsRCode":
-			row = append(row, toText(genericMap, "DnsFlagsResponseCode"))
-		case "RTT":
-			row = append(row, toDuration(genericMap, "TimeFlowRttNs", time.Nanosecond))
+		// duration parsing
+		case "DNSLatency":
+			row = append(row, toDuration(genericMap, fieldName, time.Millisecond))
+		case "TimeFlowRttMs":
+			row = append(row, toDuration(genericMap, fieldName, time.Nanosecond))
 		default:
 			// else simply pick field value as text from column name
-			row = append(row, toText(genericMap, col))
+			row = append(row, toValue(genericMap, fieldName))
 		}
 	}
 

@@ -173,6 +173,10 @@ install-commands: commands ## Generate plugins and add them to /usr/bin/
 docs: oc-commands ## Generate asciidoc
 	./scripts/generate-doc.sh
 
+.PHONY: update-config
+update-config: ## Update config from operator repo
+	./scripts/update-config.sh
+
 .PHONY: release
 release: clean ## Generate tar.gz containing krew plugin and display krew updated index
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
