@@ -21,6 +21,17 @@ skipCleanup=false
 K8S_CLI_BIN_PATH=$(which oc 2>/dev/null || which kubectl 2>/dev/null)
 K8S_CLI_BIN=$(basename "${K8S_CLI_BIN_PATH}")
 
+# namespace for this run
+namespace="netobserv-cli"
+
+if [ -n "$NETOBSERV_NAMESPACE" ]; then
+  echo "using custom namespace $NETOBSERV_NAMESPACE"
+  namespace="$NETOBSERV_NAMESPACE"
+fi
+
+# collector target host
+targetHost="collector.$namespace.svc.cluster.local"
+
 # eBPF agent image to use
 agentImg="quay.io/netobserv/netobserv-ebpf-agent:main"
 
@@ -36,6 +47,7 @@ function loadYAMLs() {
   if [ -f ./res/namespace.yml ]; then
     namespaceYAML="$(cat ./res/namespace.yml)"
   fi
+  namespaceYAML="${namespaceYAML/"{{NAME}}"/${namespace}}"
 
   saYAML='
     saYAMLContent
@@ -43,6 +55,7 @@ function loadYAMLs() {
   if [ -f ./res/service-account.yml ]; then
     saYAML="$(cat ./res/service-account.yml)"
   fi
+  saYAML="${saYAML//"{{NAMESPACE}}"/${namespace}}"
 
   flowAgentYAML='
     flowAgentYAMLContent
@@ -50,6 +63,8 @@ function loadYAMLs() {
   if [ -f ./res/flow-capture.yml ]; then
     flowAgentYAML="$(cat ./res/flow-capture.yml)"
   fi
+  flowAgentYAML="${flowAgentYAML/"{{NAMESPACE}}"/${namespace}}"
+  flowAgentYAML="${flowAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   flowAgentYAML="${flowAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   packetAgentYAML='
@@ -58,6 +73,8 @@ function loadYAMLs() {
   if [ -f ./res/packet-capture.yml ]; then
     packetAgentYAML="$(cat ./res/packet-capture.yml)"
   fi
+  packetAgentYAML="${packetAgentYAML/"{{NAMESPACE}}"/${namespace}}"
+  packetAgentYAML="${packetAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   packetAgentYAML="${packetAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   collectorServiceYAML='
@@ -66,6 +83,7 @@ function loadYAMLs() {
   if [ -f ./res/collector-service.yml ]; then
     collectorServiceYAML="$(cat ./res/collector-service.yml)"
   fi
+  collectorServiceYAML="${collectorServiceYAML/"{{NAMESPACE}}"/${namespace}}"
 }
 
 function clusterIsReady() {
@@ -83,7 +101,7 @@ function clusterIsReady() {
 
 function namespaceFound() {
   # ensure namespace doesn't exist, else we should not override content
-  if ${K8S_CLI_BIN} get namespace netobserv-cli --ignore-not-found=true | grep -q "netobserv-cli"; then
+  if ${K8S_CLI_BIN} get namespace "$namespace" --ignore-not-found=true | grep -q "$namespace"; then
     return 0
   else
     return 1
@@ -110,7 +128,7 @@ function setup {
   fi
 
   if namespaceFound; then
-    printf "netobserv-cli namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" >&2
+    printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
     skipCleanup="true"
     exit 1
   fi
@@ -119,7 +137,7 @@ function setup {
   loadYAMLs
 
   # apply yamls
-  echo "creating netobserv-cli namespace"
+  echo "creating $namespace namespace"
   echo "$namespaceYAML" | ${K8S_CLI_BIN} apply -f -
 
   echo "creating service account"
@@ -152,28 +170,28 @@ function setup {
 }
 
 function follow {
-  ${K8S_CLI_BIN} logs collector -n netobserv-cli -f
+  ${K8S_CLI_BIN} logs collector -n "$namespace" -f
 }
 
 function copyOutput {
   echo "Copying collector output files..."
   mkdir -p ./output
-  ${K8S_CLI_BIN} cp -n netobserv-cli collector:output ./output
+  ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
 }
 
 function deleteDaemonset {
   printf "\nDeleting daemonset... "
-  ${K8S_CLI_BIN} delete daemonset netobserv-cli -n netobserv-cli --ignore-not-found=true
+  ${K8S_CLI_BIN} delete daemonset netobserv-cli -n "$namespace" --ignore-not-found=true
 }
 
 function deletePod {
   printf "\nDeleting pod... "
-  ${K8S_CLI_BIN} delete pod collector -n netobserv-cli --ignore-not-found=true
+  ${K8S_CLI_BIN} delete pod collector -n "$namespace" --ignore-not-found=true
 }
 
 function deleteNamespace {
   printf "\nDeleting namespace... "
-  ${K8S_CLI_BIN} delete namespace netobserv-cli --ignore-not-found=true
+  ${K8S_CLI_BIN} delete namespace "$namespace" --ignore-not-found=true
 }
 
 function cleanup {
@@ -593,6 +611,6 @@ function check_args_and_apply() {
   done
 
   ${K8S_CLI_BIN} apply -f "$2"
-  ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n netobserv-cli --timeout 60s
+  ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
   rm -rf ${MANIFEST_OUTPUT_PATH}
 }

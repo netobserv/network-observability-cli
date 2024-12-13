@@ -1,7 +1,7 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: netobserv-cli
+  name: "{{NAME}}"
   labels:
     app: netobserv
     pod-security.kubernetes.io/enforce: privileged
