@@ -397,58 +397,58 @@ function edit_manifest() {
     yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
     ;;
   "filter_direction")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DIRECTION\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.direction = \"$2\")| tostring)" "$3"
     ;;
   "filter_cidr")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_IP_CIDR\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ip_cidr = \"$2\")| tostring)" "$3"
     ;;
   "filter_protocol")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PROTOCOL\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.protocol = \"$2\")| tostring)" "$3"
     ;;
   "filter_sport")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_SOURCE_PORT\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port = $2)| tostring)" "$3"
     ;;
   "filter_dport")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DESTINATION_PORT\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port = $2)| tostring)" "$3"
     ;;
   "filter_port")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PORT\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port = $2)| tostring)" "$3"
     ;;
   "filter_sport_range")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_SOURCE_PORT_RANGE\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_dport_range")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DESTINATION_PORT_RANGE\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_port_range")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PORT_RANGE\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_sports")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_SOURCE_PORTS\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_ports = \"$2\")| tostring)" "$3"
     ;;
-  "filter_dportS")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DESTINATION_PORTS\").value|=\"$2\"" "$3"
+  "filter_dports")
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_ports = \"$2\")| tostring)" "$3"
     ;;
   "filter_ports")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PORTS\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ports = \"$2\")| tostring)" "$3"
     ;;
   "filter_icmp_type")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ICMP_TYPE\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_type = $2)| tostring)" "$3"
     ;;
   "filter_icmp_code")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ICMP_CODE\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_code = $2)| tostring)" "$3"
     ;;
   "filter_peer_ip")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_PEER_IP\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_ip = \"$2\")| tostring)" "$3"
     ;;
   "filter_action")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_ACTION\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.action = \"$2\")| tostring)" "$3"
     ;;
   "filter_tcp_flags")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_TCP_FLAGS\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.tcp_flags = \"$2\")| tostring)" "$3"
     ;;
   "filter_pkt_drops")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FILTER_DROPS\").value|=\"$2\"" "$3"
+    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.drops = $2)| tostring)" "$3"
     ;;
   "filter_regexes")
     copyFLPConfig "$3"
