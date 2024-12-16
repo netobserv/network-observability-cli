@@ -1,8 +1,8 @@
 #!/bin/bash
 source "./scripts/functions.sh"
+source "./scripts/dependencies_check.sh"
 
 set +u
-
 # e2e skips inputs
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
@@ -72,7 +72,11 @@ function packets() {
   esac
 }
 
-case "$1" in  
+required_yq_version="v0.0.0"
+supported_archs=""
+check_dependencies "$required_yq_version" "$supported_archs"
+
+case "$1" in
 "help")
     # display Help
     echo

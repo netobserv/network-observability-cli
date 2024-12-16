@@ -155,6 +155,8 @@ commands: ## Generate either oc or kubectl plugins and add them to build folder
 	PULL_POLICY=$(PULL_POLICY) \
 	AGENT_IMAGE=$(AGENT_IMAGE) \
 	VERSION=$(VERSION) \
+	REQUIRED_YQ_VERSION=$(YQ_VERSION) \
+	SUPPORTED_ARCHS=$(MULTIARCH_TARGETS) \
 	./scripts/inject.sh
 
 .PHONY: kubectl-commands

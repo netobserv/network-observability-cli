@@ -123,7 +123,7 @@ function getSubnets() {
   yaml="${MANIFEST_OUTPUT_PATH}/${CLUSTER_CONFIG}"
   echo "$installConfig" >${yaml}
 
-  machines=$(yq e -oj '.networking.machineNetwork[] | select(has("cidr")).cidr' "$yaml")
+  machines=$("$YQ_BIN" e -oj '.networking.machineNetwork[] | select(has("cidr")).cidr' "$yaml")
   if [ "${#machines}" -gt 0 ]; then
     sn["Machines"]=$machines
   fi
@@ -133,12 +133,12 @@ function getSubnets() {
   yaml="${MANIFEST_OUTPUT_PATH}/${NETWORK_CONFIG}"
   echo "$networkConfig" >${yaml}
 
-  pods=$(yq e -oj '.spec.clusterNetwork[] | select(has("cidr")).cidr' "$yaml")
+  pods=$("$YQ_BIN" e -oj '.spec.clusterNetwork[] | select(has("cidr")).cidr' "$yaml")
   if [ "${#pods}" -gt 0 ]; then
     sn["Pods"]=$pods
   fi
 
-  services=$(yq e -oj '.spec.serviceNetwork[] | select(.)' "$yaml")
+  services=$("$YQ_BIN" e -oj '.spec.serviceNetwork[] | select(.)' "$yaml")
   if [ "${#services}" -gt 0 ]; then
     sn["Services"]=$services
   fi
@@ -167,6 +167,10 @@ function setup {
     exit 1
   fi
 
+  if [ -z "${YQ_BIN+x}" ]; then
+    printf 'yq tools must be installed for proper usage of netobserv cli\n' >&2
+    exit 1
+  fi
   if namespaceFound; then
     printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
     skipCleanup="true"
@@ -326,7 +330,7 @@ function packets_usage {
 
 # get current config and save it to temp file
 function copyFLPConfig {
-  jsonContent=$(yq e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
+  jsonContent=$("$YQ_BIN" e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
   # json temp file location is set as soon as this function is called
   json="${MANIFEST_OUTPUT_PATH}/${CONFIG_JSON_TEMP}"
   echo "$jsonContent" >${json}
@@ -339,7 +343,7 @@ function updateFLPConfig {
   jsonContent=${jsonContent//\"/\\\"}
 
   # update FLP_CONFIG env
-  yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$2"
+  "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$2"
 }
 
 function edit_manifest() {
@@ -347,19 +351,19 @@ function edit_manifest() {
   echo "opt: $1, evalue: $2"
   case "$1" in
   "interfaces")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
     ;;
   "pktdrop_enable")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$3"
     ;;
   "dns_enable")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_DNS_TRACKING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_DNS_TRACKING\").value|=\"$2\"" "$3"
     ;;
   "rtt_enable")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$3"
     ;;
   "network_events_enable")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
     ;;
   "get_subnets")
     if [[ "$2" == "true" ]]; then
@@ -370,91 +374,91 @@ function edit_manifest() {
         copyFLPConfig "$3"
 
         # get network enrich stage
-        enrichIndex=$(yq e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
-        enrichContent=$(yq e -oj ".parameters[$enrichIndex]" "$json")
+        enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
+        enrichContent=$("$YQ_BIN" e -oj ".parameters[$enrichIndex]" "$json")
         enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
         echo "$enrichContent" >${enrichJson}
 
         # add rules to network
-        yq e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"SrcAddr\",\"output\":\"SrcSubnetLabel\"}}" "$enrichJson"
-        yq e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"DstAddr\",\"output\":\"DstSubnetLabel\"}}" "$enrichJson"
+        "$YQ_BIN" e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"SrcAddr\",\"output\":\"SrcSubnetLabel\"}}" "$enrichJson"
+        "$YQ_BIN" e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"DstAddr\",\"output\":\"DstSubnetLabel\"}}" "$enrichJson"
 
         # add subnetLabels to network
-        yq e -oj --inplace ".transform.network.subnetLabels = []" "$enrichJson"
+        "$YQ_BIN" e -oj --inplace ".transform.network.subnetLabels = []" "$enrichJson"
         for key in "${!subnets[@]}"; do
-          yq e -oj --inplace ".transform.network.subnetLabels += {\"name\":\"$key\",\"cidrs\":[${subnets[$key]}]}" "$enrichJson"
+          "$YQ_BIN" e -oj --inplace ".transform.network.subnetLabels += {\"name\":\"$key\",\"cidrs\":[${subnets[$key]}]}" "$enrichJson"
         done
 
         # override network
         enrichJsonStr=$(cat $enrichJson)
-        yq e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
+        "$YQ_BIN" e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
 
         updateFLPConfig "$json" "$3"
       fi
     fi
     ;;
   "filter_enable")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
     ;;
   "filter_direction")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.direction = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.direction = \"$2\")| tostring)" "$3"
     ;;
   "filter_cidr")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ip_cidr = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ip_cidr = \"$2\")| tostring)" "$3"
     ;;
   "filter_protocol")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.protocol = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.protocol = \"$2\")| tostring)" "$3"
     ;;
   "filter_sport")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port = $2)| tostring)" "$3"
     ;;
   "filter_dport")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port = $2)| tostring)" "$3"
     ;;
   "filter_port")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port = $2)| tostring)" "$3"
     ;;
   "filter_sport_range")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port_range = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_dport_range")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port_range = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_port_range")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port_range = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port_range = \"$2\")| tostring)" "$3"
     ;;
   "filter_sports")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_ports = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_ports = \"$2\")| tostring)" "$3"
     ;;
   "filter_dports")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_ports = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_ports = \"$2\")| tostring)" "$3"
     ;;
   "filter_ports")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ports = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ports = \"$2\")| tostring)" "$3"
     ;;
   "filter_icmp_type")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_type = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_type = $2)| tostring)" "$3"
     ;;
   "filter_icmp_code")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_code = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_code = $2)| tostring)" "$3"
     ;;
   "filter_peer_ip")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_ip = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_ip = \"$2\")| tostring)" "$3"
     ;;
   "filter_action")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.action = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.action = \"$2\")| tostring)" "$3"
     ;;
   "filter_tcp_flags")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.tcp_flags = \"$2\")| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.tcp_flags = \"$2\")| tostring)" "$3"
     ;;
   "filter_pkt_drops")
-    yq e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.drops = $2)| tostring)" "$3"
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.drops = $2)| tostring)" "$3"
     ;;
   "filter_regexes")
     copyFLPConfig "$3"
 
     # remove send step
-    yq e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
+    "$YQ_BIN" e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
 
     # define rules from arg
     IFS=',' read -ra regexes <<<"$2"
@@ -472,21 +476,21 @@ function edit_manifest() {
     )
 
     # add filter param & pipeline
-    yq e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}]}}}" "$json"
-    yq e -oj --inplace ".pipeline += {\"name\":\"filter\",\"follows\":\"enrich\"}" "$json"
+    "$YQ_BIN" e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}]}}}" "$json"
+    "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"filter\",\"follows\":\"enrich\"}" "$json"
 
     # add send step back
-    yq e -oj --inplace ".pipeline += {\"name\":\"send\",\"follows\":\"filter\"}" "$json"
+    "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"send\",\"follows\":\"filter\"}" "$json"
 
     updateFLPConfig "$json" "$3"
     ;;
   "log_level")
-    yq e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
     ;;
   "node_selector")
     key=${2%:*}
     val=${2#*:}
-    yq e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
     ;;
   esac
 }
