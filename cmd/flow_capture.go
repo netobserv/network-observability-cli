@@ -59,7 +59,9 @@ var (
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
 	go func() {
-		scanner()
+		if !scanner() {
+			return
+		}
 		// scanner returns on exit request
 		os.Exit(0)
 	}()
@@ -388,10 +390,10 @@ func cycleOption(selection []string, exclusiveOptions []string, options []string
 	return selection
 }
 
-func scanner() {
+func scanner() bool {
 	if err := keyboard.Open(); err != nil {
 		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
-		return
+		return false
 	}
 	defer func() {
 		_ = keyboard.Close()
@@ -406,7 +408,7 @@ func scanner() {
 		case key == keyboard.KeyCtrlC, stopReceived:
 			log.Info("Ctrl-C pressed, exiting program.")
 			// exit program
-			return
+			return true
 		case key == keyboard.KeyArrowUp:
 			flowsToShow++
 		case key == keyboard.KeyArrowDown:
