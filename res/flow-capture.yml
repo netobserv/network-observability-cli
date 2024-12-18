@@ -131,6 +131,9 @@ spec:
             - name: var-run-ovs
               mountPath: /var/run/openvswitch
               mountPropagation: Bidirectional
+            - name: var-run-netns
+              mountPath: /var/run/netns
+              mountPropagation: Bidirectional
       volumes:
         - name: bpf-kernel-debug
           hostPath:
@@ -144,3 +147,7 @@ spec:
           hostPath:
             path: /var/run/openvswitch
             type: DirectoryOrCreate
+        - name: var-run-netns
+          hostPath:
+            path: /var/run/netns
+            type: Directory
