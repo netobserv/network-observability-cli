@@ -3,6 +3,8 @@
 set +u
 
 function check_dependencies() {
+  echo "Checking dependencies... "
+
   LOCAL_YQ="/tmp/yq"
   if [ -x "$LOCAL_YQ" ]; then
     YQ_BIN=$LOCAL_YQ
@@ -26,7 +28,7 @@ function check_dependencies() {
     echo "Installing yq version $required_yq_version. Found version $current_yq_version."
     install_yq "$2"
   else
-    echo "'yq' is already up to date (version $current_yq_version)."
+    echo "'yq' is up to date (version $current_yq_version)."
   fi
 }
 
