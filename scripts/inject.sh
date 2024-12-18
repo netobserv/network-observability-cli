@@ -1,6 +1,9 @@
 #!/bin/bash
+set -x
+
 cp -a ./commands/. ./tmp
 cp ./scripts/functions.sh ./tmp/functions.sh
+cp ./scripts/dependencies_check.sh ./tmp/dependencies_check.sh
 
 if [ -z "$IMAGE" ]; then
   echo "image not provided, keeping current one"
@@ -28,6 +31,20 @@ if [ -z "$VERSION" ]; then
 else
   echo "updating CLI version to $VERSION"
   sed -i.bak "s/^version=.*/version=\"$VERSION\"/" ./tmp/netobserv
+fi
+
+if [ -z "$REQUIRED_YQ_VERSION" ]; then
+  echo "require yq version is not set, keeping the current version"
+else
+  echo "updating dependencies_check to check for $REQUIRED_YQ_VERSION"
+  sed -i.bak "s/^required_yq_version=.*/required_yq_version=\"$REQUIRED_YQ_VERSION\"/" ./tmp/netobserv
+fi
+
+if [ -z "$SUPPORTED_ARCHS" ]; then
+  echo "list of supported archs is not set"
+else
+  echo "updating dependencies_check with $SUPPORTED_ARCHS values"
+  sed -i.bak "s/^supported_archs=.*/supported_archs=\"$SUPPORTED_ARCHS\"/" ./tmp/netobserv
 fi
 
 prefix=
@@ -65,7 +82,12 @@ d
 }' ./tmp/functions.sh
 
 # inject updated functions to commands
-sed -i.bak '/source.*/{r ./tmp/functions.sh
+sed -i.bak '/^source "\.\/scripts\/functions\.sh"/{r ./tmp/functions.sh
+d
+}' ./tmp/"$prefix"netobserv
+
+# inject updated dependencies_check to commands
+sed -i.bak '/^source "\.\/scripts\/dependencies_check\.sh"/{r ./tmp/dependencies_check.sh
 d
 }' ./tmp/"$prefix"netobserv
 
@@ -78,6 +100,7 @@ else
 fi
 
 rm ./tmp/functions.sh
+rm ./tmp/dependencies_check.sh
 rm ./tmp/*.bak
 
 if [ -z "$DIST_DIR" ]; then
