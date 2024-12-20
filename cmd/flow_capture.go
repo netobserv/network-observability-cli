@@ -390,6 +390,7 @@ func cycleOption(selection []string, exclusiveOptions []string, options []string
 	return selection
 }
 
+// scanner returns true in case of normal exit (end of program execution) or false in case of error
 func scanner() bool {
 	if err := keyboard.Open(); err != nil {
 		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
