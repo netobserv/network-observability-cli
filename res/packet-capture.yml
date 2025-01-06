@@ -17,6 +17,8 @@ spec:
       serviceAccountName: netobserv-cli
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+      - operator: Exists
       containers:
       - name: netobserv-cli
         image: "{{AGENT_IMAGE_URL}}"
