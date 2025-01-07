@@ -431,18 +431,6 @@ func toTimeString(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func toTitles(strs []string) []string {
-	titleCaseStrs := []string{}
-	for _, s := range strs {
-		titleCaseStrs = append(titleCaseStrs, fmt.Sprintf("%s%s", strings.ToUpper(s[:1]), s[1:]))
-	}
-	return titleCaseStrs
-}
-
-func toShortTitleStr(strs []string) string {
-	return replacer.Replace(strings.Join(toTitles(strs), ","))
-}
-
 func ToTableColName(id string) string {
 	name := id
 	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
