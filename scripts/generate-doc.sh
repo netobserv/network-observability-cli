@@ -60,7 +60,7 @@ $ oc netobserv flows --enable_pktdrop=true  --enable_rtt=true --enable_filter=tr
 
 # Packet table
 echo "== Packets capture options
-You can filter on port and protocol for packet capture data. 
+You can filter packet capture data as same as flow capture using the filters. However, the features are not available here.
 
 .\`oc netobserv packets\` syntax
 [source,terminal]
@@ -78,6 +78,28 @@ echo "
 [source,terminal]
 ----
 $ oc netobserv packets --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
+----"
+
+# Metrics table
+echo "== Metrics capture options
+You can enable features and use filters on metrics capture as same as flow capture. The generated graphs will fill accordingly in the dashboard.
+
+.\`oc netobserv metrics\` syntax
+[source,terminal]
+----
+$ oc netobserv metrics [<option>]
+----
+[cols=\"1,1,1\",options=\"header\"]
+|===
+| Option | Description | Default"
+./build/oc-netobserv metrics help
+echo -e "|==="
+# Metrics example
+echo "
+.Example running metrics capture for TCP drops:
+[source,terminal]
+----
+$ oc netobserv metrics --enable_pktdrop=true --enable_filter=true --protocol=TCP 
 ----"
 } >> $ADOC
 

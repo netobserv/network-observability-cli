@@ -91,9 +91,11 @@ function metrics() {
   esac
 }
 
-required_yq_version="v0.0.0"
-supported_archs=""
-check_dependencies "$required_yq_version" "$supported_archs"
+if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
+  required_yq_version="v0.0.0"
+  supported_archs=""
+  check_dependencies "$required_yq_version" "$supported_archs"
+fi
 
 case "$1" in
 "help")
