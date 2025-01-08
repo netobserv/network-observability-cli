@@ -354,7 +354,6 @@ function filters_usage {
   # agent node selector
   echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
   # agent filters
-  echo "          --enable_filter:          enable flow filter                         (default: false)"
   echo "          --direction:              filter direction                           (default: n/a)"
   echo "          --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
   echo "          --protocol:               filter protocol                            (default: n/a)"
@@ -421,6 +420,11 @@ function updateFLPConfig {
 function edit_manifest() {
   ## replace the configuration in the manifest file
   echo "opt: $1, evalue: $2"
+
+  if [[ $1 == "filter_"* ]]; then
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$3"
+  fi
+
   case "$1" in
   "interfaces")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
@@ -468,9 +472,6 @@ function edit_manifest() {
         updateFLPConfig "$json" "$3"
       fi
     fi
-    ;;
-  "filter_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"$2\"" "$3"
     ;;
   "filter_direction")
     "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.direction = \"$2\")| tostring)" "$3"
@@ -527,6 +528,10 @@ function edit_manifest() {
     "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.tcp_flags = \"$2\")| tostring)" "$3"
     ;;
   "filter_pkt_drops")
+    if [[ "$2" == "true" ]]; then
+      # force enable drops before setting filter
+      edit_manifest "pktdrop_enable" "$2" "$3"
+    fi
     "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.drops = $2)| tostring)" "$3"
     ;;
   "filter_regexes")
@@ -571,6 +576,18 @@ function edit_manifest() {
   esac
 }
 
+
+# define key and value at script level to make them available all the time
+# these will be updated by check_args_and_apply first and overriden by defaultValue when needed
+key=""
+value=""
+
+function defaultValue() {
+  if [ "$key" == "$value" ]; then
+    value="$1"
+  fi
+}
+
 # Check if the arguments are valid
 #$1: options
 #$2: manifest
@@ -582,6 +599,7 @@ function check_args_and_apply() {
     value="${option#*=}"
     case "$key" in
     --background) # Run command in background
+      defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         runBackground="$value"
       else
@@ -589,6 +607,7 @@ function check_args_and_apply() {
       fi
       ;;
     --copy) # Copy or skip without prompt
+      defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
         copy="$value"
       else
@@ -600,6 +619,7 @@ function check_args_and_apply() {
       ;;
     --enable_pktdrop) # Enable packet drop
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "pktdrop_enable" "$value" "$2"
         else
@@ -612,6 +632,7 @@ function check_args_and_apply() {
       ;;
     --enable_dns) # Enable DNS
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "dns_enable" "$value" "$2"
         else
@@ -624,6 +645,7 @@ function check_args_and_apply() {
       ;;
     --enable_rtt) # Enable RTT
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "rtt_enable" "$value" "$2"
         else
@@ -636,6 +658,7 @@ function check_args_and_apply() {
       ;;
     --enable_network_events) # Enable Network events monitoring
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "network_events_enable" "$value" "$2"
         else
@@ -643,18 +666,6 @@ function check_args_and_apply() {
         fi
       else
         echo "--enable_network_events is invalid option for packets"
-        exit 1
-      fi
-      ;;
-    --enable_filter) # Enable flow filter
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "filter_enable" "$value" "$2"
-        else
-          echo "invalid value for --enable_filter"
-        fi
-      else
-        echo "--enable_filter is invalid option for packets"
         exit 1
       fi
       ;;
@@ -710,6 +721,7 @@ function check_args_and_apply() {
       fi
       ;;
     --drops) # Filter packet drops
+      defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         edit_manifest "filter_pkt_drops" "$value" "$2"
       else
@@ -770,6 +782,7 @@ function check_args_and_apply() {
       fi
       ;;
     --get-subnets) # Get subnets
+      defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         edit_manifest "get_subnets" "$value" "$2"
       else
