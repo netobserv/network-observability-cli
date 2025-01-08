@@ -153,6 +153,18 @@ function getSubnets() {
   fi
 }
 
+function getNodesByLabel () {
+  printf "finding nodes matching %s...\n" "$1"
+  nodeStr=$("$K8S_CLI_BIN" get nodes -l "$1" -o name | tr '\n' ' ')
+  IFS=' ' read -ra nodeArray <<<"$nodeStr"
+  if [ "${#nodeArray[@]}" -gt 0 ]; then
+    printf "%d matching nodes found: %s\n" ${#nodeArray[@]} "$nodeStr" >&2
+  else
+    printf "%s doesn't match any node label. Please check your --node-selector parameter\n" "$1" >&2
+    exit 1
+  fi
+}
+
 function setup {
   echo "Setting up... "
 
@@ -490,6 +502,7 @@ function edit_manifest() {
   "node_selector")
     key=${2%:*}
     val=${2#*:}
+    getNodesByLabel "$key=$val"
     "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
     ;;
   esac
