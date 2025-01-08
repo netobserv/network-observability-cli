@@ -26,13 +26,17 @@ func TestHelpCommand(t *testing.T) {
 		str := string(output)
 		assert.NotEmpty(t, str)
 		// ensure help display overall description
-		assert.Contains(t, str, "Netobserv allows you to capture flow and packets from your cluster.")
+		assert.Contains(t, str, "Netobserv allows you to capture flow, packets and metrics from your cluster.")
 		assert.Contains(t, str, "Find more information at: https://github.com/netobserv/network-observability-cli/")
 		// ensure help to display proper options
-		assert.Contains(t, str, "Syntax: netobserv [flows|packets|cleanup] [options]")
-		assert.Contains(t, str, "flows      Capture flows information in JSON format.")
-		assert.Contains(t, str, "packets    Capture packets information in pcap format.")
-		assert.Contains(t, str, "cleanup    Remove netobserv components.")
+		assert.Contains(t, str, "Syntax: netobserv [flows|packets|metrics|follow|stop|copy|cleanup|version] [options]")
+		assert.Contains(t, str, "flows      Capture flows information in JSON format using collector pod.")
+		assert.Contains(t, str, "packets    Capture packets information in pcap format using collector pod.")
+		assert.Contains(t, str, "metrics    Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only).")
+		assert.Contains(t, str, "follow     Follow collector logs when running in background.")
+		assert.Contains(t, str, "stop       Stop collection by removing agent daemonset.")
+		assert.Contains(t, str, "copy       Copy collector generated files locally.")
+		assert.Contains(t, str, "cleanup    Remove netobserv components and configurations.")
 		assert.Contains(t, str, "version    Print software version.")
 	})
 }

@@ -77,6 +77,15 @@ function loadYAMLs() {
   packetAgentYAML="${packetAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   packetAgentYAML="${packetAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
+  metricAgentYAML='
+    metricAgentYAMLContent
+  '
+  if [ -f ./res/metric-capture.yml ]; then
+    metricAgentYAML="$(cat ./res/metric-capture.yml)"
+  fi
+  metricAgentYAML="${metricAgentYAML//"{{NAMESPACE}}"/${namespace}}"
+  metricAgentYAML="${metricAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
+
   collectorServiceYAML='
     collectorServiceYAMLContent
   '
@@ -84,6 +93,14 @@ function loadYAMLs() {
     collectorServiceYAML="$(cat ./res/collector-service.yml)"
   fi
   collectorServiceYAML="${collectorServiceYAML/"{{NAMESPACE}}"/${namespace}}"
+
+  smYAML='
+    smYAMLContent
+  '
+  if [ -f ./res/service-monitor.yml ]; then
+    smYAML="$(cat ./res/service-monitor.yml)"
+  fi
+  smYAML="${smYAML//"{{NAMESPACE}}"/${namespace}}"
 }
 
 function clusterIsReady() {
@@ -113,6 +130,7 @@ PACKETS_MANIFEST_FILE="packet-capture.yml"
 CONFIG_JSON_TEMP="config.json"
 CLUSTER_CONFIG="cluster-config-v1.yaml"
 NETWORK_CONFIG="cluster-network.yaml"
+METRICS_MANIFEST_FILE="metric-capture.yml"
 MANIFEST_OUTPUT_PATH="tmp"
 
 function getSubnets() {
@@ -157,7 +175,7 @@ function setup {
   echo "Setting up... "
 
   # check for mandatory arguments
-  if ! [[ $1 =~ flows|packets ]]; then
+  if ! [[ $1 =~ flows|packets|metrics ]]; then
     echo "invalid setup argument"
     return
   fi
@@ -187,10 +205,9 @@ function setup {
   echo "creating service account"
   echo "$saYAML" | ${K8S_CLI_BIN} apply -f -
 
-  echo "creating collector service"
-  echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
-
   if [ "$1" = "flows" ]; then
+    echo "creating collector service"
+    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
     shift
     echo "creating flow-capture agents:"
     if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
@@ -201,6 +218,8 @@ function setup {
     options="$*"
     check_args_and_apply "$options" "$manifest" "flows"
   elif [ "$1" = "packets" ]; then
+    echo "creating collector service"
+    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
     shift
     echo "creating packet-capture agents"
     if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
@@ -210,6 +229,18 @@ function setup {
     echo "${packetAgentYAML}" >${manifest}
     options="$*"
     check_args_and_apply "$options" "$manifest" "packets"
+  elif [ "$1" = "metrics" ]; then
+    echo "creating service monitor"
+    echo "$smYAML" | ${K8S_CLI_BIN} apply -f -
+    shift
+    echo "creating metric-capture agents:"
+    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
+      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
+    fi
+    manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
+    echo "${metricAgentYAML}" >${manifest}
+    options="$*"
+    check_args_and_apply "$options" "$manifest" "metrics"
   fi
 }
 
@@ -221,6 +252,16 @@ function copyOutput {
   echo "Copying collector output files..."
   mkdir -p ./output
   ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
+}
+
+function deleteServiceMonitor {
+  printf "\nDeleting service monitor... "
+  ${K8S_CLI_BIN} delete servicemonitor netobserv-cli -n "$namespace" --ignore-not-found=true
+}
+
+function deleteDashboardCM {
+  printf "\nDeleting dashboard configmap... "
+  ${K8S_CLI_BIN} delete configmap netobserv-cli -n openshift-config-managed --ignore-not-found=true
 }
 
 function deleteDaemonset {
@@ -267,6 +308,8 @@ function cleanup {
     fi
 
     printf "\nCleaning up..."
+    deleteServiceMonitor
+    deleteDashboardCM
     deleteDaemonset
     deletePod
     deleteNamespace
@@ -277,17 +320,29 @@ function cleanup {
   fi
 }
 
-function common_usage {
-  # general options
+function features_usage {
+  # agent / flp features
+  echo "          --enable_pktdrop:         enable packet drop                         (default: false)"
+  echo "          --enable_dns:             enable DNS tracking                        (default: false)"
+  echo "          --enable_rtt:             enable RTT tracking                        (default: false)"
+  echo "          --enable_network_events:  enable Network events monitoring           (default: false)"
+  echo "          --get-subnets:            get subnets informations                   (default: false)"
+}
+
+function collector_usage {
+  # collector options
   echo "          --log-level:              components logs                            (default: info)"
   echo "          --max-time:               maximum capture time                       (default: 5m)"
   echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
   echo "          --background:             run in background                          (default: false)"
   echo "          --copy:                   copy the output files locally              (default: prompt)"
-  # enrichment
-  echo "          --get-subnets:            get subnets informations                   (default: false)"
-  # filters
+}
+
+function filters_usage {
+  # agent node selector
   echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
+  # agent filters
+  echo "          --enable_filter:          enable flow filter                         (default: false)"
   echo "          --direction:              filter direction                           (default: n/a)"
   echo "          --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
   echo "          --protocol:               filter protocol                            (default: n/a)"
@@ -309,23 +364,27 @@ function common_usage {
   echo "          --regexes:                filter flows using regex                   (default: n/a)"
 }
 
-function flows_usage {
-  # features
-  echo "          --enable_pktdrop:         enable packet drop                         (default: false)"
-  echo "          --enable_dns:             enable DNS tracking                        (default: false)"
-  echo "          --enable_rtt:             enable RTT tracking                        (default: false)"
-  echo "          --enable_network_events:  enable Network events monitoring           (default: false)"
-  echo "          --enable_filter:          enable flow filter                         (default: false)"
-  # common
-  common_usage
+function specific_filters_usage {
   # specific filters
   echo "          --interfaces:             interfaces to monitor                      (default: n/a)"
+}
 
+function flows_usage {
+  features_usage
+  collector_usage
+  filters_usage
+  specific_filters_usage
 }
 
 function packets_usage {
-  # common
-  common_usage
+  collector_usage
+  filters_usage
+}
+
+function metrics_usage {
+  features_usage
+  filters_usage
+  specific_filters_usage
 }
 
 # get current config and save it to temp file
@@ -498,7 +557,7 @@ function edit_manifest() {
 # Check if the arguments are valid
 #$1: options
 #$2: manifest
-#$3: either flows or packets
+#$3: flows, packets or metrics
 function check_args_and_apply() {
   # Iterate through the command-line arguments
   for option in $1; do
@@ -507,7 +566,6 @@ function check_args_and_apply() {
     case "$key" in
     --background) # Run command in background
       if [[ "$value" == "true" || "$value" == "false" ]]; then
-        echo "param: $key, param_value: $value"
         runBackground="$value"
       else
         echo "invalid value for --background"
@@ -524,7 +582,7 @@ function check_args_and_apply() {
       edit_manifest "interfaces" "$value" "$2"
       ;;
     --enable_pktdrop) # Enable packet drop
-      if [[ "$3" == "flows" ]]; then
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "pktdrop_enable" "$value" "$2"
         else
@@ -536,7 +594,7 @@ function check_args_and_apply() {
       fi
       ;;
     --enable_dns) # Enable DNS
-      if [[ "$3" == "flows" ]]; then
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "dns_enable" "$value" "$2"
         else
@@ -548,7 +606,7 @@ function check_args_and_apply() {
       fi
       ;;
     --enable_rtt) # Enable RTT
-      if [[ "$3" == "flows" ]]; then
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "rtt_enable" "$value" "$2"
         else
@@ -560,7 +618,7 @@ function check_args_and_apply() {
       fi
       ;;
     --enable_network_events) # Enable Network events monitoring
-      if [[ "$3" == "flows" ]]; then
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "network_events_enable" "$value" "$2"
         else
@@ -572,7 +630,7 @@ function check_args_and_apply() {
       fi
       ;;
     --enable_filter) # Enable flow filter
-      if [[ "$3" == "flows" ]]; then
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         if [[ "$value" == "true" || "$value" == "false" ]]; then
           edit_manifest "filter_enable" "$value" "$2"
         else

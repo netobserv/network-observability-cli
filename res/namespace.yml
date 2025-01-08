@@ -6,3 +6,4 @@ metadata:
     app: netobserv
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: privileged
+    openshift.io/cluster-monitoring: "true"
