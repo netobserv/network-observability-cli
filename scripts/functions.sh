@@ -360,6 +360,7 @@ function filters_usage {
   echo "          --icmp_type:              filter ICMP type                           (default: n/a)"
   echo "          --icmp_code:              filter ICMP code                           (default: n/a)"
   echo "          --peer_ip:                filter peer IP                             (default: n/a)"
+  echo "          --peer_cidr:              filter peer CIDR                           (default: n/a)"
   echo "          --drops:                  filter flows with only dropped packets     (default: false)"
   echo "          --regexes:                filter flows using regex                   (default: n/a)"
 }
@@ -503,6 +504,9 @@ function edit_manifest() {
     ;;
   "filter_peer_ip")
     "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_ip = \"$2\")| tostring)" "$3"
+    ;;
+  "filter_peer_cidr")
+    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_cidr = \"$2\")| tostring)" "$3"
     ;;
   "filter_action")
     "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.action = \"$2\")| tostring)" "$3"
@@ -716,6 +720,9 @@ function check_args_and_apply() {
       ;;
     --peer_ip) # Peer IP
       edit_manifest "filter_peer_ip" "$value" "$2"
+      ;;
+    --peer_cidr) # Peer CIDR
+      edit_manifest "filter_peer_cidr" "$value" "$2"
       ;;
     --action) # Filter action
       if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
