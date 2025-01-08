@@ -251,7 +251,7 @@ function cleanup {
       copyOutput
     elif [ "$copy" = "prompt" ]; then
       while true; do
-        read -rp "Copy the capture output locally ?" yn
+        read -rp "Copy the capture output locally? [yes/no] " yn
         case $yn in
         [Yy]*)
           copyOutput
