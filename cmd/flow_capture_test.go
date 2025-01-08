@@ -68,8 +68,8 @@ func TestFlowTableMultipleFlows(t *testing.T) {
 		buf.Reset()
 
 		// update time and bytes for next flow
-		flowTime = flowTime + 1000
-		bytes = bytes + 1000
+		flowTime += 1000
+		bytes += 1000
 
 		// add flow to table
 		parseGenericMapAndDisplay([]byte(fmt.Sprintf(`{

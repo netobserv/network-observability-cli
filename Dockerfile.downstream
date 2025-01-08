@@ -6,7 +6,7 @@ ARG COMMIT
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.17.0-202412032103.p0.g13001b0.assembly.stream.el9 as ose-cli
 
 # Build the manager binary
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.22.5-202407301806.g4c8b32d.el9 as builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23 as builder
 
 ARG TARGETARCH
 ARG TARGETPLATFORM

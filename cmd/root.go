@@ -28,9 +28,7 @@ var (
 	maxTime  time.Duration
 	maxBytes int64
 
-	currentTime = func() time.Time {
-		return time.Now()
-	}
+	currentTime  = time.Now
 	startupTime  = currentTime()
 	lastRefresh  = startupTime
 	totalBytes   = int64(0)
@@ -49,7 +47,7 @@ var (
 		Use:   "network-observability-cli",
 		Short: "network-observability-cli is an interactive Flow and Packet visualizer",
 		Long:  `An interactive Flow / PCAP collector and visualization tool`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 		},
 	}
 

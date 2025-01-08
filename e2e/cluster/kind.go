@@ -85,14 +85,14 @@ func (k *Kind) GetLogsDir() string {
 
 // export logs into the e2e-logs folder of the base directory.
 func (k *Kind) exportLogs() env.Func {
-	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
+	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
 		logsDir := k.GetLogsDir()
 		klog.WithField("directory", logsDir).Info("exporting cluster logs")
 		exe := gexe.New()
 		out := exe.Run("kind export logs " + logsDir + " --name " + k.clusterName)
 		klog.WithField("out", out).Info("exported cluster logs")
 
-		//move output files to cluster logs folder
+		// move output files to cluster logs folder
 		err := os.Rename(path.Join(k.baseDir, "e2e", "tmp"), path.Join(logsDir, "output"))
 		if err != nil {
 			klog.Error(err)
@@ -112,7 +112,7 @@ func (k *Kind) GetAgentLogs() string {
 
 // delete netobserv-cli namespace
 func (k *Kind) deleteNamespace() env.Func {
-	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
+	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
 		exe := gexe.New()
 		out := exe.Run("kubectl delete namespace netobserv-cli")
 		klog.WithField("out", out).Info("deleted namespace")

@@ -58,7 +58,13 @@ var (
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	go scanner()
+	go func() {
+		if !scanner() {
+			return
+		}
+		// scanner returns on exit request
+		os.Exit(0)
+	}()
 
 	captureType = "Flow"
 	wg := sync.WaitGroup{}
@@ -66,20 +72,24 @@ func runFlowCapture(_ *cobra.Command, _ []string) {
 	for i := range ports {
 		go func(idx int) {
 			defer wg.Done()
-			runFlowCaptureOnAddr(ports[idx], nodes[idx])
+			err := runFlowCaptureOnAddr(ports[idx], nodes[idx])
+			if err != nil {
+				// Only fatal errors are returned here
+				log.Fatal(err)
+			}
 		}(i)
 	}
 	wg.Wait()
 }
 
-func runFlowCaptureOnAddr(port int, filename string) {
+func runFlowCaptureOnAddr(port int, filename string) error {
 	if len(filename) > 0 {
 		log.Infof("Starting Flow Capture for %s...", filename)
 	} else {
 		log.Infof("Starting Flow Capture...")
-		filename = strings.Replace(
+		filename = strings.ReplaceAll(
 			currentTime().UTC().Format(time.RFC3339),
-			":", "", -1) // get rid of offensive colons
+			":", "") // get rid of offensive colons
 	}
 
 	var f *os.File
@@ -105,8 +115,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		log.Error("StartCollector failed:", err.Error())
-		log.Fatal(err)
+		return fmt.Errorf("StartCollector failed: %w", err)
 	}
 	log.Trace("Started collector")
 	collectorStarted = true
@@ -128,7 +137,7 @@ func runFlowCaptureOnAddr(port int, filename string) {
 
 		if stopReceived {
 			log.Trace("Stop received")
-			return
+			return nil
 		}
 		// parse and display flow async
 		go parseGenericMapAndDisplay(fp.GenericMap.Value)
@@ -145,18 +154,18 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		if !captureStarted {
 			log.Trace("Wrote flows to json")
 		}
 
 		// terminate capture if max bytes reached
-		totalBytes = totalBytes + int64(bytes)
+		totalBytes += int64(bytes)
 		if totalBytes > maxBytes {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-				return
+				return nil
 			}
 		}
 
@@ -166,12 +175,13 @@ func runFlowCaptureOnAddr(port int, filename string) {
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
-				return
+				return nil
 			}
 		}
 
 		captureStarted = true
 	}
+	return nil
 }
 
 func parseGenericMapAndDisplay(bytes []byte) {
@@ -202,7 +212,7 @@ func manageFlowsDisplay(genericMap config.GenericMap) {
 	if len(regexes) > 0 {
 		// regexes may change during the render so we make a copy first
 		rCopy := make([]string, len(regexes))
-		copy(rCopy[:], regexes)
+		copy(rCopy, regexes)
 		filtered := []config.GenericMap{}
 		for _, flow := range lastFlows {
 			match := true
@@ -380,10 +390,11 @@ func cycleOption(selection []string, exclusiveOptions []string, options []string
 	return selection
 }
 
-func scanner() {
+// scanner returns true in case of normal exit (end of program execution) or false in case of error
+func scanner() bool {
 	if err := keyboard.Open(); err != nil {
 		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
-		return
+		return false
 	}
 	defer func() {
 		_ = keyboard.Close()
@@ -394,26 +405,26 @@ func scanner() {
 		if err != nil {
 			panic(err)
 		}
-		if key == keyboard.KeyCtrlC || stopReceived {
+		switch {
+		case key == keyboard.KeyCtrlC, stopReceived:
 			log.Info("Ctrl-C pressed, exiting program.")
-
 			// exit program
-			os.Exit(0)
-		} else if key == keyboard.KeyArrowUp {
-			flowsToShow = flowsToShow + 1
-		} else if key == keyboard.KeyArrowDown {
+			return true
+		case key == keyboard.KeyArrowUp:
+			flowsToShow++
+		case key == keyboard.KeyArrowDown:
 			if flowsToShow > 10 {
-				flowsToShow = flowsToShow - 1
+				flowsToShow--
 			}
-		} else if key == keyboard.KeyArrowRight {
+		case key == keyboard.KeyArrowRight:
 			display = cycleOption(display, exclusiveDisplays, displays, 1)
-		} else if key == keyboard.KeyArrowLeft {
+		case key == keyboard.KeyArrowLeft:
 			display = cycleOption(display, exclusiveDisplays, displays, -1)
-		} else if key == keyboard.KeyPgup {
+		case key == keyboard.KeyPgup:
 			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, 1)
-		} else if key == keyboard.KeyPgdn {
+		case key == keyboard.KeyPgdn:
 			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, -1)
-		} else if key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2 {
+		case key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2:
 			if len(regexes) > 0 {
 				lastIndex := len(regexes) - 1
 				if len(regexes[lastIndex]) > 0 {
@@ -422,14 +433,14 @@ func scanner() {
 					regexes = regexes[:lastIndex]
 				}
 			}
-		} else if key == keyboard.KeyEnter {
+		case key == keyboard.KeyEnter:
 			regexes = append(regexes, "")
-		} else {
+		default:
 			if len(regexes) == 0 {
 				regexes = []string{string(char)}
 			} else {
 				lastIndex := len(regexes) - 1
-				regexes[lastIndex] = regexes[lastIndex] + string(char)
+				regexes[lastIndex] += string(char)
 			}
 		}
 		lastRefresh = startupTime

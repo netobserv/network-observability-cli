@@ -47,7 +47,7 @@ ifneq ($(CLEAN_BUILD),)
 	LDFLAGS ?= -X 'main.buildVersion=${VERSION}-${BUILD_SHA}' -X 'main.buildDate=${BUILD_DATE}'
 endif
 
-GOLANGCI_LINT_VERSION = v1.54.2
+GOLANGCI_LINT_VERSION = v1.61.0
 YQ_VERSION = v4.43.1
 
 # build a single arch target provided as argument
