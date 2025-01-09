@@ -40,6 +40,14 @@ if [ -n "$NETOBSERV_AGENT_IMAGE" ]; then
   agentImg="$NETOBSERV_AGENT_IMAGE"
 fi
 
+FLOWS_MANIFEST_FILE="flow-capture.yml"
+PACKETS_MANIFEST_FILE="packet-capture.yml"
+METRICS_MANIFEST_FILE="metric-capture.yml"
+CONFIG_JSON_TEMP="config.json"
+CLUSTER_CONFIG="cluster-config-v1.yaml"
+NETWORK_CONFIG="cluster-network.yaml"
+MANIFEST_OUTPUT_PATH="tmp"
+
 function loadYAMLs() {
   namespaceYAML='
     namespaceYAMLContent
@@ -64,7 +72,6 @@ function loadYAMLs() {
     flowAgentYAML="$(cat ./res/flow-capture.yml)"
   fi
   flowAgentYAML="${flowAgentYAML/"{{NAMESPACE}}"/${namespace}}"
-  flowAgentYAML="${flowAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   flowAgentYAML="${flowAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   packetAgentYAML='
@@ -74,7 +81,6 @@ function loadYAMLs() {
     packetAgentYAML="$(cat ./res/packet-capture.yml)"
   fi
   packetAgentYAML="${packetAgentYAML/"{{NAMESPACE}}"/${namespace}}"
-  packetAgentYAML="${packetAgentYAML/"{{TARGET_HOST}}"/${targetHost}}"
   packetAgentYAML="${packetAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   metricAgentYAML='
@@ -103,6 +109,37 @@ function loadYAMLs() {
   smYAML="${smYAML//"{{NAMESPACE}}"/${namespace}}"
 }
 
+# set pipeline for flows & packets using collector
+function setCollectorPipelineConfig() {
+  # load pipeline json
+  collectorPipelineConfigJSON='
+    collectorPipelineConfigJSONContent
+  '
+  if [ -f ./res/collector-pipeline-config.json ]; then
+    collectorPipelineConfigJSON="$(< ./res/collector-pipeline-config.json tr '\n' ' ')"
+  fi
+
+  # replace target host
+  collectorPipelineConfigJSON="${collectorPipelineConfigJSON/"{{TARGET_HOST}}"/${targetHost}}"
+
+  # append json to yaml file
+  "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLP_CONFIG\").value |= ($collectorPipelineConfigJSON | tojson)" "$1"
+}
+
+# set pipeline for metrics
+function setMetricsPipelineConfig() {
+  # load pipeline json
+  metricsPipelineConfigJSON='
+    metricsPipelineConfigJSONContent
+  '
+  if [ -f ./res/metrics-pipeline-config.json ]; then
+    metricsPipelineConfigJSON="$(< ./res/metrics-pipeline-config.json tr '\n' ' ')"
+  fi
+
+  # append json to yaml file
+  "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLP_CONFIG\").value |= ($metricsPipelineConfigJSON | tojson)" "$1"
+}
+
 function clusterIsReady() {
   # use oc whoami as connectivity check by default and fallback to kubectl get all if needed
   K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} whoami"
@@ -124,14 +161,6 @@ function namespaceFound() {
     return 1
   fi
 }
-
-FLOWS_MANIFEST_FILE="flow-capture.yml"
-PACKETS_MANIFEST_FILE="packet-capture.yml"
-CONFIG_JSON_TEMP="config.json"
-CLUSTER_CONFIG="cluster-config-v1.yaml"
-NETWORK_CONFIG="cluster-network.yaml"
-METRICS_MANIFEST_FILE="metric-capture.yml"
-MANIFEST_OUTPUT_PATH="tmp"
 
 function getSubnets() {
   declare -n sn="$1"
@@ -227,6 +256,7 @@ function setup {
     fi
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
     echo "${flowAgentYAML}" >${manifest}
+    setCollectorPipelineConfig "$manifest"
     options="$*"
     check_args_and_apply "$options" "$manifest" "flows"
   elif [ "$1" = "packets" ]; then
@@ -239,6 +269,7 @@ function setup {
     fi
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
     echo "${packetAgentYAML}" >${manifest}
+    setCollectorPipelineConfig "$manifest"
     options="$*"
     check_args_and_apply "$options" "$manifest" "packets"
   elif [ "$1" = "metrics" ]; then
@@ -251,6 +282,7 @@ function setup {
     fi
     manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
     echo "${metricAgentYAML}" >${manifest}
+    setMetricsPipelineConfig "$manifest"
     options="$*"
     check_args_and_apply "$options" "$manifest" "metrics"
   fi
@@ -417,12 +449,39 @@ function updateFLPConfig {
   "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$2"
 }
 
+# append a new flow filter rule to array
+function addFlowFilter() {
+  flowFilterJSON='
+    flowFilterJSONContent
+  '
+  if [ -f ./res/flow-filter.json ]; then
+    flowFilterJSON="$(cat ./res/flow-filter.json)"
+  fi
+  
+  "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | . += $flowFilterJSON | tojson)" "$1"
+}
+
+# update last flow filter of the array
+function setLastFlowFilter() { 
+  "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | .[-1].$1 = $2 | tostring)" "$3"
+}
+
+# replace the configuration in the manifest file
 function edit_manifest() {
-  ## replace the configuration in the manifest file
-  echo "opt: $1, evalue: $2"
+  if [ -z "${2}" ]; then
+    echo "opt: $1"
+  else
+    echo "opt: $1, value: $2"
+  fi
 
   if [[ $1 == "filter_"* ]]; then
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$3"
+    
+    # add first filter in the array
+    currentFilters=$( "$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$3" )
+    if [[ $currentFilters == "[]" ]]; then
+      addFlowFilter "$3"
+    fi
   fi
 
   case "$1" in
@@ -473,66 +532,69 @@ function edit_manifest() {
       fi
     fi
     ;;
+  "add_filter")
+    addFlowFilter "$3"
+    ;;
   "filter_direction")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.direction = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "direction" "\"$2\"" "$3"
     ;;
   "filter_cidr")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ip_cidr = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "ip_cidr" "\"$2\"" "$3"
     ;;
   "filter_protocol")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.protocol = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "protocol" "\"$2\"" "$3"
     ;;
   "filter_sport")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port = $2)| tostring)" "$3"
+    setLastFlowFilter "source_port" = "$2" "$3"
     ;;
   "filter_dport")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port = $2)| tostring)" "$3"
+    setLastFlowFilter "destination_port" "$2" "$3"
     ;;
   "filter_port")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port = $2)| tostring)" "$3"
+    setLastFlowFilter "port" "$2" "$3"
     ;;
   "filter_sport_range")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_port_range = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "source_port_range" "\"$2\"" "$3"
     ;;
   "filter_dport_range")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_port_range = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "destination_port_range" "\"$2\"" "$3"
     ;;
   "filter_port_range")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.port_range = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "port_range" "\"$2\"" "$3"
     ;;
   "filter_sports")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.source_ports = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "source_ports" "\"$2\"" "$3"
     ;;
   "filter_dports")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.destination_ports = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "destination_ports" "\"$2\"" "$3"
     ;;
   "filter_ports")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.ports = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "ports" "\"$2\"" "$3"
     ;;
   "filter_icmp_type")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_type = $2)| tostring)" "$3"
+    setLastFlowFilter "icmp_type" "$2" "$3"
     ;;
   "filter_icmp_code")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.icmp_code = $2)| tostring)" "$3"
+    setLastFlowFilter "icmp_code" "$2" "$3"
     ;;
   "filter_peer_ip")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_ip = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "peer_ip" "\"$2\"" "$3"
     ;;
   "filter_peer_cidr")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.peer_cidr = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "peer_cidr" "\"$2\"" "$3"
     ;;
   "filter_action")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.action = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "action" "\"$2\"" "$3"
     ;;
   "filter_tcp_flags")
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.tcp_flags = \"$2\")| tostring)" "$3"
+    setLastFlowFilter "tcp_flags" "\"$2\"" "$3"
     ;;
   "filter_pkt_drops")
     if [[ "$2" == "true" ]]; then
       # force enable drops before setting filter
       edit_manifest "pktdrop_enable" "$2" "$3"
     fi
-    "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | map(.drops = $2)| tostring)" "$3"
+    setLastFlowFilter "drops" "$2" "$3"
     ;;
   "filter_regexes")
     copyFLPConfig "$3"
@@ -598,6 +660,9 @@ function check_args_and_apply() {
     key="${option%%=*}"
     value="${option#*=}"
     case "$key" in
+    or) # Increment flow filter array
+      edit_manifest "add_filter" "" "$2"
+      ;;
     --background) # Run command in background
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then

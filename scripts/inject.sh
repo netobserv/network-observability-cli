@@ -72,6 +72,15 @@ if [ -z "$KREW_PLUGIN" ] || [ "$KREW_PLUGIN" = "false" ]; then
 fi
 
 # inject YAML files to functions.sh
+sed -i.bak '/collectorPipelineConfigJSONContent/{r ./res/collector-pipeline-config.json
+d
+}' ./tmp/functions.sh
+sed -i.bak '/metricsPipelineConfigJSONContent/{r ./res/metrics-pipeline-config.json
+d
+}' ./tmp/functions.sh
+sed -i.bak '/flowFilterJSONContent/{r ./res/flow-filter.json
+d
+}' ./tmp/functions.sh
 sed -i.bak '/namespaceYAMLContent/{r ./res/namespace.yml
 d
 }' ./tmp/functions.sh
