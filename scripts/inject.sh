@@ -3,6 +3,7 @@ set -x
 
 cp -a ./commands/. ./tmp
 cp ./scripts/functions.sh ./tmp/functions.sh
+cp ./scripts/help.sh ./tmp/help.sh
 cp ./scripts/dependencies_check.sh ./tmp/dependencies_check.sh
 
 if [ -z "$IMAGE" ]; then
@@ -108,6 +109,11 @@ sed -i.bak '/^source "\.\/scripts\/functions\.sh"/{r ./tmp/functions.sh
 d
 }' ./tmp/"$prefix"netobserv
 
+# inject help to commands
+sed -i.bak '/^source "\.\/scripts\/help\.sh"/{r ./tmp/help.sh
+d
+}' ./tmp/"$prefix"netobserv
+
 # inject updated dependencies_check to commands
 sed -i.bak '/^source "\.\/scripts\/dependencies_check\.sh"/{r ./tmp/dependencies_check.sh
 d
@@ -121,6 +127,7 @@ else
 fi
 
 rm ./tmp/functions.sh
+rm ./tmp/help.sh
 rm ./tmp/dependencies_check.sh
 rm ./tmp/*.bak
 
@@ -131,4 +138,3 @@ else
   cp -a ./tmp/. ./"$DIST_DIR"
   rm -rf ./tmp
 fi
-

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 source "./scripts/functions.sh"
+source "./scripts/help.sh"
 source "./scripts/dependencies_check.sh"
 
 set +u
+
 # e2e skips inputs
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
@@ -46,7 +48,23 @@ maxTime="5m"
 # max bytes (default: 50MB)
 maxBytes=50000000
 
-function flows() {
+if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
+  required_yq_version="v0.0.0"
+  supported_archs=""
+  required_bash_version="v0.0.0"
+  check_dependencies "$required_yq_version" "$supported_archs" "$required_bash_version"
+fi
+
+case "$1" in
+*help)
+  help
+  exit 0
+  ;;
+*version)
+  version "$version"
+  exit 0
+  ;;
+*flows)
   case "$2" in
   "help")
     flows_usage
@@ -59,9 +77,8 @@ function flows() {
     command="flows"
     ;;
   esac
-}
-
-function packets() {
+  ;;
+*packets)
   case "$2" in
   "help")
     packets_usage
@@ -74,9 +91,8 @@ function packets() {
     command="packets"
     ;;
   esac
-}
-
-function metrics() {
+  ;;
+*metrics)
   case "$2" in
   "help")
     metrics_usage
@@ -89,75 +105,58 @@ function metrics() {
     command="metrics"
     ;;
   esac
-}
-
-if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
-  required_yq_version="v0.0.0"
-  supported_archs=""
-  required_bash_version="v0.0.0"
-  check_dependencies "$required_yq_version" "$supported_archs" "$required_bash_version"
-fi
-
-case "$1" in
-"help")
-  # display Help
-  echo
-  echo "Netobserv allows you to capture flow, packets and metrics from your cluster."
-  echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
-  echo
-  echo "Syntax: netobserv [flows|packets|metrics|follow|stop|copy|cleanup|version] [options]"
-  echo
-  echo "commands:"
-  echo "  flows      Capture flows information in JSON format using collector pod."
-  echo "        Options:"
-  flows_usage
-  echo "  packets    Capture packets information in pcap format using collector pod."
-  echo "        Options:"
-  packets_usage
-  echo "  metrics    Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
-  echo "        Options:"
-  metrics_usage
-  echo "  follow     Follow collector logs when running in background."
-  echo "  stop       Stop collection by removing agent daemonset."
-  echo "  copy       Copy collector generated files locally."
-  echo "  cleanup    Remove netobserv components and configurations."
-  echo "  version    Print software version."
-  echo
-  exit 0
   ;;
-"version")
-  # display version
-  echo "Netobserv CLI version $version"
-  exit 0
+*follow)
+  case "$2" in
+  "help")
+    follow_usage
+    exit 0
+    ;;
+  *)
+    # run follow command
+    follow
+    exit 0
+    ;;
+  esac
   ;;
-"flows")
-  flows $*
+*stop)
+  case "$2" in
+  "help")
+    stop_usage
+    exit 0
+    ;;
+  *)
+    # run deleteDaemonset command
+    deleteDaemonset
+    exit 0
+    ;;
+  esac
   ;;
-"packets")
-  packets $*
+*copy)
+  case "$2" in
+  "help")
+    copy_usage
+    exit 0
+    ;;
+  *)
+    # run copy output command
+    copyOutput
+    exit 0
+    ;;
+  esac
   ;;
-"metrics")
-  metrics $*
-  ;;
-"follow")
-  # run follow command
-  follow
-  exit 0
-  ;;
-"stop")
-  # run deleteDaemonset command
-  deleteDaemonset
-  exit 0
-  ;;
-"copy")
-  # run copy output command
-  copyOutput
-  exit 0
-  ;;
-"cleanup")
-  # run cleanup command
-  cleanup
-  exit 0
+*cleanup)
+  case "$2" in
+  "help")
+    cleanup_usage
+    exit 0
+    ;;
+  *)
+    # run cleanup command
+    cleanup
+    exit 0
+    ;;
+  esac
   ;;
 *)
   echo "Unknown command $1. Use 'netobserv help' to display options"

@@ -364,73 +364,6 @@ function cleanup {
   fi
 }
 
-function features_usage {
-  # agent / flp features
-  echo "          --enable_pktdrop:         enable packet drop                         (default: false)"
-  echo "          --enable_dns:             enable DNS tracking                        (default: false)"
-  echo "          --enable_rtt:             enable RTT tracking                        (default: false)"
-  echo "          --enable_network_events:  enable Network events monitoring           (default: false)"
-  echo "          --get-subnets:            get subnets informations                   (default: false)"
-}
-
-function collector_usage {
-  # collector options
-  echo "          --log-level:              components logs                            (default: info)"
-  echo "          --max-time:               maximum capture time                       (default: 5m)"
-  echo "          --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
-  echo "          --background:             run in background                          (default: false)"
-  echo "          --copy:                   copy the output files locally              (default: prompt)"
-}
-
-function filters_usage {
-  # agent node selector
-  echo "          --node-selector:          capture on specific nodes                  (default: n/a)"
-  # agent filters
-  echo "          --direction:              filter direction                           (default: n/a)"
-  echo "          --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
-  echo "          --protocol:               filter protocol                            (default: n/a)"
-  echo "          --sport:                  filter source port                         (default: n/a)"
-  echo "          --dport:                  filter destination port                    (default: n/a)"
-  echo "          --port:                   filter port                                (default: n/a)"
-  echo "          --sport_range:            filter source port range                   (default: n/a)"
-  echo "          --dport_range:            filter destination port range              (default: n/a)"
-  echo "          --port_range:             filter port range                          (default: n/a)"
-  echo "          --sports:                 filter on either of two source ports       (default: n/a)"
-  echo "          --dports:                 filter on either of two destination ports  (default: n/a)"
-  echo "          --ports:                  filter on either of two ports              (default: n/a)"
-  echo "          --tcp_flags:              filter TCP flags                           (default: n/a)"
-  echo "          --action:                 filter action                              (default: Accept)"
-  echo "          --icmp_type:              filter ICMP type                           (default: n/a)"
-  echo "          --icmp_code:              filter ICMP code                           (default: n/a)"
-  echo "          --peer_ip:                filter peer IP                             (default: n/a)"
-  echo "          --peer_cidr:              filter peer CIDR                           (default: n/a)"
-  echo "          --drops:                  filter flows with only dropped packets     (default: false)"
-  echo "          --regexes:                filter flows using regex                   (default: n/a)"
-}
-
-function specific_filters_usage {
-  # specific filters
-  echo "          --interfaces:             interfaces to monitor                      (default: n/a)"
-}
-
-function flows_usage {
-  features_usage
-  collector_usage
-  filters_usage
-  specific_filters_usage
-}
-
-function packets_usage {
-  collector_usage
-  filters_usage
-}
-
-function metrics_usage {
-  features_usage
-  filters_usage
-  specific_filters_usage
-}
-
 # get current config and save it to temp file
 function copyFLPConfig {
   jsonContent=$("$YQ_BIN" e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
@@ -663,7 +596,7 @@ function check_args_and_apply() {
     or) # Increment flow filter array
       edit_manifest "add_filter" "" "$2"
       ;;
-    --background) # Run command in background
+    *background) # Run command in background
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         runBackground="$value"
@@ -671,7 +604,7 @@ function check_args_and_apply() {
         echo "invalid value for --background"
       fi
       ;;
-    --copy) # Copy or skip without prompt
+    *copy) # Copy or skip without prompt
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" || "$value" == "prompt" ]]; then
         copy="$value"
@@ -679,10 +612,10 @@ function check_args_and_apply() {
         echo "invalid value for --copy"
       fi
       ;;
-    --interfaces) # Interfaces
+    *interfaces) # Interfaces
       edit_manifest "interfaces" "$value" "$2"
       ;;
-    --enable_pktdrop) # Enable packet drop
+    *enable_pktdrop) # Enable packet drop
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -695,7 +628,7 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    --enable_dns) # Enable DNS
+    *enable_dns) # Enable DNS
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -708,7 +641,7 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    --enable_rtt) # Enable RTT
+    *enable_rtt) # Enable RTT
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -721,7 +654,7 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    --enable_network_events) # Enable Network events monitoring
+    *enable_network_events) # Enable Network events monitoring
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -734,58 +667,58 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    --direction) # Configure filter direction
+    *direction) # Configure filter direction
       if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
         edit_manifest "filter_direction" "$value" "$2"
       else
         echo "invalid value for --direction"
       fi
       ;;
-    --cidr) # Configure flow CIDR
+    *cidr) # Configure flow CIDR
       edit_manifest "filter_cidr" "$value" "$2"
       ;;
-    --protocol) # Configure filter protocol
+    *protocol) # Configure filter protocol
       if [[ "$value" == "TCP" || "$value" == "UDP" || "$value" == "SCTP" || "$value" == "ICMP" || "$value" == "ICMPv6" ]]; then
         edit_manifest "filter_protocol" "$value" "$2"
       else
         echo "invalid value for --protocol"
       fi
       ;;
-    --sport) # Configure filter source port
+    *sport) # Configure filter source port
       edit_manifest "filter_sport" "$value" "$2"
       ;;
-    --dport) # Configure filter destination port
+    *dport) # Configure filter destination port
       edit_manifest "filter_dport" "$value" "$2"
       ;;
-    --port) # Configure filter port
+    *port) # Configure filter port
       edit_manifest "filter_port" "$value" "$2"
       ;;
-    --sport_range) # Configure filter source port range
+    *sport_range) # Configure filter source port range
       edit_manifest "filter_sport_range" "$value" "$2"
       ;;
-    --dport_range) # Configure filter destination port range
+    *dport_range) # Configure filter destination port range
       edit_manifest "filter_dport_range" "$value" "$2"
       ;;
-    --port_range) # Configure filter port range
+    *port_range) # Configure filter port range
       edit_manifest "filter_port_range" "$value" "$2"
       ;;
-    --sports) # Configure filter source two ports using ","
+    *sports) # Configure filter source two ports using ","
       edit_manifest "filter_sports" "$value" "$2"
       ;;
-    --dports) # Configure filter destination two ports using ","
+    *dports) # Configure filter destination two ports using ","
       edit_manifest "filter_dports" "$value" "$2"
       ;;
-    --ports) # Configure filter on two ports usig "," can either be srcport or dstport
+    *ports) # Configure filter on two ports usig "," can either be srcport or dstport
       edit_manifest "filter_ports" "$value" "$2"
       ;;
-    --tcp_flags) # Configure filter TCP flags
+    *tcp_flags) # Configure filter TCP flags
       if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
         edit_manifest "filter_tcp_flags" "$value" "$2"
       else
         echo "invalid value for --tcp_flags"
       fi
       ;;
-    --drops) # Filter packet drops
+    *drops) # Filter packet drops
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         edit_manifest "filter_pkt_drops" "$value" "$2"
@@ -793,7 +726,7 @@ function check_args_and_apply() {
         echo "invalid value for --drops"
       fi
       ;;
-    --regexes) # Filter using regexes
+    *regexes) # Filter using regexes
       valueCount=$(grep -o "~" <<<"$value" | wc -l)
       splitterCount=$(grep -o "," <<<"$value" | wc -l)
       if [[ ${valueCount} -gt 0 && $((valueCount)) == $((splitterCount + 1)) ]]; then
@@ -802,26 +735,26 @@ function check_args_and_apply() {
         echo "invalid value for --regexes"
       fi
       ;;
-    --icmp_type) # ICMP type
+    *icmp_type) # ICMP type
       edit_manifest "filter_icmp_type" "$value" "$2"
       ;;
-    --icmp_code) # ICMP code
+    *icmp_code) # ICMP code
       edit_manifest "filter_icmp_code" "$value" "$2"
       ;;
-    --peer_ip) # Peer IP
+    *peer_ip) # Peer IP
       edit_manifest "filter_peer_ip" "$value" "$2"
       ;;
-    --peer_cidr) # Peer CIDR
+    *peer_cidr) # Peer CIDR
       edit_manifest "filter_peer_cidr" "$value" "$2"
       ;;
-    --action) # Filter action
+    *action) # Filter action
       if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
         edit_manifest "filter_action" "$value" "$2"
       else
         echo "invalid value for --action"
       fi
       ;;
-    --log-level) # Log level
+    *log-level) # Log level
       if [[ "$value" == "trace" || "$value" == "debug" || "$value" == "info" || "$value" == "warn" || "$value" == "error" || "$value" == "fatal" || "$value" == "panic" ]]; then
         edit_manifest "log_level" "$value" "$2"
         logLevel=$value
@@ -830,15 +763,15 @@ function check_args_and_apply() {
         echo "invalid value for --action"
       fi
       ;;
-    --max-time) # Max time
+    *max-time) # Max time
       maxTime=$value
       filter=${filter/$key=$maxTime/}
       ;;
-    --max-bytes) # Max bytes
+    *max-bytes) # Max bytes
       maxBytes=$value
       filter=${filter/$key=$maxBytes/}
       ;;
-    --node-selector) # Node selector
+    *node-selector) # Node selector
       if [[ $value == *":"* ]]; then
         edit_manifest "node_selector" "$value" "$2"
       else
@@ -846,7 +779,7 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    --get-subnets) # Get subnets
+    *get-subnets) # Get subnets
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
         edit_manifest "get_subnets" "$value" "$2"
