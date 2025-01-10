@@ -8,15 +8,39 @@ function help {
   echo
   echo "Syntax: netobserv [flows|packets|metrics|follow|stop|copy|cleanup|version] [options]"
   echo
-  echo "commands:"
+  echo "main commands:"
   echo "  flows      Capture flows information in JSON format using collector pod."
-  echo "  packets    Capture packets information in pcap format using collector pod."
   echo "  metrics    Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
+  echo "  packets    Capture packets information in pcap format using collector pod."
+  echo
+  echo "extra commands:"
+  echo "  cleanup    Remove netobserv components and configurations."
+  echo "  copy       Copy collector generated files locally."
   echo "  follow     Follow collector logs when running in background."
   echo "  stop       Stop collection by removing agent daemonset."
-  echo "  copy       Copy collector generated files locally."
-  echo "  cleanup    Remove netobserv components and configurations."
   echo "  version    Print software version."
+  echo
+  echo "basic examples:"
+  echo "  netobserv flows --drops         # Capture dropped flows on all nodes"
+  echo "  netobserv packets --port=8080   # Capture packets on port 8080"
+  echo "  netobserv metrics --enable_all  # Capture all cluster metrics with pktDrop, dns, rtt and network events features"
+  echo
+  echo "advanced examples:"
+  echo "  Capture drops in background and copy output locally"
+  echo "    netobserv flows --background \                            # Capture flows using background mode"
+  echo "    --max-time=15m \                                          # for a maximum of 15 minutes"
+  echo "    --protocol=TCP --port=8080 \                              # either on TCP 8080"
+  echo "    or --protocol=UDP                                         # or UDP"
+  echo "    netobserv follow                                          # Display the progression of the background capture"
+  echo "    netobserv stop                                            # Stop the background capture by deleting eBPF agents"
+  echo "    netobserv copy                                            # Copy the background capture output data"
+  echo "    netobserv cleanup                                         # Cleanup netobserv CLI by removing the remaining collector pod"
+  echo
+  echo "  Capture packets on specific nodes and port"
+  echo "    netobserv packets                                         # Capture packets"
+  echo "    --node-selector=netobserv:true \                          # on nodes labelled with netobserv=true"
+  echo "    --port=80 \                                               # on port 80 only"
+  echo "    --max-bytes=100000000                                     # for a maximum of 100MB"
   echo
 }
 
@@ -27,48 +51,48 @@ function version {
 
 # agent / flp features
 function features_usage {
-  echo "  --enable_pktdrop:         enable packet drop                         (default: false)"
-  echo "  --enable_dns:             enable DNS tracking                        (default: false)"
-  echo "  --enable_rtt:             enable RTT tracking                        (default: false)"
-  echo "  --enable_network_events:  enable Network events monitoring           (default: false)"
   echo "  --enable_all:             enable all eBPF features                   (default: false)"
+  echo "  --enable_dns:             enable DNS tracking                        (default: false)"
+  echo "  --enable_network_events:  enable Network events monitoring           (default: false)"
+  echo "  --enable_pktdrop:         enable packet drop                         (default: false)"
+  echo "  --enable_rtt:             enable RTT tracking                        (default: false)"
   echo "  --get-subnets:            get subnets informations                   (default: false)"
 }
 
 # collector options
 function collector_usage {
+  echo "  --background:             run in background                          (default: false)"
+  echo "  --copy:                   copy the output files locally              (default: prompt)"
   echo "  --log-level:              components logs                            (default: info)"
   echo "  --max-time:               maximum capture time                       (default: 5m)"
   echo "  --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
-  echo "  --background:             run in background                          (default: false)"
-  echo "  --copy:                   copy the output files locally              (default: prompt)"
 }
 
 # agent selector / filters
 function filters_usage {
-  # node selector
-  echo "  --node-selector:          capture on specific nodes                  (default: n/a)"
-  # filters
-  echo "  --direction:              filter direction                           (default: n/a)"
-  echo "  --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
-  echo "  --protocol:               filter protocol                            (default: n/a)"
-  echo "  --sport:                  filter source port                         (default: n/a)"
-  echo "  --dport:                  filter destination port                    (default: n/a)"
-  echo "  --port:                   filter port                                (default: n/a)"
-  echo "  --sport_range:            filter source port range                   (default: n/a)"
-  echo "  --dport_range:            filter destination port range              (default: n/a)"
-  echo "  --port_range:             filter port range                          (default: n/a)"
-  echo "  --sports:                 filter on either of two source ports       (default: n/a)"
-  echo "  --dports:                 filter on either of two destination ports  (default: n/a)"
-  echo "  --ports:                  filter on either of two ports              (default: n/a)"
-  echo "  --tcp_flags:              filter TCP flags                           (default: n/a)"
+
+  # filters & selector
   echo "  --action:                 filter action                              (default: Accept)"
-  echo "  --icmp_type:              filter ICMP type                           (default: n/a)"
+  echo "  --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
+  echo "  --direction:              filter direction                           (default: n/a)"
+  echo "  --dport:                  filter destination port                    (default: n/a)"
+  echo "  --dport_range:            filter destination port range              (default: n/a)"
+  echo "  --dports:                 filter on either of two destination ports  (default: n/a)"
+  echo "  --drops:                  filter flows with only dropped packets     (default: false)"
   echo "  --icmp_code:              filter ICMP code                           (default: n/a)"
+  echo "  --icmp_type:              filter ICMP type                           (default: n/a)"
+  echo "  --node-selector:          capture on specific nodes                  (default: n/a)"
   echo "  --peer_ip:                filter peer IP                             (default: n/a)"
   echo "  --peer_cidr:              filter peer CIDR                           (default: n/a)"
-  echo "  --drops:                  filter flows with only dropped packets     (default: false)"
+  echo "  --port_range:             filter port range                          (default: n/a)"
+  echo "  --port:                   filter port                                (default: n/a)"
+  echo "  --ports:                  filter on either of two ports              (default: n/a)"
+  echo "  --protocol:               filter protocol                            (default: n/a)"
   echo "  --regexes:                filter flows using regular expression      (default: n/a)"
+  echo "  --sport_range:            filter source port range                   (default: n/a)"
+  echo "  --sport:                  filter source port                         (default: n/a)"
+  echo "  --sports:                 filter on either of two source ports       (default: n/a)"
+  echo "  --tcp_flags:              filter TCP flags                           (default: n/a)"
 }
 
 function specific_filters_usage {
@@ -86,12 +110,12 @@ function flows_usage {
   echo "features:"
   features_usage
   echo
-  echo "options:"
-  collector_usage
-  echo
   echo "filters:"
   filters_usage
   specific_filters_usage
+  echo
+  echo "options:"
+  collector_usage
 }
 
 function packets_usage {
@@ -101,11 +125,11 @@ function packets_usage {
   echo
   echo "Syntax: netobserv packets [options]"
   echo
-  echo "options:"
-  collector_usage
-  echo
   echo "filters:"
   filters_usage
+  echo
+  echo "options:"
+  collector_usage
 }
 
 function metrics_usage {
