@@ -667,6 +667,17 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
+    *enable_all) # Enable all features
+      defaultValue "true"
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        edit_manifest "pktdrop_enable" "$value" "$2"
+        edit_manifest "dns_enable" "$value" "$2"
+        edit_manifest "rtt_enable" "$value" "$2"
+        edit_manifest "network_events_enable" "$value" "$2"
+      else
+        echo "invalid value for --enable_network_events"
+      fi
+      ;;
     *direction) # Configure filter direction
       if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
         edit_manifest "filter_direction" "$value" "$2"
