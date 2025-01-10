@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 source "./scripts/functions.sh"
+source "./scripts/help.sh"
 source "./scripts/dependencies_check.sh"
 
 set +u
+
 # e2e skips inputs
 if [ -z "${isE2E+x}" ]; then isE2E=false; fi
 # keep capture state
@@ -46,7 +48,22 @@ maxTime="5m"
 # max bytes (default: 50MB)
 maxBytes=50000000
 
-function flows() {
+if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
+  required_yq_version="v0.0.0"
+  supported_archs=""
+  check_dependencies "$required_yq_version" "$supported_archs"
+fi
+
+case "$1" in
+*help)
+  help
+  exit 0
+  ;;
+*version)
+  version "$version"
+  exit 0
+  ;;
+*flows)
   case "$2" in
   "help")
     flows_usage
@@ -59,9 +76,8 @@ function flows() {
     command="flows"
     ;;
   esac
-}
-
-function packets() {
+  ;;
+*packets)
   case "$2" in
   "help")
     packets_usage
@@ -74,9 +90,8 @@ function packets() {
     command="packets"
     ;;
   esac
-}
-
-function metrics() {
+  ;;
+*metrics)
   case "$2" in
   "help")
     metrics_usage
@@ -125,39 +140,57 @@ case "$1" in
   echo
   exit 0
   ;;
-"version")
-  # display version
-  echo "Netobserv CLI version $version"
-  exit 0
+*follow)
+  case "$2" in
+  "help")
+    follow_usage
+    exit 0
+    ;;
+  *)
+    # run follow command
+    follow
+    exit 0
+    ;;
+  esac
   ;;
-"flows")
-  flows $*
+*stop)
+  case "$2" in
+  "help")
+    stop_usage
+    exit 0
+    ;;
+  *)
+    # run deleteDaemonset command
+    deleteDaemonset
+    exit 0
+    ;;
+  esac
   ;;
-"packets")
-  packets $*
+*copy)
+  case "$2" in
+  "help")
+    copy_usage
+    exit 0
+    ;;
+  *)
+    # run copy output command
+    copyOutput
+    exit 0
+    ;;
+  esac
   ;;
-"metrics")
-  metrics $*
-  ;;
-"follow")
-  # run follow command
-  follow
-  exit 0
-  ;;
-"stop")
-  # run deleteDaemonset command
-  deleteDaemonset
-  exit 0
-  ;;
-"copy")
-  # run copy output command
-  copyOutput
-  exit 0
-  ;;
-"cleanup")
-  # run cleanup command
-  cleanup
-  exit 0
+*cleanup)
+  case "$2" in
+  "help")
+    cleanup_usage
+    exit 0
+    ;;
+  *)
+    # run cleanup command
+    cleanup
+    exit 0
+    ;;
+  esac
   ;;
 *)
   echo "Unknown command $1. Use 'netobserv help' to display options"
