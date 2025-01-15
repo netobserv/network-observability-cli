@@ -68,9 +68,13 @@ function collector_usage {
   echo "  --max-bytes:              maximum capture bytes                      (default: 50000000 = 50MB)"
 }
 
+# script options
+function script_usage {
+  echo "  --yaml:                   generate YAML without applying it          (default: false)"
+}
+
 # agent selector / filters
 function filters_usage {
-
   # filters & selector
   echo "  --action:                 filter action                              (default: Accept)"
   echo "  --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
@@ -115,6 +119,7 @@ function flows_usage {
   echo
   echo "options:"
   collector_usage
+  script_usage
 }
 
 function packets_usage {
@@ -129,6 +134,7 @@ function packets_usage {
   echo
   echo "options:"
   collector_usage
+  script_usage
 }
 
 function metrics_usage {
@@ -144,6 +150,8 @@ function metrics_usage {
   echo "filters:"
   filters_usage
   specific_filters_usage
+  echo "options:"
+  script_usage
 }
 
 function follow_usage {
