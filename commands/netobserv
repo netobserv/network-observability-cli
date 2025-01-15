@@ -267,7 +267,7 @@ if [[ "$command" == "flows" || "$command" == "packets" ]]; then
   fi
 elif [ "$command" = "metrics" ]; then
   if [[ "$outputYAML" == "true" ]]; then
-    echo "Check generated YAML file in output folder."
+    echo "Check the generated YAML file in output folder."
     echo
     echo "You can create metrics agents by executing:"
     echo " ${K8S_CLI_BIN} apply -f ./output/${command}_capture_${dateName}.yml"

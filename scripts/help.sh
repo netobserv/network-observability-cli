@@ -37,7 +37,7 @@ function help {
   echo "    netobserv cleanup                                         # Cleanup netobserv CLI by removing the remaining collector pod"
   echo
   echo "  Capture packets on specific nodes and port"
-  echo "    netobserv packets                                         # Capture packets"
+  echo "    netobserv packets \                                       # Capture packets"
   echo "    --node-selector=netobserv:true \                          # on nodes labelled with netobserv=true"
   echo "    --port=80 \                                               # on port 80 only"
   echo "    --max-bytes=100000000                                     # for a maximum of 100MB"
