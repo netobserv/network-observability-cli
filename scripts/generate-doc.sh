@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ADOC=./docs/netobserv_cli.adoc
 
 # Header

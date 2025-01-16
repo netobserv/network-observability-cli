@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 source "./scripts/functions.sh"
 source "./scripts/dependencies_check.sh"
 
