@@ -48,6 +48,7 @@ ifneq ($(CLEAN_BUILD),)
 endif
 
 GOLANGCI_LINT_VERSION = v1.61.0
+BASH_VERSION = v4.2.0
 YQ_VERSION = v4.43.1
 
 # build a single arch target provided as argument
@@ -151,6 +152,7 @@ commands: ## Generate either oc or kubectl plugins and add them to build folder
 	PULL_POLICY=$(PULL_POLICY) \
 	AGENT_IMAGE=$(AGENT_IMAGE) \
 	VERSION=$(VERSION) \
+	REQUIRED_BASH_VERSION=$(BASH_VERSION) \
 	REQUIRED_YQ_VERSION=$(YQ_VERSION) \
 	SUPPORTED_ARCHS=$(MULTIARCH_TARGETS) \
 	./scripts/inject.sh

@@ -30,6 +30,18 @@ function check_dependencies() {
   else
     echo "'yq' is up to date (version $current_yq_version)."
   fi
+
+  current_bash_version="v${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}"
+  required_bash_version="$3"
+  # Compare versions
+  compare_versions "${current_bash_version#v}" "${required_bash_version#v}"
+
+  if [ "$result" -eq 0 ]; then
+    echo "Please upgrade bash to $required_bash_version or up. Found version $current_bash_version."
+    exit 1
+  else
+    echo "'bash' is up to date (version $current_bash_version)."
+  fi
 }
 
 function compare_versions() {

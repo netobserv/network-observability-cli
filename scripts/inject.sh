@@ -33,10 +33,17 @@ else
   sed -i.bak "s/^version=.*/version=\"$VERSION\"/" ./tmp/netobserv
 fi
 
+if [ -z "$REQUIRED_BASH_VERSION" ]; then
+  echo "require bash version is not set, keeping the current version"
+else
+  echo "updating dependencies to check for bash $REQUIRED_BASH_VERSION"
+  sed -i.bak "s/^required_bash_version=.*/required_bash_version=\"$REQUIRED_BASH_VERSION\"/" ./tmp/netobserv
+fi
+
 if [ -z "$REQUIRED_YQ_VERSION" ]; then
   echo "require yq version is not set, keeping the current version"
 else
-  echo "updating dependencies_check to check for $REQUIRED_YQ_VERSION"
+  echo "updating dependencies to check for yq $REQUIRED_YQ_VERSION"
   sed -i.bak "s/^required_yq_version=.*/required_yq_version=\"$REQUIRED_YQ_VERSION\"/" ./tmp/netobserv
 fi
 
