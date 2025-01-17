@@ -4,7 +4,7 @@
 [id="network-observability-netobserv-cli-reference_{context}"]
 = Network Observability CLI usage
 
-You can use the The Network Observability CLI (`oc netobserv`) to pass command line arguments to capture flows data and packets data for further analysis, enable Network Observability Operator features or pass configuration options to the eBPF agent and `flowlogs-pipeline`.
+You can use the Network Observability CLI (`oc netobserv`) to pass command line arguments to capture flows data and packets data for further analysis, enable Network Observability Operator features or pass configuration options to the eBPF agent and `flowlogs-pipeline`.
 
 [id="cli-syntax_{context}"]
 == Syntax 
