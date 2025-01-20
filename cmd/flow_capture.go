@@ -34,27 +34,6 @@ var (
 	flowsToShow = 35
 	regexes     = []string{}
 	lastFlows   = []config.GenericMap{}
-
-	rawDisplay           = "Raw"
-	standardDisplay      = "Standard"
-	exclusiveDisplays    = []string{rawDisplay, standardDisplay}
-	pktDropDisplay       = "pktDrop"
-	dnsDisplay           = "dnsTracking"
-	rttDisplay           = "flowRTT"
-	networkEventsDisplay = "networkEvents"
-	displays             = []string{pktDropDisplay, dnsDisplay, rttDisplay, networkEventsDisplay}
-	display              = []string{standardDisplay}
-
-	noEnrichment          = "None"
-	exclusiveEnrichments  = []string{noEnrichment}
-	clusterEnrichment     = "Cluster"
-	zoneEnrichment        = "Zone"
-	hostEnrichment        = "Host"
-	ownerEnrichment       = "Owner"
-	resourceEnrichment    = "Resource"
-	subnetLabelEnrichment = "SubnetLabel"
-	enrichments           = []string{clusterEnrichment, zoneEnrichment, hostEnrichment, ownerEnrichment, resourceEnrichment, subnetLabelEnrichment}
-	enrichment            = []string{resourceEnrichment}
 )
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
@@ -256,16 +235,16 @@ func updateTable() {
 			}
 			if strings.Contains(options, "background=true") {
 				fmt.Printf("Showing last: %d\n", flowsToShow)
-				fmt.Printf("Display: %s\n", toShortTitleStr(display))
-				fmt.Printf("Enrichment: %s\n", toShortTitleStr(enrichment))
+				fmt.Printf("Display: %s\n", display.getCurrentItem().name)
+				fmt.Printf("Enrichment: %s\n", enrichment.getCurrentItem().name)
 			} else {
 				fmt.Printf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", flowsToShow)
-				fmt.Printf("Display: %s Use Left / Right keyboard arrows to cycle views\n", toShortTitleStr(display))
-				fmt.Printf("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", toShortTitleStr(enrichment))
+				fmt.Printf("Display: %s Use Left / Right keyboard arrows to cycle views\n", display.getCurrentItem().name)
+				fmt.Printf("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", enrichment.getCurrentItem().name)
 			}
 		}
 
-		if slices.Contains(display, rawDisplay) {
+		if display.getCurrentItem().name == rawDisplay {
 			fmt.Print("Raw flow logs:\n")
 			for _, flow := range lastFlows {
 				fmt.Printf("%v\n", flow)
@@ -282,23 +261,8 @@ func updateTable() {
 			}
 
 			// enrichment fields
-			if !slices.Contains(enrichment, noEnrichment) {
-				for _, enr := range enrichment {
-					var fieldMatch string
-					if enr == resourceEnrichment {
-						fieldMatch = "K8S_Name"
-					} else if enr == subnetLabelEnrichment {
-						fieldMatch = "SubnetLabel"
-					} else {
-						fieldMatch = fmt.Sprintf("K8S_%s", enr)
-					}
-
-					for _, col := range cfg.Columns {
-						if strings.Contains(col.Field, fieldMatch) {
-							colIDs = append(colIDs, col.ID)
-						}
-					}
-				}
+			if enrichment.getCurrentItem().name != noOptions {
+				colIDs = append(colIDs, enrichment.getCurrentItem().ids...)
 			} else {
 				// TODO: add a new flag in the config to identify these as default non enriched fields
 				colIDs = append(colIDs,
@@ -310,16 +274,15 @@ func updateTable() {
 			}
 
 			// standard / feature fields
-			if !slices.Contains(display, standardDisplay) {
+			if display.getCurrentItem().name != standardDisplay {
 				for _, col := range cfg.Columns {
-					if slices.Contains(display, col.Feature) {
+					if slices.Contains(display.getCurrentItem().ids, col.Feature) {
 						colIDs = append(colIDs, col.ID)
 					}
 				}
 			} else {
 				// TODO: add a new flag in the config to identify these as default feature fields
 				colIDs = append(colIDs,
-					"FlowDirection",
 					"Interfaces",
 					"Proto",
 					"Dscp",
@@ -366,30 +329,6 @@ func updateTable() {
 	}
 }
 
-func cycleOption(selection []string, exclusiveOptions []string, options []string, incr int) []string {
-	allOptions := slices.Concat(exclusiveOptions, options)
-
-	var index int
-	if len(selection) == 1 {
-		index = slices.Index(allOptions, selection[0])
-		if index+incr < 0 || index+incr > len(allOptions)-1 {
-			index = -1
-		} else {
-			index += incr
-		}
-	} else if incr < 0 {
-		index = len(allOptions) - 1
-	}
-
-	if index != -1 {
-		selection = []string{allOptions[index]}
-	} else {
-		selection = slices.Clone(options)
-	}
-
-	return selection
-}
-
 // scanner returns true in case of normal exit (end of program execution) or false in case of error
 func scanner() bool {
 	if err := keyboard.Open(); err != nil {
@@ -417,13 +356,13 @@ func scanner() bool {
 				flowsToShow--
 			}
 		case key == keyboard.KeyArrowRight:
-			display = cycleOption(display, exclusiveDisplays, displays, 1)
+			display.next()
 		case key == keyboard.KeyArrowLeft:
-			display = cycleOption(display, exclusiveDisplays, displays, -1)
+			display.prev()
 		case key == keyboard.KeyPgup:
-			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, 1)
+			enrichment.next()
 		case key == keyboard.KeyPgdn:
-			enrichment = cycleOption(enrichment, exclusiveEnrichments, enrichments, -1)
+			enrichment.prev()
 		case key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2:
 			if len(regexes) > 0 {
 				lastIndex := len(regexes) - 1
