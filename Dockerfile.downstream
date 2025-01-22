@@ -1,6 +1,8 @@
 # We do not use --platform feature to auto fill this ARG because of incompatibility between podman and docker
 ARG TARGETARCH=amd64
 ARG COMMIT
+ARG IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
+ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
 
 # Make kubectl & oc scripts available for copy
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.17.0-202412032103.p0.g13001b0.assembly.stream.el9 as ose-cli
@@ -29,7 +31,7 @@ COPY .mk/ .mk/
 RUN GOARCH=$TARGETARCH make compile
 
 # Embedd commands in case users want to pull it from collector image
-RUN USER=netobserv VERSION=main make oc-commands
+RUN USER=netobserv VERSION=main IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IMAGE" make oc-commands
 
 # Prepare output dir
 RUN mkdir -p output
