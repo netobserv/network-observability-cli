@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 SHA=$(sha256sum netobserv-cli.tar.gz | awk '{print $1}')
 

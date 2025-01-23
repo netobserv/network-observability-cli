@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 source "./scripts/functions.sh"
 source "./scripts/dependencies_check.sh"
 
@@ -94,7 +94,8 @@ function metrics() {
 if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
   required_yq_version="v0.0.0"
   supported_archs=""
-  check_dependencies "$required_yq_version" "$supported_archs"
+  required_bash_version="v0.0.0"
+  check_dependencies "$required_yq_version" "$supported_archs" "$required_bash_version"
 fi
 
 case "$1" in
