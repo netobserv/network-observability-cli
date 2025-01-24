@@ -45,19 +45,30 @@ func toDuration(genericMap config.GenericMap, fieldName string, factor time.Dura
 	return emptyText
 }
 
+func directionValue(v float64) string {
+	switch v {
+	case 0:
+		return "Ingress"
+	case 1:
+		return "Egress"
+	case 2:
+		return "Inner"
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
 func toDirection(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
-		switch v.(float64) {
-		case 0:
-			return "Ingress"
-		case 1:
-			return "Egress"
-		case 2:
-			return "Inner"
-		default:
-			return fmt.Sprintf("%v", v)
+		if reflect.TypeOf(v).Kind() == reflect.Slice {
+			arr := make([]string, len(v.([]interface{})))
+			for i, v := range v.([]interface{}) {
+				arr[i] = directionValue(v.(float64))
+			}
+			return strings.Join(arr, ",")
 		}
+		return directionValue(v.(float64))
 	}
 	return emptyText
 }
@@ -407,6 +418,9 @@ func toValue(genericMap config.GenericMap, fieldName string) interface{} {
 			arr := make([]string, len(v.([]interface{})))
 			for i, v := range v.([]interface{}) {
 				arr[i] = v.(string)
+				if arr[i] == "" {
+					arr[i] = "None"
+				}
 			}
 			return strings.Join(arr, ",")
 		}
@@ -476,7 +490,7 @@ func ToTableRow(genericMap config.GenericMap, colIDs []string) []interface{} {
 				row = append(row, toTimeString(genericMap, "Time"))
 			}
 		// special cases where autocompletes are involved
-		case "FlowDirection":
+		case "FlowDirection", "IfDirections":
 			row = append(row, toDirection(genericMap, fieldName))
 		case "Proto":
 			row = append(row, toProto(genericMap, fieldName))
