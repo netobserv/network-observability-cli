@@ -70,8 +70,6 @@ function collector_usage {
 
 # agent selector / filters
 function filters_usage {
-
-  # filters & selector
   echo "  --action:                 filter action                              (default: Accept)"
   echo "  --cidr:                   filter CIDR                                (default: 0.0.0.0/0)"
   echo "  --direction:              filter direction                           (default: n/a)"

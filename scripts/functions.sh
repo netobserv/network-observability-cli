@@ -230,6 +230,7 @@ function setup {
     printf 'yq tools must be installed for proper usage of netobserv cli\n' >&2
     exit 1
   fi
+
   if namespaceFound; then
     printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
     skipCleanup="true"
@@ -804,6 +805,18 @@ function check_args_and_apply() {
       ;;
     esac
   done
+
+  # avoid packet capture without filters
+  if [[ "$3" = "packets" ]]; then
+    currentFilters=$( "$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$2" )
+    if [[ $currentFilters == "[]" ]]; then
+      echo
+      echo "Error: At least one eBPF filter must be set for packet capture to avoid high resource consumption."
+      echo "Use netobserv packets help to list filters"
+      echo
+      exit 1
+    fi
+  fi
 
   ${K8S_CLI_BIN} apply -f "$2"
   ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
