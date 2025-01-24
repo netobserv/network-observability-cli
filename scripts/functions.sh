@@ -686,6 +686,9 @@ function check_args_and_apply() {
         echo "invalid value for --direction"
       fi
       ;;
+    *peer_cidr) # Peer CIDR
+      edit_manifest "filter_peer_cidr" "$value" "$2"
+      ;;
     *cidr) # Configure flow CIDR
       edit_manifest "filter_cidr" "$value" "$2"
       ;;
@@ -755,9 +758,6 @@ function check_args_and_apply() {
       ;;
     *peer_ip) # Peer IP
       edit_manifest "filter_peer_ip" "$value" "$2"
-      ;;
-    *peer_cidr) # Peer CIDR
-      edit_manifest "filter_peer_cidr" "$value" "$2"
       ;;
     *action) # Filter action
       if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
