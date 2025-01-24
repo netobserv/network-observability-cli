@@ -708,9 +708,9 @@ function check_args_and_apply() {
         edit_manifest "rtt_enable" "$value" "$2"
         edit_manifest "network_events_enable" "$value" "$2"
         edit_manifest "udn_enable" "$value" "$2"
-        edit_manifest "xlat_enable" "$value" "$2"
+        edit_manifest "pkt_xlat_enable" "$value" "$2"
       else
-        echo "invalid value for --enable_network_events"
+        echo "invalid value for --enable_all"
       fi
       ;;
     *direction) # Configure filter direction
