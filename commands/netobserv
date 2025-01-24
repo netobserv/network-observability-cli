@@ -66,7 +66,7 @@ case "$1" in
   ;;
 *flows)
   case "$2" in
-  "help")
+  *help)
     flows_usage
     exit 0
     ;;
@@ -80,7 +80,7 @@ case "$1" in
   ;;
 *packets)
   case "$2" in
-  "help")
+  *help)
     packets_usage
     exit 0
     ;;
@@ -94,7 +94,7 @@ case "$1" in
   ;;
 *metrics)
   case "$2" in
-  "help")
+  *help)
     metrics_usage
     exit 0
     ;;
@@ -108,7 +108,7 @@ case "$1" in
   ;;
 *follow)
   case "$2" in
-  "help")
+  *help)
     follow_usage
     exit 0
     ;;
@@ -121,7 +121,7 @@ case "$1" in
   ;;
 *stop)
   case "$2" in
-  "help")
+  *help)
     stop_usage
     exit 0
     ;;
@@ -134,7 +134,7 @@ case "$1" in
   ;;
 *copy)
   case "$2" in
-  "help")
+  *help)
     copy_usage
     exit 0
     ;;
@@ -147,7 +147,7 @@ case "$1" in
   ;;
 *cleanup)
   case "$2" in
-  "help")
+  *help)
     cleanup_usage
     exit 0
     ;;
