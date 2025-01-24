@@ -45,6 +45,10 @@ spec:
             value: "false"
           - name: ENABLE_NETWORK_EVENTS_MONITORING
             value: "false"
+          - name: ENABLE_UDN_MAPPING
+            value: "false"
+          - name: ENABLE_PKT_TRANSLATION
+            value: "false"
           - name: ENABLE_FLOW_FILTER
             value: "false"
           - name: FLOW_FILTER_RULES

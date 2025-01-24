@@ -422,7 +422,7 @@ function edit_manifest() {
   "interfaces")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
     ;;
-  "pktdrop_enable")
+  "pkt_drop_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$3"
     ;;
   "dns_enable")
@@ -433,6 +433,12 @@ function edit_manifest() {
     ;;
   "network_events_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
+    ;;
+  "udn_enable")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_UDN_MAPPING\").value|=\"$2\"" "$3"
+    ;;
+  "pkt_xlat_enable")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_TRANSLATION\").value|=\"$2\"" "$3"
     ;;
   "get_subnets")
     if [[ "$2" == "true" ]]; then
@@ -526,7 +532,7 @@ function edit_manifest() {
   "filter_pkt_drops")
     if [[ "$2" == "true" ]]; then
       # force enable drops before setting filter
-      edit_manifest "pktdrop_enable" "$2" "$3"
+      edit_manifest "pkt_drop_enable" "$2" "$3"
     fi
     setLastFlowFilter "drops" "$2" "$3"
     ;;
@@ -616,16 +622,16 @@ function check_args_and_apply() {
     *interfaces) # Interfaces
       edit_manifest "interfaces" "$value" "$2"
       ;;
-    *enable_pktdrop) # Enable packet drop
+    *enable_pkt_drop) # Enable packet drop
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "pktdrop_enable" "$value" "$2"
+          edit_manifest "pkt_drop_enable" "$value" "$2"
         else
-          echo "invalid value for --enable_pktdrop"
+          echo "invalid value for --enable_pkt_drop"
         fi
       else
-        echo "--enable_pktdrop is invalid option for packets"
+        echo "--enable_pkt_drop is invalid option for packets"
         exit 1
       fi
       ;;
@@ -668,13 +674,41 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
+    *enable_udn_mapping) # Enable User Defined Network mapping
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "udn_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_udn_mapping"
+        fi
+      else
+        echo "--enable_udn_mapping is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    *enable_pkt_translation) # Enable Packet translation
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        defaultValue "true"
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "pkt_xlat_enable" "$value" "$2"
+        else
+          echo "invalid value for --enable_pkt_translation"
+        fi
+      else
+        echo "--enable_pkt_translation is invalid option for packets"
+        exit 1
+      fi
+      ;;
     *enable_all) # Enable all features
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
-        edit_manifest "pktdrop_enable" "$value" "$2"
+        edit_manifest "pkt_drop_enable" "$value" "$2"
         edit_manifest "dns_enable" "$value" "$2"
         edit_manifest "rtt_enable" "$value" "$2"
         edit_manifest "network_events_enable" "$value" "$2"
+        edit_manifest "udn_enable" "$value" "$2"
+        edit_manifest "xlat_enable" "$value" "$2"
       else
         echo "invalid value for --enable_network_events"
       fi

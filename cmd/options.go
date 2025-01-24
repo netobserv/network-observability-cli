@@ -21,6 +21,8 @@ var (
 	dnsFeature           = "dnsTracking"
 	rttFeature           = "flowRTT"
 	networkEventsDisplay = "networkEvents"
+	pktTranslation       = "packetTranslation"
+	udnMapping           = "udnMapping"
 	display              = option{
 		all: []optionItem{
 			// exclusive displays
@@ -31,8 +33,10 @@ var (
 			{name: "DNS", ids: []string{dnsFeature}},
 			{name: "RTT", ids: []string{rttFeature}},
 			{name: "Network events", ids: []string{networkEventsDisplay}},
+			{name: "Packet translation", ids: []string{pktTranslation}},
+			{name: "UDN mapping", ids: []string{udnMapping}},
 			// all features display
-			{name: allOptions, ids: []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay}},
+			{name: allOptions, ids: []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay, pktTranslation, udnMapping}},
 		},
 		// standard display by default
 		current: 1,

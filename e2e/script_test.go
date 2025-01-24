@@ -45,7 +45,7 @@ func TestHelpCommand(t *testing.T) {
 		assert.Contains(t, str, "basic examples:")
 		assert.Contains(t, str, "netobserv flows --drops         # Capture dropped flows on all nodes")
 		assert.Contains(t, str, "netobserv packets --port=8080   # Capture packets on port 8080")
-		assert.Contains(t, str, "netobserv metrics --enable_all  # Capture all cluster metrics with pktDrop, dns, rtt and network events features")
+		assert.Contains(t, str, "netobserv metrics --enable_all  # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations")
 		assert.Contains(t, str, "advanced examples:")
 		assert.Contains(t, str, "Capture drops in background and copy output locally")
 		assert.Contains(t, str, "Capture packets on specific nodes and port")

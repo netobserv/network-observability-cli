@@ -276,7 +276,7 @@ func updateTable() {
 			// standard / feature fields
 			if display.getCurrentItem().name != standardDisplay {
 				for _, col := range cfg.Columns {
-					if slices.Contains(display.getCurrentItem().ids, col.Feature) {
+					if col.Field != "" && slices.Contains(display.getCurrentItem().ids, col.Feature) {
 						colIDs = append(colIDs, col.ID)
 					}
 				}

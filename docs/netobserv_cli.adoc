@@ -55,45 +55,47 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 [cols="1,1,1",options="header"]
 |===
 | Option | Description | Default
-|--enable_all|            enable all eBPF features                   | false
-|--enable_dns|            enable DNS tracking                        | false
-|--enable_network_events| enable Network events monitoring           | false
-|--enable_pktdrop|        enable packet drop                         | false
-|--enable_rtt|            enable RTT tracking                        | false
-|--get-subnets|           get subnets informations                   | false
-|--background|            run in background                          | false
-|--copy|                  copy the output files locally              | prompt
-|--log-level|             components logs                            | info
-|--max-time|              maximum capture time                       | 5m
-|--max-bytes|             maximum capture bytes                      | 50000000 = 50MB
-|--action|                filter action                              | Accept
-|--cidr|                  filter CIDR                                | 0.0.0.0/0
-|--direction|             filter direction                           | n/a
-|--dport|                 filter destination port                    | n/a
-|--dport_range|           filter destination port range              | n/a
-|--dports|                filter on either of two destination ports  | n/a
-|--drops|                 filter flows with only dropped packets     | false
-|--icmp_code|             filter ICMP code                           | n/a
-|--icmp_type|             filter ICMP type                           | n/a
-|--node-selector|         capture on specific nodes                  | n/a
-|--peer_ip|               filter peer IP                             | n/a
-|--peer_cidr|             filter peer CIDR                           | n/a
-|--port_range|            filter port range                          | n/a
-|--port|                  filter port                                | n/a
-|--ports|                 filter on either of two ports              | n/a
-|--protocol|              filter protocol                            | n/a
-|--regexes|               filter flows using regular expression      | n/a
-|--sport_range|           filter source port range                   | n/a
-|--sport|                 filter source port                         | n/a
-|--sports|                filter on either of two source ports       | n/a
-|--tcp_flags|             filter TCP flags                           | n/a
-|--interfaces|            interfaces to monitor                      | n/a
+|--enable_all|                enable all eBPF features                   | false
+|--enable_dns|                enable DNS tracking                        | false
+|--enable_network_events|     enable network events monitoring           | false
+|--enable_pkt_translation|    enable packet translation                  | false
+|--enable_pkt_drop|           enable packet drop                         | false
+|--enable_rtt|                enable RTT tracking                        | false
+|--enable_udn_mapping|        enable User Defined Network mapping | false
+|--get-subnets|               get subnets informations                   | false
+|--background|                run in background                          | false
+|--copy|                      copy the output files locally              | prompt
+|--log-level|                 components logs                            | info
+|--max-time|                  maximum capture time                       | 5m
+|--max-bytes|                 maximum capture bytes                      | 50000000 = 50MB
+|--action|                    filter action                              | Accept
+|--cidr|                      filter CIDR                                | 0.0.0.0/0
+|--direction|                 filter direction                           | n/a
+|--dport|                     filter destination port                    | n/a
+|--dport_range|               filter destination port range              | n/a
+|--dports|                    filter on either of two destination ports  | n/a
+|--drops|                     filter flows with only dropped packets     | false
+|--icmp_code|                 filter ICMP code                           | n/a
+|--icmp_type|                 filter ICMP type                           | n/a
+|--node-selector|             capture on specific nodes                  | n/a
+|--peer_ip|                   filter peer IP                             | n/a
+|--peer_cidr|                 filter peer CIDR                           | n/a
+|--port_range|                filter port range                          | n/a
+|--port|                      filter port                                | n/a
+|--ports|                     filter on either of two ports              | n/a
+|--protocol|                  filter protocol                            | n/a
+|--regexes|                   filter flows using regular expression      | n/a
+|--sport_range|               filter source port range                   | n/a
+|--sport|                     filter source port                         | n/a
+|--sports|                    filter on either of two source ports       | n/a
+|--tcp_flags|                 filter TCP flags                           | n/a
+|--interfaces|                interfaces to monitor                      | n/a
 |===
 
 .Example running flows capture on TCP protocol and port 49051 with PacketDrop and RTT features enabled:
 [source,terminal]
 ----
-$ oc netobserv flows --enable_pktdrop=true  --enable_rtt=true --enable_filter=true --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
+$ oc netobserv flows --enable_pkt_drop=true  --enable_rtt=true --enable_filter=true --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
 ----
 [id="cli-reference-packet-capture-options_{context}"]
 == Packets capture options
@@ -108,32 +110,32 @@ $ oc netobserv packets [<option>]
 [cols="1,1,1",options="header"]
 |===
 | Option | Description | Default
-|--background|            run in background                          | false
-|--copy|                  copy the output files locally              | prompt
-|--log-level|             components logs                            | info
-|--max-time|              maximum capture time                       | 5m
-|--max-bytes|             maximum capture bytes                      | 50000000 = 50MB
-|--action|                filter action                              | Accept
-|--cidr|                  filter CIDR                                | 0.0.0.0/0
-|--direction|             filter direction                           | n/a
-|--dport|                 filter destination port                    | n/a
-|--dport_range|           filter destination port range              | n/a
-|--dports|                filter on either of two destination ports  | n/a
-|--drops|                 filter flows with only dropped packets     | false
-|--icmp_code|             filter ICMP code                           | n/a
-|--icmp_type|             filter ICMP type                           | n/a
-|--node-selector|         capture on specific nodes                  | n/a
-|--peer_ip|               filter peer IP                             | n/a
-|--peer_cidr|             filter peer CIDR                           | n/a
-|--port_range|            filter port range                          | n/a
-|--port|                  filter port                                | n/a
-|--ports|                 filter on either of two ports              | n/a
-|--protocol|              filter protocol                            | n/a
-|--regexes|               filter flows using regular expression      | n/a
-|--sport_range|           filter source port range                   | n/a
-|--sport|                 filter source port                         | n/a
-|--sports|                filter on either of two source ports       | n/a
-|--tcp_flags|             filter TCP flags                           | n/a
+|--background|                run in background                          | false
+|--copy|                      copy the output files locally              | prompt
+|--log-level|                 components logs                            | info
+|--max-time|                  maximum capture time                       | 5m
+|--max-bytes|                 maximum capture bytes                      | 50000000 = 50MB
+|--action|                    filter action                              | Accept
+|--cidr|                      filter CIDR                                | 0.0.0.0/0
+|--direction|                 filter direction                           | n/a
+|--dport|                     filter destination port                    | n/a
+|--dport_range|               filter destination port range              | n/a
+|--dports|                    filter on either of two destination ports  | n/a
+|--drops|                     filter flows with only dropped packets     | false
+|--icmp_code|                 filter ICMP code                           | n/a
+|--icmp_type|                 filter ICMP type                           | n/a
+|--node-selector|             capture on specific nodes                  | n/a
+|--peer_ip|                   filter peer IP                             | n/a
+|--peer_cidr|                 filter peer CIDR                           | n/a
+|--port_range|                filter port range                          | n/a
+|--port|                      filter port                                | n/a
+|--ports|                     filter on either of two ports              | n/a
+|--protocol|                  filter protocol                            | n/a
+|--regexes|                   filter flows using regular expression      | n/a
+|--sport_range|               filter source port range                   | n/a
+|--sport|                     filter source port                         | n/a
+|--sports|                    filter on either of two source ports       | n/a
+|--tcp_flags|                 filter TCP flags                           | n/a
 |===
 
 .Example running packets capture on TCP protocol and port 49051:
@@ -153,38 +155,40 @@ $ oc netobserv metrics [<option>]
 [cols="1,1,1",options="header"]
 |===
 | Option | Description | Default
-|--enable_all|            enable all eBPF features                   | false
-|--enable_dns|            enable DNS tracking                        | false
-|--enable_network_events| enable Network events monitoring           | false
-|--enable_pktdrop|        enable packet drop                         | false
-|--enable_rtt|            enable RTT tracking                        | false
-|--get-subnets|           get subnets informations                   | false
-|--action|                filter action                              | Accept
-|--cidr|                  filter CIDR                                | 0.0.0.0/0
-|--direction|             filter direction                           | n/a
-|--dport|                 filter destination port                    | n/a
-|--dport_range|           filter destination port range              | n/a
-|--dports|                filter on either of two destination ports  | n/a
-|--drops|                 filter flows with only dropped packets     | false
-|--icmp_code|             filter ICMP code                           | n/a
-|--icmp_type|             filter ICMP type                           | n/a
-|--node-selector|         capture on specific nodes                  | n/a
-|--peer_ip|               filter peer IP                             | n/a
-|--peer_cidr|             filter peer CIDR                           | n/a
-|--port_range|            filter port range                          | n/a
-|--port|                  filter port                                | n/a
-|--ports|                 filter on either of two ports              | n/a
-|--protocol|              filter protocol                            | n/a
-|--regexes|               filter flows using regular expression      | n/a
-|--sport_range|           filter source port range                   | n/a
-|--sport|                 filter source port                         | n/a
-|--sports|                filter on either of two source ports       | n/a
-|--tcp_flags|             filter TCP flags                           | n/a
-|--interfaces|            interfaces to monitor                      | n/a
+|--enable_all|                enable all eBPF features                   | false
+|--enable_dns|                enable DNS tracking                        | false
+|--enable_network_events|     enable network events monitoring           | false
+|--enable_pkt_translation|    enable packet translation                  | false
+|--enable_pkt_drop|           enable packet drop                         | false
+|--enable_rtt|                enable RTT tracking                        | false
+|--enable_udn_mapping|        enable User Defined Network mapping | false
+|--get-subnets|               get subnets informations                   | false
+|--action|                    filter action                              | Accept
+|--cidr|                      filter CIDR                                | 0.0.0.0/0
+|--direction|                 filter direction                           | n/a
+|--dport|                     filter destination port                    | n/a
+|--dport_range|               filter destination port range              | n/a
+|--dports|                    filter on either of two destination ports  | n/a
+|--drops|                     filter flows with only dropped packets     | false
+|--icmp_code|                 filter ICMP code                           | n/a
+|--icmp_type|                 filter ICMP type                           | n/a
+|--node-selector|             capture on specific nodes                  | n/a
+|--peer_ip|                   filter peer IP                             | n/a
+|--peer_cidr|                 filter peer CIDR                           | n/a
+|--port_range|                filter port range                          | n/a
+|--port|                      filter port                                | n/a
+|--ports|                     filter on either of two ports              | n/a
+|--protocol|                  filter protocol                            | n/a
+|--regexes|                   filter flows using regular expression      | n/a
+|--sport_range|               filter source port range                   | n/a
+|--sport|                     filter source port                         | n/a
+|--sports|                    filter on either of two source ports       | n/a
+|--tcp_flags|                 filter TCP flags                           | n/a
+|--interfaces|                interfaces to monitor                      | n/a
 |===
 
 .Example running metrics capture for TCP drops:
 [source,terminal]
 ----
-$ oc netobserv metrics --enable_pktdrop=true --enable_filter=true --protocol=TCP 
+$ oc netobserv metrics --enable_pkt_drop=true --enable_filter=true --protocol=TCP 
 ----
