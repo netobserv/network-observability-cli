@@ -10,7 +10,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/netobserv/flowlogs-pipeline v1.6.1-crc0
+	github.com/netobserv/flowlogs-pipeline v1.7.0-community
 	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
@@ -29,10 +29,10 @@ require (
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/netobserv/netobserv-ebpf-agent v1.6.1-crc2.0.20240913155426-6ac7c5ccbf59 // indirect
+	github.com/netobserv/netobserv-ebpf-agent v1.6.1-crc2.0.20241001154044-8c6c4c91c326 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.opentelemetry.io/otel v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0 // indirect
+	go.opentelemetry.io/otel v1.29.0 // indirect
+	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	k8s.io/component-base v0.32.1 // indirect
 	sigs.k8s.io/controller-runtime v0.20.0 // indirect
@@ -82,7 +82,7 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240826202546-f6391c0de4c7 // indirect
-	google.golang.org/grpc v1.65.0 // indirect
+	google.golang.org/grpc v1.66.0 // indirect
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
