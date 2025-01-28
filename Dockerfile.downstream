@@ -37,7 +37,7 @@ RUN USER=netobserv VERSION=main IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IMAGE" make o
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
-FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.4
+FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.5-1736404036
 WORKDIR /
 
 COPY --from=builder /opt/app-root/build .
