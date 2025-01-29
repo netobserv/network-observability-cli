@@ -116,7 +116,7 @@ function setCollectorPipelineConfig() {
     collectorPipelineConfigJSONContent
   '
   if [ -f ./res/collector-pipeline-config.json ]; then
-    collectorPipelineConfigJSON="$(< ./res/collector-pipeline-config.json tr '\n' ' ')"
+    collectorPipelineConfigJSON="$(tr <./res/collector-pipeline-config.json '\n' ' ')"
   fi
 
   # replace target host
@@ -133,7 +133,7 @@ function setMetricsPipelineConfig() {
     metricsPipelineConfigJSONContent
   '
   if [ -f ./res/metrics-pipeline-config.json ]; then
-    metricsPipelineConfigJSON="$(< ./res/metrics-pipeline-config.json tr '\n' ' ')"
+    metricsPipelineConfigJSON="$(tr <./res/metrics-pipeline-config.json '\n' ' ')"
   fi
 
   # append json to yaml file
@@ -200,7 +200,7 @@ function getSubnets() {
   fi
 }
 
-function getNodesByLabel () {
+function getNodesByLabel() {
   printf "finding nodes matching %s...\n" "$1"
   nodeStr=$("$K8S_CLI_BIN" get nodes -l "$1" -o name | tr '\n' ' ')
   IFS=' ' read -ra nodeArray <<<"$nodeStr"
@@ -212,7 +212,7 @@ function getNodesByLabel () {
   fi
 }
 
-function setup {
+function setup() {
   echo "Setting up... "
 
   # check for mandatory arguments
@@ -289,42 +289,42 @@ function setup {
   fi
 }
 
-function follow {
+function follow() {
   ${K8S_CLI_BIN} logs collector -n "$namespace" -f
 }
 
-function copyOutput {
+function copyOutput() {
   echo "Copying collector output files..."
   mkdir -p ./output
   ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
 }
 
-function deleteServiceMonitor {
+function deleteServiceMonitor() {
   printf "\nDeleting service monitor... "
   ${K8S_CLI_BIN} delete servicemonitor netobserv-cli -n "$namespace" --ignore-not-found=true
 }
 
-function deleteDashboardCM {
+function deleteDashboardCM() {
   printf "\nDeleting dashboard configmap... "
   ${K8S_CLI_BIN} delete configmap netobserv-cli -n openshift-config-managed --ignore-not-found=true
 }
 
-function deleteDaemonset {
+function deleteDaemonset() {
   printf "\nDeleting daemonset... "
   ${K8S_CLI_BIN} delete daemonset netobserv-cli -n "$namespace" --ignore-not-found=true
 }
 
-function deletePod {
+function deletePod() {
   printf "\nDeleting pod... "
   ${K8S_CLI_BIN} delete pod collector -n "$namespace" --ignore-not-found=true
 }
 
-function deleteNamespace {
+function deleteNamespace() {
   printf "\nDeleting namespace... "
   ${K8S_CLI_BIN} delete namespace "$namespace" --ignore-not-found=true
 }
 
-function cleanup {
+function cleanup() {
   if [[ "$runBackground" == "true" || "$skipCleanup" == "true" ]]; then
     return
   fi
@@ -366,15 +366,28 @@ function cleanup {
 }
 
 # get current config and save it to temp file
-function copyFLPConfig {
+function copyFLPConfig() {
   jsonContent=$("$YQ_BIN" e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
   # json temp file location is set as soon as this function is called
   json="${MANIFEST_OUTPUT_PATH}/${CONFIG_JSON_TEMP}"
   echo "$jsonContent" >${json}
 }
 
+# get network enrich stage
+function getNetworkEnrichStage() {
+  enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
+  enrichContent=$("$YQ_BIN" e -oj ".parameters[$enrichIndex]" "$json")
+  enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
+  echo "$enrichContent" >${enrichJson}
+}
+
+function overrideNetworkEnrichStage() {
+  enrichJsonStr=$(cat "$enrichJson")
+  "$YQ_BIN" e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
+}
+
 # update FLP Config
-function updateFLPConfig {
+function updateFLPConfig() {
   # get json as string with escaped quotes
   jsonContent=$(cat "$1")
   jsonContent=${jsonContent//\"/\\\"}
@@ -391,12 +404,11 @@ function addFlowFilter() {
   if [ -f ./res/flow-filter.json ]; then
     flowFilterJSON="$(cat ./res/flow-filter.json)"
   fi
-  
   "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | . += $flowFilterJSON | tojson)" "$1"
 }
 
 # update last flow filter of the array
-function setLastFlowFilter() { 
+function setLastFlowFilter() {
   "$YQ_BIN" e --inplace " .spec.template.spec.containers[0].env[] |= select(.name == \"FLOW_FILTER_RULES\").value |=(fromjson | .[-1].$1 = $2 | tostring)" "$3"
 }
 
@@ -410,9 +422,8 @@ function edit_manifest() {
 
   if [[ $1 == "filter_"* ]]; then
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$3"
-    
     # add first filter in the array
-    currentFilters=$( "$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$3" )
+    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$3")
     if [[ $currentFilters == "[]" ]]; then
       addFlowFilter "$3"
     fi
@@ -435,6 +446,17 @@ function edit_manifest() {
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
     ;;
   "udn_enable")
+    if [[ "$2" == "true" ]]; then
+      # add udn to secondary network indexes
+      copyFLPConfig "$3"
+      getNetworkEnrichStage
+
+      # add kubeConfig.secondaryNetworks to network
+      "$YQ_BIN" e -oj --inplace ".transform.network.kubeConfig = {\"secondaryNetworks\":[{\"name\":\"ovn-kubernetes\",\"index\":{\"udn\":null}}]}" "$enrichJson"
+
+      overrideNetworkEnrichStage
+      updateFLPConfig "$json" "$3"
+    fi
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_UDN_MAPPING\").value|=\"$2\"" "$3"
     ;;
   "pkt_xlat_enable")
@@ -447,12 +469,7 @@ function edit_manifest() {
 
       if [ "${#subnets[@]}" -gt 0 ]; then
         copyFLPConfig "$3"
-
-        # get network enrich stage
-        enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
-        enrichContent=$("$YQ_BIN" e -oj ".parameters[$enrichIndex]" "$json")
-        enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
-        echo "$enrichContent" >${enrichJson}
+        getNetworkEnrichStage
 
         # add rules to network
         "$YQ_BIN" e -oj --inplace ".transform.network.rules +={\"type\":\"add_subnet_label\",\"add_subnet_label\":{\"input\":\"SrcAddr\",\"output\":\"SrcSubnetLabel\"}}" "$enrichJson"
@@ -464,10 +481,7 @@ function edit_manifest() {
           "$YQ_BIN" e -oj --inplace ".transform.network.subnetLabels += {\"name\":\"$key\",\"cidrs\":[${subnets[$key]}]}" "$enrichJson"
         done
 
-        # override network
-        enrichJsonStr=$(cat $enrichJson)
-        "$YQ_BIN" e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
-
+        overrideNetworkEnrichStage
         updateFLPConfig "$json" "$3"
       fi
     fi
@@ -577,7 +591,6 @@ function edit_manifest() {
     ;;
   esac
 }
-
 
 # define key and value at script level to make them available all the time
 # these will be updated by check_args_and_apply first and overriden by defaultValue when needed
@@ -842,7 +855,7 @@ function check_args_and_apply() {
 
   # avoid packet capture without filters
   if [[ "$3" = "packets" ]]; then
-    currentFilters=$( "$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$2" )
+    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$2")
     if [[ $currentFilters == "[]" ]]; then
       echo
       echo "Error: At least one eBPF filter must be set for packet capture to avoid high resource consumption."

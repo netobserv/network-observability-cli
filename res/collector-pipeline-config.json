@@ -15,6 +15,9 @@
               "kubernetes": {
                 "add_zone": true,
                 "ipField": "SrcAddr",
+                "interfacesField": "Interfaces",
+                "udnsField": "Udns",
+                "macField": "SrcMac",
                 "output": "SrcK8S"
               }
             },
@@ -23,6 +26,9 @@
               "kubernetes": {
                 "add_zone": true,
                 "ipField": "DstAddr",
+                "interfacesField": "Interfaces",
+                "udnsField": "Udns",
+                "macField": "DstMac",
                 "output": "DstK8S"
               }
             },

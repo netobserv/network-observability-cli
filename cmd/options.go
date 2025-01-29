@@ -54,7 +54,8 @@ var (
 			{name: "Namespace", ids: []string{"SrcK8S_Namespace", "DstK8S_Namespace"}},
 			{name: "Owner", ids: []string{"SrcK8S_OwnerType", "DstK8S_OwnerType", "SrcK8S_OwnerName", "DstK8S_OwnerName", "SrcK8S_Namespace", "DstK8S_Namespace"}},
 			{name: "Resource", ids: []string{"SrcK8S_Type", "DstK8S_Type", "SrcK8S_Name", "DstK8S_Name", "SrcK8S_Namespace", "DstK8S_Namespace"}},
-			{name: "SubnetLabel", ids: []string{"SrcSubnetLabel", "DstSubnetLabel"}},
+			{name: "Subnet Label", ids: []string{"SrcSubnetLabel", "DstSubnetLabel"}},
+			{name: "Network Name", ids: []string{"SrcNetworkName", "DstNetworkName"}},
 			// all fields
 			{name: allOptions, ids: []string{
 				"ClusterName",
@@ -64,6 +65,7 @@ var (
 				"SrcK8S_OwnerType", "DstK8S_OwnerType", "SrcK8S_OwnerName", "DstK8S_OwnerName",
 				"SrcK8S_Type", "DstK8S_Type", "SrcK8S_Name", "DstK8S_Name",
 				"SrcSubnetLabel", "DstSubnetLabel",
+				"SrcNetworkName", "DstNetworkName",
 			}},
 		},
 		// resource enrichment by default
