@@ -416,11 +416,17 @@ func toValue(genericMap config.GenericMap, fieldName string) interface{} {
 	if ok {
 		if reflect.TypeOf(v).Kind() == reflect.Slice {
 			arr := make([]string, len(v.([]interface{})))
-			for i, v := range v.([]interface{}) {
-				arr[i] = v.(string)
-				if arr[i] == "" {
-					arr[i] = "None"
+			for i, value := range v.([]interface{}) {
+				switch v := value.(type) {
+				case string:
+					arr[i] = v
+					if arr[i] == "" {
+						arr[i] = "None"
+					}
+				default:
+					arr[i] = fmt.Sprintf("%v", v)
 				}
+
 			}
 			return strings.Join(arr, ",")
 		}
