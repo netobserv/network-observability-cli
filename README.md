@@ -123,7 +123,7 @@ This will write [pcapng](https://wiki.wireshark.org/Development/PcapNg) into a s
 
 Run the following command to start capturing metrics, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
 ```bash
-USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pktdrop="true" --enable_dns="true" --enable_rtt="true"' make metrics
+USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pkt_drop --enable_dns --enable_rtt' make metrics
 ```
 
 ![metrics](./img/metrics-dashboard.png)
