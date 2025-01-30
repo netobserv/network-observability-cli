@@ -36,6 +36,11 @@ fi
 # version to display
 version="0.0.1"
 
+# dependencies
+supported_archs=""
+required_yq_version="v0.0.0"
+required_bash_version="v0.0.0"
+
 # command to run
 command=""
 
@@ -49,9 +54,6 @@ maxTime="5m"
 maxBytes=50000000
 
 if [[ ! "$*" =~ ^(.*)help|version(.*) ]]; then
-  required_yq_version="v0.0.0"
-  supported_archs=""
-  required_bash_version="v0.0.0"
   check_dependencies "$required_yq_version" "$supported_archs" "$required_bash_version"
 fi
 
