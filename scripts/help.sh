@@ -21,9 +21,10 @@ function help {
   echo "  version    Print software version."
   echo
   echo "basic examples:"
-  echo "  netobserv flows --drops         # Capture dropped flows on all nodes"
-  echo "  netobserv packets --port=8080   # Capture packets on port 8080"
-  echo "  netobserv metrics --enable_all  # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
+  echo "  netobserv flows --drops                              # Capture dropped flows on all nodes"
+  echo "  netobserv flows --regexes=SrcK8S_Namespace~app-.*    # Capture flows from any namespace starting by app-"
+  echo "  netobserv packets --port=8080                        # Capture packets on port 8080"
+  echo "  netobserv metrics --enable_all                       # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
   echo
   echo "advanced examples:"
   echo "  Capture drops in background and copy output locally"
@@ -36,9 +37,14 @@ function help {
   echo "    netobserv copy                                            # Copy the background capture output data"
   echo "    netobserv cleanup                                         # Cleanup netobserv CLI by removing the remaining collector pod"
   echo
+  echo "  Capture flows from a specific pod"
+  echo "    netobserv flows                                           # Capture flows"
+  echo "    --node-selector=kubernetes.io/hostname:my-node            # on node matching label 'kubernetes.io/hostname=my-node'"
+  echo "    --regexes=SrcK8S_Name~.*my-pod.*,DstK8S_Name~.*my-pod.*   # from or to any pod name containing 'my-pod'"
+  echo
   echo "  Capture packets on specific nodes and port"
   echo "    netobserv packets                                         # Capture packets"
-  echo "    --node-selector=netobserv:true \                          # on nodes labelled with netobserv=true"
+  echo "    --node-selector=netobserv:true \                          # on nodes labelled with 'netobserv=true'"
   echo "    --port=80 \                                               # on port 80 only"
   echo "    --max-bytes=100000000                                     # for a maximum of 100MB"
   echo
