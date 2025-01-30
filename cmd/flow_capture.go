@@ -273,17 +273,24 @@ func updateTable() {
 				)
 			}
 
+			// append interfaces and their directions between enrichment and features
+			// this is useful for pkt drop, udns etc
+			colIDs = append(colIDs,
+				"Interfaces",
+				"IfDirections",
+			)
+
 			// standard / feature fields
 			if display.getCurrentItem().name != standardDisplay {
 				for _, col := range cfg.Columns {
-					if slices.Contains(display.getCurrentItem().ids, col.Feature) {
+					if col.Field != "" && slices.Contains(display.getCurrentItem().ids, col.Feature) {
 						colIDs = append(colIDs, col.ID)
 					}
 				}
 			} else {
 				// TODO: add a new flag in the config to identify these as default feature fields
 				colIDs = append(colIDs,
-					"Interfaces",
+					"FlowDirection",
 					"Proto",
 					"Dscp",
 					"Bytes",
