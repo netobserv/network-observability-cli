@@ -8,7 +8,7 @@ K8S_CLI_BIN=$( basename "${K8S_CLI_BIN_PATH}" )
 DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && cd ../ && pwd )
 
 KIND_CLUSTER_NAME="netobserv-cli-cluster"
-KIND_IMAGE="kindest/node:v1.31.0"
+KIND_IMAGE="kindest/node:v1.32.0"
 
 # deploy_kind installs the kind cluster
 deploy_kind() {
@@ -21,6 +21,9 @@ networking:
     ipFamily: $IP_FAMILY
 nodes:
 - role: control-plane
+  extraMounts:
+    - hostPath: /var/run/netns
+      containerPath: /var/run/netns
   kubeadmConfigPatches:
   - |
     kind: ClusterConfiguration
@@ -34,7 +37,13 @@ nodes:
         extraArgs:
             v: "5"
 - role: worker
+  extraMounts:
+    - hostPath: /var/run/netns
+      containerPath: /var/run/netns
 - role: worker
+  extraMounts:
+    - hostPath: /var/run/netns
+      containerPath: /var/run/netns
 EOF
 }
 
