@@ -11,7 +11,7 @@ require (
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/netobserv/flowlogs-pipeline v1.7.0-community.0.20241217113023-fa0540a1658e
-	github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20241213165959-7e7f8c42a3f6
+	github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250204090821-47f7fcf79b7e
 	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
@@ -115,5 +115,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/netobserv/netobserv-ebpf-agent => github.com/jotak/netobserv-agent v0.0.0-20250204083129-d85e44bd9ab0
