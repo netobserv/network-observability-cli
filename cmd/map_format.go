@@ -9,6 +9,7 @@ import (
 
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
+	ovnutils "github.com/netobserv/netobserv-ebpf-agent/pkg/utils"
 )
 
 const (
@@ -512,6 +513,9 @@ func ToTableRow(genericMap config.GenericMap, colIDs []string) []interface{} {
 			row = append(row, toDuration(genericMap, fieldName, time.Millisecond))
 		case "TimeFlowRttMs":
 			row = append(row, toDuration(genericMap, fieldName, time.Nanosecond))
+		case "NetworkEvents":
+			events := ovnutils.NetworkEventsToStrings(genericMap)
+			row = append(row, strings.Join(events, ", "))
 		default:
 			// else simply pick field value as text from column name
 			row = append(row, toValue(genericMap, fieldName))
