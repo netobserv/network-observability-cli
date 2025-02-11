@@ -9,7 +9,7 @@ spec:
       interval: 15s
       metricRelabelings:
         - action: replace
-          regex: on_demand_netobserv(workload|namespace)_ingress_.*@(.*)
+          regex: on_demand_netobserv_(workload|namespace)_ingress_.*@(.*)
           replacement: "${2}"
           separator: "@"
           sourceLabels:
@@ -17,7 +17,7 @@ spec:
             - DstK8S_Namespace
           targetLabel: namespace
         - action: replace
-          regex: on_demand_netobserv(workload|namespace)_(egress|flows|drop|rtt|dns)_.*@(.*)
+          regex: on_demand_netobserv_(workload|namespace)_(egress|flows|drop|rtt|dns)_.*@(.*)
           replacement: "${3}"
           separator: "@"
           sourceLabels:
