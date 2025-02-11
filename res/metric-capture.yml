@@ -66,20 +66,3 @@ spec:
           hostPath:
             path: /var/run/openvswitch
             type: DirectoryOrCreate
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: netobserv-cli
-  namespace: "{{NAMESPACE}}"
-  labels:
-    app: netobserv-cli
-spec:
-  ports:
-    - name: prometheus
-      protocol: TCP
-      port: 9401
-      targetPort: 9401
-  selector:
-    app: netobserv-cli
-  type: ClusterIP
