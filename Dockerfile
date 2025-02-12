@@ -31,7 +31,7 @@ RUN set -x; \
     curl -L -q -o /tmp/oc.tar.gz "$OC_TAR_URL" && \
     tar -C /tmp -xvf /tmp/oc.tar.gz oc kubectl
 
-# Embedd commands in case users want to pull it from collector image
+# Embed commands in case users want to pull it from collector image
 RUN USER=netobserv VERSION=main make oc-commands
 
 # Prepare output dir
