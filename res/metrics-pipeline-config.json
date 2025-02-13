@@ -243,45 +243,6 @@
               "buckets": null
             },
             {
-              "name": "workload_rtt_seconds",
-              "type": "histogram",
-              "filters": [
-                {
-                  "key": "TimeFlowRttNs",
-                  "value": "",
-                  "type": "presence"
-                }
-              ],
-              "valueKey": "TimeFlowRttNs",
-              "labels": [
-                "SrcK8S_Namespace",
-                "DstK8S_Namespace",
-                "K8S_FlowLayer",
-                "SrcSubnetLabel",
-                "DstSubnetLabel",
-                "SrcK8S_OwnerName",
-                "DstK8S_OwnerName",
-                "SrcK8S_OwnerType",
-                "DstK8S_OwnerType",
-                "SrcK8S_Type",
-                "DstK8S_Type"
-              ],
-              "remap": null,
-              "buckets": [
-                0.005,
-                0.01,
-                0.02,
-                0.03,
-                0.04,
-                0.05,
-                0.075,
-                0.1,
-                0.25,
-                1
-              ],
-              "valueScale": 1000000000
-            },
-            {
               "name": "workload_drop_packets_total",
               "type": "counter",
               "filters": [
@@ -338,46 +299,6 @@
               ],
               "remap": null,
               "buckets": null
-            },
-            {
-              "name": "workload_dns_latency_seconds",
-              "type": "histogram",
-              "filters": [
-                {
-                  "key": "DnsId",
-                  "value": "",
-                  "type": "presence"
-                }
-              ],
-              "valueKey": "DnsLatencyMs",
-              "labels": [
-                "SrcK8S_Namespace",
-                "DstK8S_Namespace",
-                "K8S_FlowLayer",
-                "SrcSubnetLabel",
-                "DstSubnetLabel",
-                "SrcK8S_OwnerName",
-                "DstK8S_OwnerName",
-                "SrcK8S_OwnerType",
-                "DstK8S_OwnerType",
-                "SrcK8S_Type",
-                "DstK8S_Type",
-                "DnsFlagsResponseCode"
-              ],
-              "remap": null,
-              "buckets": [
-                0.005,
-                0.01,
-                0.02,
-                0.03,
-                0.04,
-                0.05,
-                0.075,
-                0.1,
-                0.25,
-                1
-              ],
-              "valueScale": 1000
             }
           ],
           "prefix": "on_demand_netobserv_",
