@@ -31,6 +31,26 @@ spec:
             value: "false"
           - name: LOG_LEVEL
             value: info
+          - name: INTERFACES
+            value: ""
+          - name: EXCLUDE_INTERFACES
+            value: "lo"
+          - name: SAMPLING
+            value: "1"
+          - name: ENABLE_RTT
+            value: "false"
+          - name: ENABLE_PKT_DROPS
+            value: "false"
+          - name: ENABLE_DNS_TRACKING
+            value: "false"
+          - name: ENABLE_NETWORK_EVENTS_MONITORING
+            value: "false"
+          - name: ENABLE_UDN_MAPPING
+            value: "false"
+          - name: ENABLE_PKT_TRANSLATION
+            value: "false"
+          - name: ENABLE_FLOW_FILTER
+            value: "false"
           - name: FLOW_FILTER_RULES
             value: >-
               []
@@ -66,20 +86,3 @@ spec:
           hostPath:
             path: /var/run/openvswitch
             type: DirectoryOrCreate
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: netobserv-cli
-  namespace: "{{NAMESPACE}}"
-  labels:
-    app: netobserv-cli
-spec:
-  ports:
-    - name: prometheus
-      protocol: TCP
-      port: 9401
-      targetPort: 9401
-  selector:
-    app: netobserv-cli
-  type: ClusterIP
