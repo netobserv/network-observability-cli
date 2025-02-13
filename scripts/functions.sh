@@ -89,7 +89,7 @@ function loadYAMLs() {
   if [ -f ./res/metric-capture.yml ]; then
     metricAgentYAML="$(cat ./res/metric-capture.yml)"
   fi
-  metricAgentYAML="${metricAgentYAML//"{{NAMESPACE}}"/${namespace}}"
+  metricAgentYAML="${metricAgentYAML/"{{NAMESPACE}}"/${namespace}}"
   metricAgentYAML="${metricAgentYAML/"{{AGENT_IMAGE_URL}}"/${agentImg}}"
 
   collectorServiceYAML='
