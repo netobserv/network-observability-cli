@@ -674,32 +674,6 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-    *enable_network_events) # Enable Network events monitoring
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
-        defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "network_events_enable" "$value" "$2"
-        else
-          echo "invalid value for --enable_network_events"
-        fi
-      else
-        echo "--enable_network_events is invalid option for packets"
-        exit 1
-      fi
-      ;;
-    *enable_udn_mapping) # Enable User Defined Network mapping
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
-        defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "udn_enable" "$value" "$2"
-        else
-          echo "invalid value for --enable_udn_mapping"
-        fi
-      else
-        echo "--enable_udn_mapping is invalid option for packets"
-        exit 1
-      fi
-      ;;
     *enable_pkt_translation) # Enable Packet translation
       if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
         defaultValue "true"
@@ -719,8 +693,6 @@ function check_args_and_apply() {
         edit_manifest "pkt_drop_enable" "$value" "$2"
         edit_manifest "dns_enable" "$value" "$2"
         edit_manifest "rtt_enable" "$value" "$2"
-        edit_manifest "network_events_enable" "$value" "$2"
-        edit_manifest "udn_enable" "$value" "$2"
         edit_manifest "pkt_xlat_enable" "$value" "$2"
       else
         echo "invalid value for --enable_all"

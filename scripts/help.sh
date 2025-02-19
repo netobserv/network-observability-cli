@@ -59,11 +59,9 @@ function version {
 function features_usage {
   echo "  --enable_all:                 enable all eBPF features                   (default: false)"
   echo "  --enable_dns:                 enable DNS tracking                        (default: false)"
-  echo "  --enable_network_events:      enable network events monitoring           (default: false)"
   echo "  --enable_pkt_translation:     enable packet translation                  (default: false)"
   echo "  --enable_pkt_drop:            enable packet drop                         (default: false)"
   echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
-  echo "  --enable_udn_mapping:         enable User Defined Network mapping (default: false)"
   echo "  --get-subnets:                get subnets informations                   (default: false)"
 }
 
