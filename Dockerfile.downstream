@@ -43,7 +43,7 @@ RUN mkdir -p output
 FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.5-1739751568
 
 ARG COMMIT
-ARG BUILDVERSION
+ARG BUILDVERSION="1.8.0"
 
 WORKDIR /
 
