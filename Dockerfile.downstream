@@ -1,8 +1,6 @@
 # We do not use --platform feature to auto fill this ARG because of incompatibility between podman and docker
-ARG TARGETARCH=amd64
+ARG TARGETARCH
 ARG COMMIT
-ARG IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
-ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
 
 # Make kubectl & oc scripts available for copy
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c0.assembly.stream.el9 as ose-cli
@@ -10,8 +8,11 @@ FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c
 # Build the manager binary
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23 as builder
 
-ARG TARGETARCH
+ARG TARGETARCH=amd64
+ARG COMMIT
 ARG BUILDVERSION="1.8.0"
+ARG IMAGE=registry.redhat.io/network-observability/network-observability-cli-rhel9:1.8
+ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
 
 WORKDIR /opt/app-root
 
@@ -33,13 +34,17 @@ COPY Makefile Makefile
 COPY .mk/ .mk/
 
 # Embed commands in case users want to pull it from collector image
-RUN USER=netobserv VERSION=main IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IMAGE" make oc-commands
+RUN USER=netobserv VERSION="$BUILDVERSION" IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IMAGE" make oc-commands
 
 # Prepare output dir
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
 FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.5-1739751568
+
+ARG COMMIT
+ARG BUILDVERSION
+
 WORKDIR /
 
 COPY --from=builder /opt/app-root/build .
