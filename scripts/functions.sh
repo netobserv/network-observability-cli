@@ -420,7 +420,7 @@ function edit_manifest() {
     echo "opt: $1, value: $2"
   fi
 
-  if [[ $1 == "filter_"* ]]; then
+  if [[ $1 == "filter_"* && $1 != "filter_regexes" ]]; then
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$3"
     # add first filter in the array
     currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$3")
@@ -553,9 +553,6 @@ function edit_manifest() {
   "filter_regexes")
     copyFLPConfig "$3"
 
-    # remove send step
-    "$YQ_BIN" e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
-
     # define rules from arg
     IFS=',' read -ra regexes <<<"$2"
     rules=()
@@ -570,13 +567,23 @@ function edit_manifest() {
       IFS=,
       echo "${rules[*]}"
     )
+    rule="{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}"
 
-    # add filter param & pipeline
-    "$YQ_BIN" e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}]}}}" "$json"
-    "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"filter\",\"follows\":\"enrich\"}" "$json"
+    existingFilterStage=$("$YQ_BIN" -r ".pipeline[] | select(.name == \"filter\")" "$json")
+    if [[ "$existingFilterStage" == "" ]]; then
+      # remove send step
+      "$YQ_BIN" e -oj --inplace "del(.pipeline[] | select(.name==\"send\"))" "$json"
 
-    # add send step back
-    "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"send\",\"follows\":\"filter\"}" "$json"
+      # add filter param & pipeline
+      "$YQ_BIN" e -oj --inplace ".parameters += {\"name\":\"filter\",\"transform\":{\"type\":\"filter\",\"filter\":{\"rules\":[$rule]}}}" "$json"
+      "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"filter\",\"follows\":\"enrich\"}" "$json"
+
+      # add send step back
+      "$YQ_BIN" e -oj --inplace ".pipeline += {\"name\":\"send\",\"follows\":\"filter\"}" "$json"
+    else 
+      # add rules to existing filter param
+      "$YQ_BIN" e --inplace " .parameters[] |= select(.name == \"filter\").transform.filter.rules += $rule" "$json"
+    fi
 
     updateFLPConfig "$json" "$3"
     ;;
@@ -594,6 +601,7 @@ function edit_manifest() {
 
 # define key and value at script level to make them available all the time
 # these will be updated by check_args_and_apply first and overriden by defaultValue when needed
+prevKey=""
 key=""
 value=""
 
@@ -610,11 +618,14 @@ function defaultValue() {
 function check_args_and_apply() {
   # Iterate through the command-line arguments
   for option in $1; do
+    prevKey="$key"
     key="${option%%=*}"
     value="${option#*=}"
     case "$key" in
     or) # Increment flow filter array
-      edit_manifest "add_filter" "" "$2"
+      if [[ "$prevKey" != *regexes ]]; then
+        edit_manifest "add_filter" "" "$2"
+      fi
       ;;
     *background) # Run command in background
       defaultValue "true"
