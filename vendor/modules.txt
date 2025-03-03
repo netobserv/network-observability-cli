@@ -144,12 +144,9 @@ github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap
 github.com/netobserv/flowlogs-pipeline/pkg/utils
-# github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232
+# github.com/netobserv/netobserv-ebpf-agent v1.8.0-crc0
 ## explicit; go 1.23.0
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils
-# github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250215040159-dd2a70c928d3
-## explicit; go 1.22.0
-github.com/ovn-org/ovn-kubernetes/go-controller/observability-lib/model
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
