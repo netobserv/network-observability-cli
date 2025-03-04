@@ -488,8 +488,14 @@ function edit_manifest() {
   fi
 
   case "$1" in
+  "sampling")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"SAMPLING\").value|=\"$2\"" "$3"
+    ;;
   "interfaces")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$manifest"
+    ;;
+  "exclude_interfaces")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"EXCLUDE_INTERFACES\").value|=\"$2\"" "$3"
     ;;
   "pkt_drop_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$manifest"
@@ -722,6 +728,22 @@ function check_args_and_apply() {
         copy="$value"
       else
         echo "invalid value for --copy"
+      fi
+      ;;
+    *sampling) # ebpf sampling
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        edit_manifest "sampling" "$value" "$2"
+      else 
+        echo "--sampling is invalid option for packets"
+        exit 1
+      fi
+      ;;
+    *exclude_interfaces) # ebpf exclude interfaces
+      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+        edit_manifest "exclude_interfaces" "$value" "$2"
+      else 
+        echo "--exclude_interfaces is invalid option for packets"
+        exit 1
       fi
       ;;
     *interfaces) # Interfaces

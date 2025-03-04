@@ -62,8 +62,9 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--get-subnets|               get subnets information                    | false
 |--enable_udn_mapping|        enable User Defined Network mapping        | false
+|--get-subnets|               get subnets information                    | false
+|--sampling|                  rate at which packets should be sampled    | 1
 |--background|                run in background                          | false
 |--copy|                      copy the output files locally              | prompt
 |--log-level|                 components logs                            | info
@@ -90,7 +91,8 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--sport|                     filter source port                         | -
 |--sports|                    filter on either of two source ports       | -
 |--tcp_flags|                 filter TCP flags                           | -
-|--interfaces|                interfaces to monitor                      | -
+|--interfaces|                interfaces to monitor, comma separated     | -
+|--exclude_interfaces|        interfaces to exclude, comma separated     | lo
 |===
 
 .Example running flows capture on TCP protocol and port 49051 with PacketDrop and RTT features enabled:
@@ -163,8 +165,9 @@ $ oc netobserv metrics [<option>]
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--get-subnets|               get subnets information                    | false
 |--enable_udn_mapping|        enable User Defined Network mapping        | false
+|--get-subnets|               get subnets information                    | false
+|--sampling|                  rate at which packets should be sampled    | 1
 |--action|                    filter action                              | Accept
 |--cidr|                      filter CIDR                                | 0.0.0.0/0
 |--direction|                 filter direction                           | -
@@ -186,8 +189,9 @@ $ oc netobserv metrics [<option>]
 |--sport|                     filter source port                         | -
 |--sports|                    filter on either of two source ports       | -
 |--tcp_flags|                 filter TCP flags                           | -
-|--interfaces|                interfaces to monitor                      | -
 |--include_list|              list of metric names to generate           | namespace_flows_total,node_ingress_bytes_total,node_egress_bytes_total,workload_ingress_bytes_total
+|--interfaces|                interfaces to monitor, comma separated     | -
+|--exclude_interfaces|        interfaces to exclude, comma separated     | lo
 |===
 
 .Example running metrics capture for TCP drops

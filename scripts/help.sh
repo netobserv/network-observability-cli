@@ -73,8 +73,9 @@ function features_usage {
   echo "  --enable_pkt_translation:     enable packet translation                  (default: false)"
   echo "  --enable_pkt_drop:            enable packet drop                         (default: false)"
   echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
-  echo "  --get-subnets:                get subnets information                    (default: false)"
   echo "  --enable_udn_mapping:         enable User Defined Network mapping        (default: false)"
+  echo "  --get-subnets:                get subnets information                    (default: false)"
+  echo "  --sampling:                   rate at which packets should be sampled    (default: 1)"
 }
 
 # collector options
@@ -118,7 +119,8 @@ function filters_usage {
 
 # specific filters for flows and metrics
 function flowsAndMetrics_filters_usage {
-  echo "  --interfaces:                 interfaces to monitor                      (default: n/a)"
+  echo "  --interfaces:                 interfaces to monitor, comma separated     (default: n/a)"
+  echo "  --exclude_interfaces:         interfaces to exclude, comma separated     (default: lo)"
 }
 
 # specific filters for metrics
