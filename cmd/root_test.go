@@ -99,7 +99,6 @@ func resetTime() {
 
 	// reset all timers
 	currentTime = originalTime
-	lastRefresh = startupTime
 	simulatedTime = startupTime
 }
 
