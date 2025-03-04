@@ -66,6 +66,7 @@ function features_usage {
   echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
   echo "  --enable_udn_mapping:         enable User Defined Network mapping        (default: false)"
   echo "  --get-subnets:                get subnets information                    (default: false)"
+  echo "  --sampling:                   rate at which packets should be sampled    (default: 1)"
 }
 
 # collector options
@@ -109,7 +110,8 @@ function filters_usage {
 
 function specific_filters_usage {
   # specific filters
-  echo "  --interfaces:                 interfaces to monitor                      (default: n/a)"
+  echo "  --interfaces:                 interfaces to monitor, comma separated     (default: n/a)"
+  echo "  --exclude_interfaces:         interfaces to exclude, comma separated     (default: lo)"
 }
 
 function flows_usage {
