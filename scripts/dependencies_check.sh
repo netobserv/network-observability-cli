@@ -10,7 +10,7 @@ function check_dependencies() {
     YQ_BIN=$LOCAL_YQ
   else
     # Check if yq is installed
-    YQ_BIN=$(which yq 2>/dev/null)
+    YQ_BIN=$(which yq 2>/dev/null || true)
   fi
   if [ -z "$YQ_BIN" ]; then
     echo "Error: 'yq' is not installed or not in PATH."
