@@ -15,10 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	maxRefreshRate = 100 * time.Millisecond
-)
-
 var (
 	log      = logrus.New()
 	logLevel string
@@ -30,7 +26,6 @@ var (
 
 	currentTime  = time.Now
 	startupTime  = currentTime()
-	lastRefresh  = startupTime
 	totalBytes   = int64(0)
 	totalPackets = uint32(0)
 
