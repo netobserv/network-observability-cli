@@ -1,4 +1,4 @@
-package integration_tests
+package integrationtests
 
 import (
 	"context"
@@ -24,14 +24,14 @@ func getNewClient() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func getClusterNodes(clientset *kubernetes.Clientset, options metav1.ListOptions) ([]string, error) {
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), options)
+func getClusterNodes(clientset *kubernetes.Clientset, options *metav1.ListOptions) ([]string, error) {
+	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), *options)
 	var allNodes []string
 	if err != nil {
 		return allNodes, err
 	}
-	for _, node := range nodes.Items {
-		allNodes = append(allNodes, node.Name)
+	for i := range nodes.Items {
+		allNodes = append(allNodes, nodes.Items[i].Name)
 	}
 	return allNodes, nil
 }
@@ -46,14 +46,14 @@ func getDaemonSet(clientset *kubernetes.Clientset, daemonset string, ns string) 
 	return ds, nil
 }
 
-func getNamespacePods(clientset *kubernetes.Clientset, namespace string, options metav1.ListOptions) ([]string, error) {
-	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), options)
+func getNamespacePods(clientset *kubernetes.Clientset, namespace string, options *metav1.ListOptions) ([]string, error) {
+	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), *options)
 	var allPods []string
 	if err != nil {
 		return allPods, err
 	}
-	for _, pod := range pods.Items {
-		allPods = append(allPods, pod.Name)
+	for i := range pods.Items {
+		allPods = append(allPods, pods.Items[i].Name)
 	}
 	return allPods, nil
 }

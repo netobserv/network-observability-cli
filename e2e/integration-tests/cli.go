@@ -1,4 +1,4 @@
-package integration_tests
+package integrationtests
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func isCLIReady(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
 	var collectorReady, cliDaemonsetReady bool
 	err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 300*time.Second, false, func(context.Context) (done bool, err error) {
 		if !collectorReady {
-			collectorPod, err := getNamespacePods(clientset, cliNS, metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
+			collectorPod, err := getNamespacePods(clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
 			if err != nil {
 				return false, err
 			}
