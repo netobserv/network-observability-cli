@@ -10,7 +10,7 @@ FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23 as builder
 
 ARG TARGETARCH=amd64
 ARG COMMIT
-ARG BUILDVERSION="1.8.0"
+ARG BUILDVERSION="1.9.0"
 ARG IMAGE=registry.redhat.io/network-observability/network-observability-cli-rhel9:1.8
 ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
 
@@ -43,7 +43,7 @@ RUN mkdir -p output
 FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.5-1739751568
 
 ARG COMMIT
-ARG BUILDVERSION="1.8.0"
+ARG BUILDVERSION="1.9.0"
 
 WORKDIR /
 
