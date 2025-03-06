@@ -11,6 +11,10 @@ if [ -z "${captureStarted+x}" ]; then captureStarted=false; fi
 if [ -z "${copy+x}" ]; then copy="prompt"; fi
 # run foreground by default
 if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
+# output as yaml only
+if [ -z "${outputYAML+x}" ]; then outputYAML="false"; fi
+# formated date for file names
+if [ -z "${dateName+x}" ]; then dateName="$(date +"%Y_%m_%d_%I_%M")"; fi
 
 # force skipping cleanup
 skipCleanup=false
@@ -40,13 +44,15 @@ if [ -n "$NETOBSERV_AGENT_IMAGE" ]; then
   agentImg="$NETOBSERV_AGENT_IMAGE"
 fi
 
+OUTPUT_PATH="./output"
+YAML_OUTPUT_FILE="capture.yml"
+MANIFEST_OUTPUT_PATH="tmp"
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
 METRICS_MANIFEST_FILE="metric-capture.yml"
 CONFIG_JSON_TEMP="config.json"
 CLUSTER_CONFIG="cluster-config-v1.yaml"
 NETWORK_CONFIG="cluster-network.yaml"
-MANIFEST_OUTPUT_PATH="tmp"
 
 function loadYAMLs() {
   namespaceYAML='
@@ -212,6 +218,23 @@ function getNodesByLabel() {
   fi
 }
 
+function applyYAML() {
+  output="$1"
+  if [[ "$outputYAML" == "true" ]]; then
+    if [[ ! -d ${OUTPUT_PATH} ]]; then
+      mkdir -p ${OUTPUT_PATH} >/dev/null
+    fi
+
+    yaml="${OUTPUT_PATH}/${YAML_OUTPUT_FILE}"
+    if [ -f "$yaml" ]; then
+      output="$(cat "$yaml")\n---\n$output"
+    fi
+    echo -e "$output" >"${yaml}"
+  else
+    echo "$output" | ${K8S_CLI_BIN} apply -f -
+  fi
+}
+
 function setup() {
   echo "Setting up... "
 
@@ -221,40 +244,46 @@ function setup() {
     return
   fi
 
-  if ! clusterIsReady; then
-    printf 'You must be connected to cluster\n' >&2
-    exit 1
-  fi
-
   if [ -z "${YQ_BIN+x}" ]; then
     printf 'yq tools must be installed for proper usage of netobserv cli\n' >&2
-    exit 1
-  fi
-
-  if namespaceFound; then
-    printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
-    skipCleanup="true"
     exit 1
   fi
 
   # load yaml files
   loadYAMLs
 
+  # check cluster conditions when not outputing yaml only
+  if [[ "$outputYAML" == "false" ]]; then
+    if ! clusterIsReady; then
+      printf 'You must be connected to cluster\n' >&2
+      exit 1
+    fi
+
+    if namespaceFound; then
+      printf "%s namespace already exists. Ensure someone else is not running another capture on this cluster. Else use 'oc netobserv cleanup' to remove the namespace first.\n" "$namespace" >&2
+      skipCleanup="true"
+      exit 1
+    fi
+  else
+    YAML_OUTPUT_FILE="${1}_capture_${dateName}.yml"
+  fi
+
   # apply yamls
   echo "creating $namespace namespace"
-  echo "$namespaceYAML" | ${K8S_CLI_BIN} apply -f -
+  applyYAML "$namespaceYAML"
 
   echo "creating service account"
-  echo "$saYAML" | ${K8S_CLI_BIN} apply -f -
+  applyYAML "$saYAML"
+
+  if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
+    mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
+  fi
 
   if [ "$1" = "flows" ]; then
     echo "creating collector service"
-    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
+    applyYAML "$collectorServiceYAML"
     shift
-    echo "creating flow-capture agents:"
-    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
-    fi
+    echo "creating flow-capture agents"
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
     echo "${flowAgentYAML}" >${manifest}
     setCollectorPipelineConfig "$manifest"
@@ -262,12 +291,9 @@ function setup() {
     check_args_and_apply "$options" "$manifest" "flows"
   elif [ "$1" = "packets" ]; then
     echo "creating collector service"
-    echo "$collectorServiceYAML" | ${K8S_CLI_BIN} apply -f -
+    applyYAML "$collectorServiceYAML"
     shift
     echo "creating packet-capture agents"
-    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
-    fi
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
     echo "${packetAgentYAML}" >${manifest}
     setCollectorPipelineConfig "$manifest"
@@ -275,12 +301,9 @@ function setup() {
     check_args_and_apply "$options" "$manifest" "packets"
   elif [ "$1" = "metrics" ]; then
     echo "creating service monitor"
-    echo "$smYAML" | ${K8S_CLI_BIN} apply -f -
+    applyYAML "$smYAML"
     shift
     echo "creating metric-capture agents:"
-    if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-      mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
-    fi
     manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
     echo "${metricAgentYAML}" >${manifest}
     setMetricsPipelineConfig "$manifest"
@@ -295,7 +318,9 @@ function follow() {
 
 function copyOutput() {
   echo "Copying collector output files..."
-  mkdir -p ./output
+  if [[ ! -d ${OUTPUT_PATH} ]]; then
+    mkdir -p ${OUTPUT_PATH} >/dev/null
+  fi
   ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
 }
 
@@ -325,7 +350,7 @@ function deleteNamespace() {
 }
 
 function cleanup() {
-  if [[ "$runBackground" == "true" || "$skipCleanup" == "true" ]]; then
+  if [[ "$runBackground" == "true" || "$skipCleanup" == "true" || "$outputYAML" == "true" ]]; then
     return
   fi
 
@@ -586,7 +611,9 @@ function edit_manifest() {
   "node_selector")
     key=${2%:*}
     val=${2#*:}
-    getNodesByLabel "$key=$val"
+    if [[ "$outputYAML" == "false" ]]; then
+      getNodesByLabel "$key=$val"
+    fi
     "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
     ;;
   esac
@@ -623,6 +650,8 @@ function check_args_and_apply() {
       else
         echo "invalid value for --background"
       fi
+      ;;
+    *yaml) # Output yamls only. Check netobserv command for implementation
       ;;
     *copy) # Copy or skip without prompt
       defaultValue "true"
@@ -865,7 +894,10 @@ function check_args_and_apply() {
     fi
   fi
 
-  ${K8S_CLI_BIN} apply -f "$2"
-  ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
+  yaml="$(cat "$2")"
+  applyYAML "$yaml"
+  if [[ "$outputYAML" == "false" ]]; then
+    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
+  fi
   rm -rf ${MANIFEST_OUTPUT_PATH}
 }
