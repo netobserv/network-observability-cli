@@ -297,6 +297,25 @@ function copyOutput() {
   echo "Copying collector output files..."
   mkdir -p ./output
   ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
+  flowFile=$(find ./output -name "*txt" | sort | tail -1)
+  if [[ -n "$flowFile" ]] ; then
+    buildJSON "$flowFile"
+    rm "$flowFile"
+  fi
+}
+
+function buildJSON() {
+  file=$1
+  filename=$(basename "$file")
+  dirpath=$(dirname "$file")
+  filenamePrefix=$(echo "$filename" | sed -E 's/(.*)\..*/\1/')
+  UPDATED_JSON_FILE="$dirpath/$filenamePrefix.json"
+  { 
+    echo "["
+    # remove last line and "," (last character) of the last flowlog for valid json
+    sed '$d' "$file" | sed '$ s/.$//'
+    echo "]"
+  } >> "$UPDATED_JSON_FILE"
 }
 
 function deleteServiceMonitor() {
