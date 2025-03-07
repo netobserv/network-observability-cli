@@ -75,7 +75,7 @@ echo "
 .Example running flows capture on TCP protocol and port 49051 with PacketDrop and RTT features enabled:
 [source,terminal]
 ----
-$ oc netobserv flows --enable_pkt_drop  --enable_rtt --enable_filter --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
+$ oc netobserv flows --enable_pkt_drop  --enable_rtt --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
 ----"
 
 # packets table
@@ -125,7 +125,7 @@ echo "
 .Example running metrics capture for TCP drops
 [source,terminal]
 ----
-$ oc netobserv metrics --enable_pkt_drop --enable_filter --protocol=TCP 
+$ oc netobserv metrics --enable_pkt_drop --protocol=TCP 
 ----"
 } >> $ADOC
 
