@@ -14,25 +14,21 @@ import (
 var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() {
 	cliNS := "netobserv-cli"
 
-	g.BeforeEach(func() {
-		// cleanup before each tests
-		cliArgs := []string{"cleanup"}
-		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
-		err := cmd.Run()
-		if err != nil {
-			log.Errorf("%v resulted in error %v, %v", cmd, cmd.Stderr, err)
-		}
-		o.Expect(err).NotTo(o.HaveOccurred())
-	})
-
 	g.It("Verify all CLI pods are deployed", g.Label("Sanity"), func() {
 		cliArgs := []string{"flows", "--copy=false"}
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Start()
 		o.Expect(err).NotTo(o.HaveOccurred())
+		// cleanup()
+		defer func() {
+			cliArgs := []string{"cleanup"}
+			cmd := exec.Command(ocNetObservBinPath, cliArgs...)
+			err := cmd.Run()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
+		var allPods []string
 		clientset, err := getNewClient()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		var allPods []string
 		nodes, err := getClusterNodes(clientset, &metav1.ListOptions{})
 		// agent pods + collector pods
 		totalExpectedPods := len(nodes) + 1
@@ -41,7 +37,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 		o.Expect(err).NotTo(o.HaveOccurred(), "CLI didn't come ready")
 		allPods, err = getNamespacePods(clientset, cliNS, &metav1.ListOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(allPods)).To(o.BeNumerically("==", totalExpectedPods), fmt.Sprintf("Number of CLI pods are not as expected %d", totalExpectedPods))
+		o.Expect(allPods).To(o.HaveLen(totalExpectedPods), fmt.Sprintf("Number of CLI pods are not as expected %d", totalExpectedPods))
 	})
 
 	g.It("Verify regexes filters are applied", func() {
@@ -51,6 +47,13 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Run()
 		o.Expect(err).NotTo(o.HaveOccurred())
+		// cleanup()
+		defer func() {
+			cliArgs := []string{"cleanup"}
+			cmd := exec.Command(ocNetObservBinPath, cliArgs...)
+			err := cmd.Run()
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}()
 		o.Expect(cmd.ProcessState.ExitCode()).To(o.BeNumerically("==", 0), "oc-netobserv returned non-zero exit code")
 		flowsJsonfile, err := getFlowsJSONFile()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -65,7 +68,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 			err := decoder.Decode(&flow)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if flow.SrcK8sNamespace != nsfilter {
-				o.Expect(true).To(o.Equal(false), fmt.Sprintf("Flow %v does not meet regexes condition SrcK8S_Namespace~%s", flow, nsfilter))
+				o.Expect(true).To(o.BeFalse(), fmt.Sprintf("Flow %v does not meet regexes condition SrcK8S_Namespace~%s", flow, nsfilter))
 			}
 		}
 	})
