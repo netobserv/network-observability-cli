@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/gopacket/layers"
@@ -28,25 +27,12 @@ var pktCmd = &cobra.Command{
 }
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	go scanner()
-
 	captureType = "Packet"
-	wg := sync.WaitGroup{}
-	wg.Add(len(ports))
-	for i := range ports {
-		go func(idx int) {
-			defer wg.Done()
-			err := runPacketCaptureOnAddr(ports[idx], nodes[idx])
-			if err != nil {
-				// Only fatal error are returned
-				log.Fatal(err)
-			}
-		}(i)
-	}
-	wg.Wait()
+	go startPacketCollector()
+	createDisplay()
 }
 
-func runPacketCaptureOnAddr(port int, filename string) error {
+func startPacketCollector() error {
 	if len(filename) > 0 {
 		log.Infof("Starting Packet Capture for %s...", filename)
 	} else {
@@ -129,7 +115,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			}
 
 			// display as flow async
-			go manageFlowsDisplay(genericMap)
+			go addFlow(genericMap)
 
 			// Get capture timestamp
 			ts := time.Unix(int64(genericMap["Time"].(float64)), 0)
@@ -155,7 +141,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			}
 
 			// display as flow async
-			go manageFlowsDisplay(genericMap)
+			go addFlow(genericMap)
 		}
 
 		// terminate capture if max bytes reached
@@ -185,7 +171,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 
 func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {
 	var io types.InterfaceOptions
-	srcType := toValue(*genericMap, "SrcK8S_Type").(string)
+	srcType := toValue(*genericMap, "SrcK8S_Type")
 	if srcType != emptyText {
 		io = types.InterfaceOptions{
 			Name: fmt.Sprintf(
