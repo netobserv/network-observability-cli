@@ -8,10 +8,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 )
-
-var log = logrus.New()
 
 var ocNetObservBinPath string
 
@@ -24,7 +21,6 @@ var _ = g.BeforeSuite(func() {
 	//  kubeconfig env var and see if the cluster is reachable.
 	if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig == "" {
 		g.Skip("Set KUBECONFIG env variable")
-		os.Exit(1)
 	}
 
 	cmd := exec.Command("which", "oc-netobserv")
