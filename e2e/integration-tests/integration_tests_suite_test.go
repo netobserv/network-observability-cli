@@ -23,7 +23,7 @@ func TestIntegrationTests(t *testing.T) {
 var _ = g.BeforeSuite(func() {
 	//  kubeconfig env var and see if the cluster is reachable.
 	if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig == "" {
-		log.Error("Set KUBECONFIG env variable")
+		g.Skip("Set KUBECONFIG env variable")
 		os.Exit(1)
 	}
 
