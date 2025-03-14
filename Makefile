@@ -178,13 +178,9 @@ update-config: ## Update config from operator repo
 	./scripts/update-config.sh
 
 .PHONY: release
-release: clean ## Generate tar.gz containing krew plugin and display krew updated index
+release: clean ## Generate tar.gz containing krew plugin
 	$(MAKE) KREW_PLUGIN=true kubectl-commands
 	tar -czf netobserv-cli.tar.gz LICENSE ./build/netobserv
-	@echo "### Generating krew index yaml"
-	IMAGE_ORG=${IMAGE_ORG} \
-	VERSION=$(VERSION) \
-	./scripts/krew.sh
 
 .PHONY: create-kind-cluster
 create-kind-cluster: prereqs ## Create a kind cluster
