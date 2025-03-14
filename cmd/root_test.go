@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
@@ -87,6 +86,9 @@ func setup(t *testing.T) {
 	// load config
 	err := LoadConfig()
 	assert.Equal(t, nil, err)
+
+	allowClear = false
+	outputBuffer = nil
 }
 
 func resetTime() {
@@ -99,21 +101,14 @@ func resetTime() {
 
 	// reset all timers
 	currentTime = originalTime
-	lastRefresh = startupTime
 	simulatedTime = startupTime
 }
 
-func tickTime() {
+func tickTimeAndAddBytes() {
 	currentTime = func() time.Time {
 		simulatedTime = simulatedTime.Add(1 * time.Second)
 		return simulatedTime
 	}
-}
 
-func setOutputBuffer(buff *bytes.Buffer) {
-	// set output buffer for testing
-	outputBuffer = buff
-
-	// avoid terminal clear
-	resetTerminal = func() {}
+	totalBytes++
 }
