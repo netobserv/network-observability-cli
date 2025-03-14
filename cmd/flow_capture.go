@@ -79,13 +79,13 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 	}
 	log.Trace("Created flow folder")
 
-	f, err = os.Create("./output/flow/" + filename + ".json")
+	f, err = os.Create("./output/flow/" + filename + ".txt")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
 	defer f.Close()
-	log.Trace("Created json file")
+	log.Trace("Created flow logs txt file")
 
 	// Initialize sqlite DB
 	db := initFlowDB(filename)
