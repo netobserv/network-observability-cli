@@ -1,18 +1,13 @@
-# We do not use --platform feature to auto fill this ARG because of incompatibility between podman and docker
-ARG TARGETARCH
-ARG COMMIT
+ARG BUILDVERSION
 
 # Make kubectl & oc scripts available for copy
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c0.assembly.stream.el9 as ose-cli
 
 # Build the manager binary
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23 as builder
-
-ARG TARGETARCH=amd64
-ARG COMMIT
-ARG BUILDVERSION="1.9.0"
-ARG IMAGE=registry.redhat.io/network-observability/network-observability-cli-rhel9:1.8
-ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:1.8
+ARG BUILDVERSION
+ARG IMAGE=registry.redhat.io/network-observability/network-observability-cli-rhel9:${BUILDVERSION}
+ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9:${BUILDVERSION}
 
 WORKDIR /opt/app-root
 
@@ -24,7 +19,7 @@ COPY vendor/ vendor/
 
 # Build collector
 ENV GOEXPERIMENT strictfipsruntime
-RUN GOARCH=$TARGETARCH go build -tags strictfipsruntime -ldflags "-X 'main.buildVersion=${BUILDVERSION}' -X 'main.buildDate=`date +%Y-%m-%d\ %H:%M`'" -mod vendor -a -o build/network-observability-cli
+RUN go build -tags strictfipsruntime -ldflags "-X 'main.buildVersion=${BUILDVERSION}' -X 'main.buildDate=`date +%Y-%m-%d\ %H:%M`'" -mod vendor -a -o build/network-observability-cli
 
 # We still need Makefile & resources for oc-commands; copy them after go build for caching
 COPY commands/ commands/
@@ -40,16 +35,14 @@ RUN USER=netobserv VERSION="$BUILDVERSION" IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IM
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
-FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.5-1741850090
-
-ARG COMMIT
-ARG BUILDVERSION="1.9.0"
+FROM registry.access.redhat.com/ubi9/ubi:9.5-1741850090
+ARG BUILDVERSION
 
 WORKDIR /
 
 COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
-COPY LICENSE ./
+COPY LICENSE /licenses/
 COPY README.downstream ./README
 
 COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
@@ -66,7 +59,5 @@ LABEL io.k8s.description="Network Observability CLI"
 LABEL summary="Network Observability CLI"
 LABEL maintainer="support@redhat.com"
 LABEL io.openshift.tags="network-observability-cli"
-LABEL upstream-vcs-type="git"
-LABEL upstream-vcs-ref=$COMMIT
 LABEL description="Network Observability CLI is a lightweight Flow, Packet and Metrics visualization tool for on-demand monitoring."
 LABEL version=$BUILDVERSION
