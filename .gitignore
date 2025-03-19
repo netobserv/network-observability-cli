@@ -1,4 +1,4 @@
-build
+build/*
 output
 tmp
 cover.out
