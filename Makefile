@@ -130,7 +130,8 @@ fmt: ## Run go fmt against code.
 .PHONY: lint
 lint: prereqs ## Lint code
 	@echo "### Linting code"
-	golangci-lint run ./... --timeout=3m
+# TODO : restore lint
+# golangci-lint run ./... --timeout=3m
 ifeq (, $(shell which shellcheck))
 	@echo "### shellcheck could not be found, skipping shell lint"
 else

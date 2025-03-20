@@ -27,6 +27,8 @@ spec:
           privileged: true
           runAsUser: 0
         env:
+          - name: CACHE_ACTIVE_TIMEOUT
+            value: "1s"
           - name: ENABLE_PCA
             value: "true"
           - name: METRICS_ENABLE
