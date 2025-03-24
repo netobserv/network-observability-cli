@@ -50,6 +50,7 @@ jobs:
         uses: TriPSs/conventional-changelog-action@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-tag: 'true'
       - name: create github release
         uses: actions/create-release@v1
         id: create_release
