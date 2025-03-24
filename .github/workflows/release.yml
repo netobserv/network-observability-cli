@@ -10,7 +10,7 @@ env:
 
 jobs:
   push-image:
-    name: push image
+    name: push image and prepare release
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -45,20 +45,15 @@ jobs:
         run: MULTIARCH_TARGETS="${{ env.WF_MULTIARCH_TARGETS }}" IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} CLEAN_BUILD=1 make images
       - name: build plugin artifact
         run: IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.tag }} make release
-      - name: conventional Changelog Action
-        id: changelog
-        uses: TriPSs/conventional-changelog-action@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: create github release
         uses: actions/create-release@v1
         id: create_release
         with:
-          draft: false
+          draft: true
           prerelease: false
           release_name: ${{ env.tag }}
           tag_name: ${{ env.tag }}
-          body: ${{ steps.changelog.outputs.clean_changelog }}
+          body: Edit to remove this content, click on 'generate release notes' above and publish. It will trigger the krew-release-bot.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: push plugin artifact
@@ -70,5 +65,3 @@ jobs:
           asset_path: netobserv-cli.tar.gz
           asset_name: netobserv-cli.tar.gz
           asset_content_type: application/gzip
-      - name: Update new version in krew-index
-        uses: rajatjindal/krew-release-bot@v0.0.47
