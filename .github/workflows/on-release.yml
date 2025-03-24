@@ -1,0 +1,12 @@
+name: on new release
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-krew:
+    name: update krew
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call krew-release-bot
+        uses: rajatjindal/krew-release-bot@v0.0.47
