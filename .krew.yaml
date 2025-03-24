@@ -18,7 +18,7 @@ spec:
         values:
         - darwin
         - linux
-    {{addURIAndSha ""https://github.com/netobserv/network-observability-cli/releases/download/{{ .TagName }}/netobserv-cli.tar.gz"" .TagName }}
+    {{addURIAndSha "https://github.com/netobserv/network-observability-cli/releases/download/{{ .TagName }}/netobserv-cli.tar.gz" .TagName }}
     files:
     - from: "build/netobserv"
       to: "netobserv"
