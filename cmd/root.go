@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,10 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	maxRefreshRate = 100 * time.Millisecond
-)
-
 var (
 	log      = logrus.New()
 	logLevel string
@@ -28,20 +23,13 @@ var (
 	maxTime  time.Duration
 	maxBytes int64
 
-	currentTime  = time.Now
-	startupTime  = currentTime()
-	lastRefresh  = startupTime
-	totalBytes   = int64(0)
-	totalPackets = uint32(0)
+	currentTime = time.Now
+	startupTime = currentTime()
 
 	mutex = sync.Mutex{}
 
-	resetTerminal = func() {
-		// clear terminal to render table properly
-		fmt.Print("\x1bc")
-		// no wrap
-		fmt.Print("\033[?7l")
-	}
+	totalBytes   = int64(0)
+	totalPackets = uint32(0)
 
 	rootCmd = &cobra.Command{
 		Use:   "network-observability-cli",
@@ -52,13 +40,13 @@ var (
 	}
 
 	captureType      = "Flow"
-	outputBuffer     *bytes.Buffer
 	collectorStarted = false
 	captureStarted   = false
 	captureEnded     = false
 	stopReceived     = false
 	useMocks         = false
 	keyboardError    = ""
+	allowClear       = true
 )
 
 // Execute executes the root command.
@@ -143,12 +131,21 @@ func showKernelVersion() {
 	}
 }
 
+func resetTerminal() {
+	// clear terminal to render table properly
+	fmt.Print("\x1bc")
+	// no wrap
+	fmt.Print("\033[?7l")
+}
+
 func onLimitReached() bool {
 	shouldExit := false
 	if !captureEnded {
 		if strings.Contains(options, "background=true") {
 			captureEnded = true
-			resetTerminal()
+			if allowClear {
+				resetTerminal()
+			}
 			out, err := exec.Command("/oc-netobserv", "stop").Output()
 			if err != nil {
 				log.Fatal(err)
