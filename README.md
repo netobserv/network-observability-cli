@@ -3,7 +3,7 @@
 network-observability-cli is a lightweight Flow, Packet and Metrics visualization tool.
 It deploys [NetObserv eBPF agent](https://github.com/netobserv/netobserv-ebpf-agent) on your k8s cluster to collect flows or packets from nodes network interfaces
 and streams data to a local collector for analysis and visualization.
-Output files are generated under `output/flow` and `output/pcap` directories per host name
+Output files are generated under `output/flow` and `output/pcap` directories per host name.
 
 On Openshift environments, you can also capture metrics in your monitoring stack and display a fully configured dashboard.
 
@@ -14,40 +14,59 @@ To run this CLI, you will need:
 - either `oc` or `kubectl` command installed and connected to your cluster
 - Cluster admin rights
 
-## Build
+## Getting started with Krew
 
-To build the project locally:
+The CLI is available as a [Krew](https://krew.sigs.k8s.io/) plugin, which is the fastest way to get it up and running if you already use Krew.
+If not, please refer to its [installation guide](https://krew.sigs.k8s.io/docs/user-guide/setup/install/).
 
-### Install `shellcheck` package
+To install the NetObserv CLI, run:
 
 ```bash
-sudo dnf install -y shellcheck
+kubectl krew install netobserv
 ```
 
-### Build the project
+Or if you had an older version, to update it:
 
 ```bash
-make build
+kubectl krew update netobserv
 ```
 
-This will also copy resources and commands to the `build` directory.
+Then, run it as a `kubectl` plugin, such as:
 
-### Images
-
-To build your own images of CLI, run the following command replacing `USER` and `VERSION` accordingly:
 ```bash
-USER=netobserv VERSION=dev make images
+kubectl netobserv --version
+# output example: 
+# Netobserv CLI version v0.0.8
+```
+
+You can get detailed help using these commands:
+
+```bash
+kubectl netobserv --help
+kubectl netobserv flows --help
+kubectl netobserv packets --help
+kubectl netobserv metrics --help
 ```
 
 ## Run
 
 ### Flow Capture
 
-Run the following command to start capturing flows, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+For instance, to capture all flows on the cluster that go through the `br-ex` network interface:
 
-```bash
-USER=netobserv VERSION=dev COMMAND_ARGS=--interfaces=br-ex make flows
-```
+- As a `kubectl` plugin:
+
+  ```bash
+  kubectl netobserv flows --interfaces=br-ex
+  ```
+
+- Or from the repository `Makefile`:
+
+  Run the following command to start capturing flows, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+
+  ```bash
+  USER=netobserv VERSION=dev COMMAND_ARGS=--interfaces=br-ex make flows
+  ```
 
 ![flows](./img/flow-table.png)
 
@@ -106,11 +125,21 @@ or `dbeaver`:
 
 ### Packet Capture
 
-Run the following command to start capturing packets, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+For instance, to capture all TCP packets on the cluster that go through port 80:
 
-```bash
-USER=netobserv VERSION=dev COMMAND_ARGS="--protocol=TCP --port=80" make packets
-```
+- As a `kubectl` plugin:
+
+  ```bash
+  kubectl netobserv packets --protocol=TCP --port=80
+  ```
+
+- Or from the repository `Makefile`:
+
+  Run the following command to start capturing packets, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+
+  ```bash
+  USER=netobserv VERSION=dev COMMAND_ARGS="--protocol=TCP --port=80" make packets
+  ```
 
 Similarly to flow capture, it will display a table view with latest flows. However, it will collect packets and write data under output/pcap directory.
 To stop capturing press Ctrl-C.
@@ -119,12 +148,25 @@ This will write [pcapng](https://wiki.wireshark.org/Development/PcapNg) into a s
 
 ![wireshark](./img/wireshark.png)
 
-### Metrics dashboard (OCP only)
+We use the pcapng format to add contextual metadata, such as the k8s pods and service names.
 
-Run the following command to start capturing metrics, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
-```bash
-USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pkt_drop --enable_dns --enable_rtt' make metrics
-```
+### Metrics dashboard (OpenShift only)
+
+For instance, to capture many available metrics, including Packet drops, DNS stats and latenties:
+
+- As a `kubectl` plugin:
+
+  ```bash
+  kubectl netobserv metrics --enable_pkt_drop --enable_dns --enable_rtt
+  ```
+
+- Or from the repository `Makefile`:
+
+  Run the following command to start capturing metrics, replacing `USER`, `VERSION` and `COMMAND_ARGS` accordingly:
+
+  ```bash
+  USER=netobserv VERSION=dev COMMAND_ARGS='--enable_pkt_drop --enable_dns --enable_rtt' make metrics
+  ```
 
 ![metrics](./img/metrics-dashboard.png)
 
@@ -135,8 +177,41 @@ The url to access it is automatically generated from the CLI. Simply click on th
 
 The `cleanup` function will automatically remove the eBPF programs when the CLI exits. However you may need to run it manually if running in background or an error occurs.
 
+- As a `kubectl` plugin:
+
+  ```bash
+  kubectl netobserv cleanup
+  ```
+
+- Or from the repository `Makefile`:
+
+  ```bash
+  USER=netobserv VERSION=dev make cleanup
+  ```
+
+## Build
+
+To build the project locally:
+
+### Install `shellcheck` package
+
 ```bash
-USER=netobserv VERSION=dev make cleanup
+sudo dnf install -y shellcheck
+```
+
+### Build the project
+
+```bash
+make build
+```
+
+This will also copy resources and commands to the `build` directory.
+
+### Images
+
+To build your own images of CLI, run the following command replacing `USER` and `VERSION` accordingly:
+```bash
+USER=netobserv VERSION=dev make images
 ```
 
 ## Extending OpenShift or Kubernetes CLI with plugins
