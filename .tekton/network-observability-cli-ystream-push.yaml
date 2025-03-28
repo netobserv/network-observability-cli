@@ -11,9 +11,9 @@ metadata:
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: netobserv-ystream
-    appstudio.openshift.io/component: network-observability-cli-container-ystream
+    appstudio.openshift.io/component: network-observability-cli-ystream
     pipelines.appstudio.openshift.io/type: build
-  name: network-observability-cli-container-ytream-on-push
+  name: network-observability-cli-ytream-on-push
   namespace: ocp-network-observab-tenant
 spec:
   params:
@@ -22,7 +22,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocp-network-observab-tenant/netobserv-operator/network-observability-cli-container:{{revision}}
+    value: quay.io/redhat-user-workloads/ocp-network-observab-tenant/netobserv-operator/network-observability-cli-ytream:{{revision}}
   - name: build-args-file
     value: Dockerfile-args.downstream
   - name: dockerfile
