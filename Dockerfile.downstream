@@ -52,7 +52,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/network-observability-cli"]
 
-LABEL com.redhat.component="network-observability-cli-container"
+LABEL com.redhat.component="network-observability-cli"
 LABEL name="network-observability-cli"
 LABEL io.k8s.display-name="Network Observability CLI"
 LABEL io.k8s.description="Network Observability CLI"
