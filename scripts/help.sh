@@ -40,7 +40,8 @@ function help {
   echo "  Capture flows from a specific pod"
   echo "    netobserv flows                                           # Capture flows"
   echo "    --node-selector=kubernetes.io/hostname:my-node            # on node matching label 'kubernetes.io/hostname=my-node'"
-  echo "    --regexes=SrcK8S_Name~.*my-pod.*,DstK8S_Name~.*my-pod.*   # from or to any pod name containing 'my-pod'"
+  echo "    --regexes=SrcK8S_Name~.*my-pod.*                          # from any pod name containing 'my-pod'"
+  echo "    or --regexes=DstK8S_Name~.*my-pod.*                       # or to any pod name containing 'my-pod'"
   echo
   echo "  Capture packets on specific nodes and port"
   echo "    netobserv packets                                         # Capture packets"
