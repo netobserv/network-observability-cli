@@ -63,7 +63,9 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 		decoder := json.NewDecoder(flowsFile)
 		_, err = decoder.Token()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		var flow Flowlog
+		var flow struct {
+			SrcK8sNamespace string `json:"SrcK8S_Namespace"`
+		}
 		for decoder.More() {
 			err := decoder.Decode(&flow)
 			o.Expect(err).NotTo(o.HaveOccurred())
