@@ -193,6 +193,7 @@ if [[ "$command" == "flows" || "$command" == "packets" ]]; then
     --command -- $runCommand
 
   ${K8S_CLI_BIN} wait \
+    --timeout 60s \
     -n $namespace \
     --for=condition=Ready pod/collector || exit 1
 
