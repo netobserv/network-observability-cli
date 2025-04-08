@@ -16,6 +16,7 @@ linters:
     - stylecheck
     - typecheck
     - unused
+    - ginkgolinter
 run:
   go: "1.22"
 linters-settings:
