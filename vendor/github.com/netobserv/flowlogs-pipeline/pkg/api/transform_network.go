@@ -59,6 +59,7 @@ const (
 	NetworkAddKubernetesInfra   TransformNetworkOperationEnum = "add_kubernetes_infra"  // add output kubernetes isInfra field from input
 	NetworkReinterpretDirection TransformNetworkOperationEnum = "reinterpret_direction" // reinterpret flow direction at the node level (instead of net interface), to ease the deduplication process
 	NetworkAddSubnetLabel       TransformNetworkOperationEnum = "add_subnet_label"      // categorize IPs based on known subnets configuration
+	NetworkDecodeTCPFlags       TransformNetworkOperationEnum = "decode_tcp_flags"      // decode bitwise TCP flags into a string
 )
 
 type NetworkTransformRule struct {
@@ -69,6 +70,7 @@ type NetworkTransformRule struct {
 	AddLocation     *NetworkGenericRule           `yaml:"add_location,omitempty" json:"add_location,omitempty" doc:"Add location rule configuration"`
 	AddSubnetLabel  *NetworkAddSubnetLabelRule    `yaml:"add_subnet_label,omitempty" json:"add_subnet_label,omitempty" doc:"Add subnet label rule configuration"`
 	AddService      *NetworkAddServiceRule        `yaml:"add_service,omitempty" json:"add_service,omitempty" doc:"Add service rule configuration"`
+	DecodeTCPFlags  *NetworkGenericRule           `yaml:"decode_tcp_flags,omitempty" json:"decode_tcp_flags,omitempty" doc:"Decode bitwise TCP flags into a string"`
 }
 
 type K8sInfraRule struct {
@@ -86,6 +88,7 @@ type K8sReference struct {
 type K8sRule struct {
 	IPField         string `yaml:"ipField,omitempty" json:"ipField,omitempty" doc:"entry IP input field"`
 	InterfacesField string `yaml:"interfacesField,omitempty" json:"interfacesField,omitempty" doc:"entry Interfaces input field"`
+	UDNsField       string `yaml:"udnsField,omitempty" json:"udnsField,omitempty" doc:"entry UDNs input field"`
 	MACField        string `yaml:"macField,omitempty" json:"macField,omitempty" doc:"entry MAC input field"`
 	Output          string `yaml:"output,omitempty" json:"output,omitempty" doc:"entry output field"`
 	Assignee        string `yaml:"assignee,omitempty" json:"assignee,omitempty" doc:"value needs to assign to output field"`
@@ -95,7 +98,7 @@ type K8sRule struct {
 
 type SecondaryNetwork struct {
 	Name  string         `yaml:"name,omitempty" json:"name,omitempty" doc:"name of the secondary network, as mentioned in the annotation 'k8s.v1.cni.cncf.io/network-status'"`
-	Index map[string]any `yaml:"index,omitempty" json:"index,omitempty" doc:"fields to use for indexing, must be any combination of 'mac', 'ip', 'interface'"`
+	Index map[string]any `yaml:"index,omitempty" json:"index,omitempty" doc:"fields to use for indexing, must be any combination of 'mac', 'ip', 'interface', or 'udn'"`
 }
 
 type NetworkGenericRule struct {
