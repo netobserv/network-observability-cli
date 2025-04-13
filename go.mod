@@ -12,8 +12,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/netobserv/flowlogs-pipeline v1.7.0-community.0.20241217113023-fa0540a1658e
 	github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232
-	github.com/onsi/ginkgo/v2 v2.23.0
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/gomega v1.36.3
 	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
@@ -25,8 +25,9 @@ require (
 
 require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e // indirect
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250215040159-dd2a70c928d3 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 )
@@ -81,7 +82,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
