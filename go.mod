@@ -12,8 +12,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/netobserv/flowlogs-pipeline v1.7.0-community.0.20241217113023-fa0540a1658e
 	github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232
-	github.com/onsi/ginkgo/v2 v2.23.0
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.37.0
 	github.com/rodaine/table v1.3.0
 	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
