@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
+	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -35,7 +35,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	k8s.io/component-base v0.32.1 // indirect
-	sigs.k8s.io/controller-runtime v0.20.0 // indirect
+	sigs.k8s.io/controller-runtime v0.20.4 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 )
 
