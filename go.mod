@@ -24,7 +24,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
