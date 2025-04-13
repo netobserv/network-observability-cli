@@ -186,8 +186,8 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250215040159-dd2a70c928d3
-## explicit; go 1.22.0
+# github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250411201933-dde4c47713d3
+## explicit; go 1.23.0
 github.com/ovn-org/ovn-kubernetes/go-controller/observability-lib/model
 # github.com/pkg/errors v0.9.1
 ## explicit
