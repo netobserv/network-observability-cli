@@ -100,6 +100,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 	}()
 
 	log.Trace("Ready ! Waiting for packets...")
+	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
 			log.Tracef("Received first %d packets", len(flowPackets))
@@ -129,7 +130,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			}
 
 			// display as flow async
-			go manageFlowsDisplay(genericMap)
+			go AppendFlow(genericMap)
 
 			// Get capture timestamp
 			ts := time.Unix(int64(genericMap["Time"].(float64)), 0)
@@ -155,7 +156,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			}
 
 			// display as flow async
-			go manageFlowsDisplay(genericMap)
+			go AppendFlow(genericMap)
 		}
 
 		// terminate capture if max bytes reached
