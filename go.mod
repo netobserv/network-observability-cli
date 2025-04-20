@@ -26,7 +26,7 @@ require (
 require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e // indirect
-	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250215040159-dd2a70c928d3 // indirect
+	github.com/ovn-org/ovn-kubernetes/go-controller 8ca7a17e9ab3 // indirect
 	golang.org/x/tools v0.31.0 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 )
