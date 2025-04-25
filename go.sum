@@ -127,10 +127,10 @@ github.com/netobserv/flowlogs-pipeline v1.7.0-community.0.20241217113023-fa0540a
 github.com/netobserv/flowlogs-pipeline v1.7.0-community.0.20241217113023-fa0540a1658e/go.mod h1:P8Gf2JTrvyHpTVZs/N2M1M9nMk1Uu/uvwhVe11c3b9Y=
 github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232 h1:4NcnLECQMcnU5oYP2qaJN35SxkDAUlZ5es/GFLakHto=
 github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232/go.mod h1:ZaM9Qpu5a2p8togVTFV5zxBDwr16rud6ZQH4MqN5blY=
-github.com/onsi/ginkgo/v2 v2.23.0 h1:FA1xjp8ieYDzlgS5ABTpdUDB7wtngggONc8a7ku2NqQ=
-github.com/onsi/ginkgo/v2 v2.23.0/go.mod h1:zXTP6xIp3U8aVuXN8ENK9IXRaTjFnpVB9mGmaSRvxnM=
-github.com/onsi/gomega v1.36.2 h1:koNYke6TVk6ZmnyHrCXba/T/MoLBXFjeC1PtvYgw0A8=
-github.com/onsi/gomega v1.36.2/go.mod h1:DdwyADRjrc825LhMEkD76cHR5+pUnjhUN8GlHlRPHzY=
+github.com/onsi/ginkgo/v2 v2.23.3 h1:edHxnszytJ4lD9D5Jjc4tiDkPBZ3siDeJJkUZJJVkp0=
+github.com/onsi/ginkgo/v2 v2.23.3/go.mod h1:zXTP6xIp3U8aVuXN8ENK9IXRaTjFnpVB9mGmaSRvxnM=
+github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
+github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
 github.com/ovn-org/libovsdb v0.7.1-0.20240820095311-ce1951614a20 h1:OoDvzyaK7F/ZANIIFOgb4Haj7mye3Hle0fYZZNdidSs=
 github.com/ovn-org/libovsdb v0.7.1-0.20240820095311-ce1951614a20/go.mod h1:dJbxEaalQl83nn904K32FaMjlH/qOObZ0bj4ejQ78AI=
 github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250215040159-dd2a70c928d3 h1:tXdBJx1z7CYnjWCQnT6kBbI2LJd5XlDrIymIsxGWPF8=

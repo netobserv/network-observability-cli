@@ -151,7 +151,7 @@ github.com/netobserv/flowlogs-pipeline/pkg/utils
 # github.com/netobserv/netobserv-ebpf-agent v1.7.0-community.0.20250220123714-ff37a09f6232
 ## explicit; go 1.23.0
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils
-# github.com/onsi/ginkgo/v2 v2.23.0
+# github.com/onsi/ginkgo/v2 v2.23.3
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
@@ -173,8 +173,8 @@ github.com/onsi/ginkgo/v2/internal/parallel_support
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.36.2
-## explicit; go 1.22.0
+# github.com/onsi/gomega v1.37.0
+## explicit; go 1.23.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/internal
