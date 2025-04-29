@@ -432,8 +432,10 @@ function overrideNetworkEnrichStage() {
 
 # update FLP Config
 function updateFLPConfig() {
-  # get json as string with escaped quotes
   jsonContent=$(cat "$1")
+  # already escaped chars must be double-escaped
+  jsonContent=${jsonContent//\\/\\\\}
+  # get json as string with escaped quotes
   jsonContent=${jsonContent//\"/\\\"}
 
   # update FLP_CONFIG env
@@ -605,13 +607,13 @@ function edit_manifest() {
       key=${keyValue[0]}
       value=${keyValue[1]}
       echo "key: $key value: $value"
-      rules+=("{\"type\":\"keep_entry_if_regex_match\",\"keepEntry\":{\"input\":\"$key\",\"value\":\"$value\"}}")
+      rules+=("$key=~\\\"$value\\\"")
     done
     rulesStr=$(
-      IFS=,
+      IFS=" and "
       echo "${rules[*]}"
     )
-    rule="{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}"
+    rule="{\"type\":\"keep_entry_query\",\"keepEntryQuery\":\"$rulesStr\"}"
 
     existingFilterStage=$("$YQ_BIN" -r ".pipeline[] | select(.name == \"filter\")" "$json")
     if [[ "$existingFilterStage" == "" ]]; then
