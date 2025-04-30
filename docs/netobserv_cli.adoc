@@ -61,7 +61,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--enable_udn_mapping|        enable User Defined Network mapping | false
+|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--get-subnets|               get subnets information                    | false
 |--background|                run in background                          | false
 |--copy|                      copy the output files locally              | prompt
@@ -84,7 +84,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--port|                      filter port                                | -
 |--ports|                     filter on either of two ports              | -
 |--protocol|                  filter protocol                            | -
-|--regexes|                   filter flows using regular expression      | -
+|--query|                     filter flows using a custom query          | -
 |--sport_range|               filter source port range                   | -
 |--sport|                     filter source port                         | -
 |--sports|                    filter on either of two source ports       | -
@@ -131,7 +131,7 @@ $ oc netobserv packets [<option>]
 |--port|                      filter port                                | -
 |--ports|                     filter on either of two ports              | -
 |--protocol|                  filter protocol                            | -
-|--regexes|                   filter flows using regular expression      | -
+|--query|                     filter flows using a custom query          | -
 |--sport_range|               filter source port range                   | -
 |--sport|                     filter source port                         | -
 |--sports|                    filter on either of two source ports       | -
@@ -161,7 +161,7 @@ $ oc netobserv metrics [<option>]
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--enable_udn_mapping|        enable User Defined Network mapping | false
+|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--get-subnets|               get subnets information                    | false
 |--action|                    filter action                              | Accept
 |--cidr|                      filter CIDR                                | 0.0.0.0/0
@@ -179,7 +179,7 @@ $ oc netobserv metrics [<option>]
 |--port|                      filter port                                | -
 |--ports|                     filter on either of two ports              | -
 |--protocol|                  filter protocol                            | -
-|--regexes|                   filter flows using regular expression      | -
+|--query|                     filter flows using a custom query          | -
 |--sport_range|               filter source port range                   | -
 |--sport|                     filter source port                         | -
 |--sports|                    filter on either of two source ports       | -

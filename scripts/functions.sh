@@ -44,6 +44,11 @@ if [ -n "$NETOBSERV_AGENT_IMAGE" ]; then
   agentImg="$NETOBSERV_AGENT_IMAGE"
 fi
 
+# globals populated from calling script
+command=""
+options=""
+manifest=""
+
 OUTPUT_PATH="./output"
 YAML_OUTPUT_FILE="capture.yml"
 MANIFEST_OUTPUT_PATH="tmp"
