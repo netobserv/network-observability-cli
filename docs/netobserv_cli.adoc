@@ -62,6 +62,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
 |--enable_udn_mapping|        enable User Defined Network mapping        | false
+|--enable_ipsec|              enable IPsec tracking                      | false
 |--get-subnets|               get subnets information                    | false
 |--background|                run in background                          | false
 |--copy|                      copy the output files locally              | prompt
@@ -162,6 +163,7 @@ $ oc netobserv metrics [<option>]
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
 |--enable_udn_mapping|        enable User Defined Network mapping        | false
+|--enable_ipsec|              enable IPsec tracking                      | false
 |--get-subnets|               get subnets information                    | false
 |--action|                    filter action                              | Accept
 |--cidr|                      filter CIDR                                | 0.0.0.0/0
