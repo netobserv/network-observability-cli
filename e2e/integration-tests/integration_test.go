@@ -43,7 +43,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 	g.It("Verify regexes filters are applied", func() {
 		// capture upto 500KB
 		nsfilter := "openshift-monitoring"
-		cliArgs := []string{"flows", "--regexes=SrcK8S_Namespace~" + nsfilter, "--copy=true", "--max-bytes=500000"}
+		cliArgs := []string{"flows", "--query=\"SrcK8S_Namespace=~" + nsfilter + "\"", "--copy=true", "--max-bytes=500000"}
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Run()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -70,7 +70,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 			err := decoder.Decode(&flow)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			if flow.SrcK8sNamespace != nsfilter {
-				o.Expect(true).To(o.BeFalse(), fmt.Sprintf("Flow %v does not meet regexes condition SrcK8S_Namespace~%s", flow, nsfilter))
+				o.Expect(true).To(o.BeFalse(), fmt.Sprintf("Flow %v does not meet regexes condition SrcK8S_Namespace=~%s", flow, nsfilter))
 			}
 		}
 	})

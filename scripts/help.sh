@@ -21,10 +21,10 @@ function help {
   echo "  version    Print software version."
   echo
   echo "basic examples:"
-  echo "  netobserv flows --drops                              # Capture dropped flows on all nodes"
-  echo "  netobserv flows --regexes=SrcK8S_Namespace~app-.*    # Capture flows from any namespace starting by app-"
-  echo "  netobserv packets --port=8080                        # Capture packets on port 8080"
-  echo "  netobserv metrics --enable_all                       # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
+  echo "  netobserv flows --drops                                     # Capture dropped flows on all nodes"
+  echo "  netobserv flows --query='SrcK8S_Namespace=~\"app-.*\"'        # Capture flows from any namespace starting by app-"
+  echo "  netobserv packets --port=8080                               # Capture packets on port 8080"
+  echo "  netobserv metrics --enable_all                              # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
   echo
   echo "advanced examples:"
   echo "  Capture drops in background and copy output locally"
@@ -40,8 +40,8 @@ function help {
   echo "  Capture flows from a specific pod"
   echo "    netobserv flows                                           # Capture flows"
   echo "    --node-selector=kubernetes.io/hostname:my-node            # on node matching label 'kubernetes.io/hostname=my-node'"
-  echo "    --regexes=SrcK8S_Name~.*my-pod.*                          # from any pod name containing 'my-pod'"
-  echo "    or --regexes=DstK8S_Name~.*my-pod.*                       # or to any pod name containing 'my-pod'"
+  echo "    --query='SrcK8S_Name=~\".*my-pod.*\"                        # from any pod name containing 'my-pod'"
+  echo "             or DstK8S_Name=~\".*my-pod.*\"'                    # or to any pod name containing 'my-pod'"
   echo
   echo "  Capture packets on specific nodes and port"
   echo "    netobserv packets                                         # Capture packets"
@@ -64,7 +64,7 @@ function features_usage {
   echo "  --enable_pkt_translation:     enable packet translation                  (default: false)"
   echo "  --enable_pkt_drop:            enable packet drop                         (default: false)"
   echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
-  echo "  --enable_udn_mapping:         enable User Defined Network mapping (default: false)"
+  echo "  --enable_udn_mapping:         enable User Defined Network mapping        (default: false)"
   echo "  --get-subnets:                get subnets information                    (default: false)"
 }
 
@@ -100,7 +100,7 @@ function filters_usage {
   echo "  --port:                       filter port                                (default: n/a)"
   echo "  --ports:                      filter on either of two ports              (default: n/a)"
   echo "  --protocol:                   filter protocol                            (default: n/a)"
-  echo "  --regexes:                    filter flows using regular expression      (default: n/a)"
+  echo "  --query:                      filter flows using a custom query          (default: n/a)"
   echo "  --sport_range:                filter source port range                   (default: n/a)"
   echo "  --sport:                      filter source port                         (default: n/a)"
   echo "  --sports:                     filter on either of two source ports       (default: n/a)"

@@ -85,7 +85,7 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options="$*"
+    options=( "$@" )
     # run flows command
     command="flows"
     ;;
@@ -99,7 +99,7 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options="$*"
+    options=( "$@" )
     # run packets command
     command="packets"
     ;;
@@ -113,7 +113,7 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options="$*"
+    options=( "$@" )
     # run metrics command
     command="metrics"
     ;;
@@ -179,7 +179,7 @@ esac
 
 trap cleanup EXIT
 
-setup $command $options
+setup
 
 if [[ "$command" == "flows" || "$command" == "packets" ]]; then
   # convert options to string

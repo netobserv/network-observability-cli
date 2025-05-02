@@ -44,6 +44,11 @@ if [ -n "$NETOBSERV_AGENT_IMAGE" ]; then
   agentImg="$NETOBSERV_AGENT_IMAGE"
 fi
 
+# globals populated from calling script
+command=""
+options=""
+manifest=""
+
 OUTPUT_PATH="./output"
 YAML_OUTPUT_FILE="capture.yml"
 MANIFEST_OUTPUT_PATH="tmp"
@@ -239,7 +244,7 @@ function setup() {
   echo "Setting up... "
 
   # check for mandatory arguments
-  if ! [[ $1 =~ flows|packets|metrics ]]; then
+  if ! [[ $command =~ flows|packets|metrics ]]; then
     echo "invalid setup argument"
     return
   fi
@@ -265,7 +270,7 @@ function setup() {
       exit 1
     fi
   else
-    YAML_OUTPUT_FILE="${1}_capture_${dateName}.yml"
+    YAML_OUTPUT_FILE="${command}_capture_${dateName}.yml"
   fi
 
   # apply yamls
@@ -279,36 +284,30 @@ function setup() {
     mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
   fi
 
-  if [ "$1" = "flows" ]; then
+  if [ "$command" = "flows" ]; then
     echo "creating collector service"
     applyYAML "$collectorServiceYAML"
-    shift
     echo "creating flow-capture agents"
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
     echo "${flowAgentYAML}" >${manifest}
     setCollectorPipelineConfig "$manifest"
-    options="$*"
-    check_args_and_apply "$options" "$manifest" "flows"
-  elif [ "$1" = "packets" ]; then
+    check_args_and_apply
+  elif [ "$command" = "packets" ]; then
     echo "creating collector service"
     applyYAML "$collectorServiceYAML"
-    shift
     echo "creating packet-capture agents"
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
     echo "${packetAgentYAML}" >${manifest}
     setCollectorPipelineConfig "$manifest"
-    options="$*"
-    check_args_and_apply "$options" "$manifest" "packets"
-  elif [ "$1" = "metrics" ]; then
+    check_args_and_apply
+  elif [ "$command" = "metrics" ]; then
     echo "creating service monitor"
     applyYAML "$smYAML"
-    shift
     echo "creating metric-capture agents:"
     manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
     echo "${metricAgentYAML}" >${manifest}
     setMetricsPipelineConfig "$manifest"
-    options="$*"
-    check_args_and_apply "$options" "$manifest" "metrics"
+    check_args_and_apply
   fi
 }
 
@@ -432,8 +431,10 @@ function overrideNetworkEnrichStage() {
 
 # update FLP Config
 function updateFLPConfig() {
-  # get json as string with escaped quotes
   jsonContent=$(cat "$1")
+  # already escaped chars must be double-escaped
+  jsonContent=${jsonContent//\\/\\\\}
+  # get json as string with escaped quotes
   jsonContent=${jsonContent//\"/\\\"}
 
   # update FLP_CONFIG env
@@ -464,47 +465,47 @@ function edit_manifest() {
     echo "opt: $1, value: $2"
   fi
 
-  if [[ $1 == "filter_"* && $1 != "filter_regexes" ]]; then
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$3"
+  if [[ $1 == "filter_"* && $1 != "filter_query" ]]; then
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$manifest"
     # add first filter in the array
-    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$3")
+    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$manifest")
     if [[ $currentFilters == "[]" ]]; then
-      addFlowFilter "$3"
+      addFlowFilter "$manifest"
     fi
   fi
 
   case "$1" in
   "interfaces")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$manifest"
     ;;
   "pkt_drop_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$manifest"
     ;;
   "dns_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_DNS_TRACKING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_DNS_TRACKING\").value|=\"$2\"" "$manifest"
     ;;
   "rtt_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_RTT\").value|=\"$2\"" "$manifest"
     ;;
   "network_events_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_NETWORK_EVENTS_MONITORING\").value|=\"$2\"" "$manifest"
     ;;
   "udn_enable")
     if [[ "$2" == "true" ]]; then
       # add udn to secondary network indexes
-      copyFLPConfig "$3"
+      copyFLPConfig "$manifest"
       getNetworkEnrichStage
 
       # add kubeConfig.secondaryNetworks to network
       "$YQ_BIN" e -oj --inplace ".transform.network.kubeConfig = {\"secondaryNetworks\":[{\"name\":\"ovn-kubernetes\",\"index\":{\"udn\":null}}]}" "$enrichJson"
 
       overrideNetworkEnrichStage
-      updateFLPConfig "$json" "$3"
+      updateFLPConfig "$json" "$manifest"
     fi
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_UDN_MAPPING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_UDN_MAPPING\").value|=\"$2\"" "$manifest"
     ;;
   "pkt_xlat_enable")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_TRANSLATION\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_TRANSLATION\").value|=\"$2\"" "$manifest"
     ;;
   "get_subnets")
     if [[ "$2" == "true" ]]; then
@@ -512,7 +513,7 @@ function edit_manifest() {
       getSubnets subnets
 
       if [ "${#subnets[@]}" -gt 0 ]; then
-        copyFLPConfig "$3"
+        copyFLPConfig "$manifest"
         getNetworkEnrichStage
 
         # add rules to network
@@ -526,92 +527,80 @@ function edit_manifest() {
         done
 
         overrideNetworkEnrichStage
-        updateFLPConfig "$json" "$3"
+        updateFLPConfig "$json" "$manifest"
       fi
     fi
     ;;
   "add_filter")
-    addFlowFilter "$3"
+    addFlowFilter "$manifest"
     ;;
   "filter_direction")
-    setLastFlowFilter "direction" "\"$2\"" "$3"
+    setLastFlowFilter "direction" "\"$2\"" "$manifest"
     ;;
   "filter_cidr")
-    setLastFlowFilter "ip_cidr" "\"$2\"" "$3"
+    setLastFlowFilter "ip_cidr" "\"$2\"" "$manifest"
     ;;
   "filter_protocol")
-    setLastFlowFilter "protocol" "\"$2\"" "$3"
+    setLastFlowFilter "protocol" "\"$2\"" "$manifest"
     ;;
   "filter_sport")
-    setLastFlowFilter "source_port" = "$2" "$3"
+    setLastFlowFilter "source_port" = "$2" "$manifest"
     ;;
   "filter_dport")
-    setLastFlowFilter "destination_port" "$2" "$3"
+    setLastFlowFilter "destination_port" "$2" "$manifest"
     ;;
   "filter_port")
-    setLastFlowFilter "port" "$2" "$3"
+    setLastFlowFilter "port" "$2" "$manifest"
     ;;
   "filter_sport_range")
-    setLastFlowFilter "source_port_range" "\"$2\"" "$3"
+    setLastFlowFilter "source_port_range" "\"$2\"" "$manifest"
     ;;
   "filter_dport_range")
-    setLastFlowFilter "destination_port_range" "\"$2\"" "$3"
+    setLastFlowFilter "destination_port_range" "\"$2\"" "$manifest"
     ;;
   "filter_port_range")
-    setLastFlowFilter "port_range" "\"$2\"" "$3"
+    setLastFlowFilter "port_range" "\"$2\"" "$manifest"
     ;;
   "filter_sports")
-    setLastFlowFilter "source_ports" "\"$2\"" "$3"
+    setLastFlowFilter "source_ports" "\"$2\"" "$manifest"
     ;;
   "filter_dports")
-    setLastFlowFilter "destination_ports" "\"$2\"" "$3"
+    setLastFlowFilter "destination_ports" "\"$2\"" "$manifest"
     ;;
   "filter_ports")
-    setLastFlowFilter "ports" "\"$2\"" "$3"
+    setLastFlowFilter "ports" "\"$2\"" "$manifest"
     ;;
   "filter_icmp_type")
-    setLastFlowFilter "icmp_type" "$2" "$3"
+    setLastFlowFilter "icmp_type" "$2" "$manifest"
     ;;
   "filter_icmp_code")
-    setLastFlowFilter "icmp_code" "$2" "$3"
+    setLastFlowFilter "icmp_code" "$2" "$manifest"
     ;;
   "filter_peer_ip")
-    setLastFlowFilter "peer_ip" "\"$2\"" "$3"
+    setLastFlowFilter "peer_ip" "\"$2\"" "$manifest"
     ;;
   "filter_peer_cidr")
-    setLastFlowFilter "peer_cidr" "\"$2\"" "$3"
+    setLastFlowFilter "peer_cidr" "\"$2\"" "$manifest"
     ;;
   "filter_action")
-    setLastFlowFilter "action" "\"$2\"" "$3"
+    setLastFlowFilter "action" "\"$2\"" "$manifest"
     ;;
   "filter_tcp_flags")
-    setLastFlowFilter "tcp_flags" "\"$2\"" "$3"
+    setLastFlowFilter "tcp_flags" "\"$2\"" "$manifest"
     ;;
   "filter_pkt_drops")
     if [[ "$2" == "true" ]]; then
       # force enable drops before setting filter
-      edit_manifest "pkt_drop_enable" "$2" "$3"
+      edit_manifest "pkt_drop_enable" "$2" "$manifest"
     fi
-    setLastFlowFilter "drops" "$2" "$3"
+    setLastFlowFilter "drops" "$2" "$manifest"
     ;;
-  "filter_regexes")
-    copyFLPConfig "$3"
+  "filter_query")
+    copyFLPConfig "$manifest"
 
     # define rules from arg
-    IFS=',' read -ra regexes <<<"$2"
-    rules=()
-    for regex in "${regexes[@]}"; do
-      IFS='~' read -ra keyValue <<<"$regex"
-      key=${keyValue[0]}
-      value=${keyValue[1]}
-      echo "key: $key value: $value"
-      rules+=("{\"type\":\"keep_entry_if_regex_match\",\"keepEntry\":{\"input\":\"$key\",\"value\":\"$value\"}}")
-    done
-    rulesStr=$(
-      IFS=,
-      echo "${rules[*]}"
-    )
-    rule="{\"type\":\"keep_entry_all_satisfied\",\"keepEntryAllSatisfied\":[$rulesStr]}"
+    query=${2//\"/\\\"}
+    rule="{\"type\":\"keep_entry_query\",\"keepEntryQuery\":\"$query\"}"
 
     existingFilterStage=$("$YQ_BIN" -r ".pipeline[] | select(.name == \"filter\")" "$json")
     if [[ "$existingFilterStage" == "" ]]; then
@@ -629,10 +618,10 @@ function edit_manifest() {
       "$YQ_BIN" e --inplace " .parameters[] |= select(.name == \"filter\").transform.filter.rules += $rule" "$json"
     fi
 
-    updateFLPConfig "$json" "$3"
+    updateFLPConfig "$json" "$manifest"
     ;;
   "log_level")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"LOG_LEVEL\").value|=\"$2\"" "$manifest"
     ;;
   "node_selector")
     key=${2%:*}
@@ -640,14 +629,13 @@ function edit_manifest() {
     if [[ "$outputYAML" == "false" ]]; then
       getNodesByLabel "$key=$val"
     fi
-    "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$manifest"
     ;;
   esac
 }
 
 # define key and value at script level to make them available all the time
 # these will be updated by check_args_and_apply first and overriden by defaultValue when needed
-prevKey=""
 key=""
 value=""
 
@@ -657,21 +645,15 @@ function defaultValue() {
   fi
 }
 
-# Check if the arguments are valid
-#$1: options
-#$2: manifest
-#$3: flows, packets or metrics
+# Check if $options are valid
 function check_args_and_apply() {
   # Iterate through the command-line arguments
-  for option in $1; do
-    prevKey="$key"
+  for option in "${options[@]}"; do
     key="${option%%=*}"
     value="${option#*=}"
     case "$key" in
     or) # Increment flow filter array
-      if [[ "$prevKey" != *regexes ]]; then
-        edit_manifest "add_filter" "" "$2"
-      fi
+      edit_manifest "add_filter" ""
       ;;
     *background) # Run command in background
       defaultValue "true"
@@ -692,13 +674,13 @@ function check_args_and_apply() {
       fi
       ;;
     *interfaces) # Interfaces
-      edit_manifest "interfaces" "$value" "$2"
+      edit_manifest "interfaces" "$value"
       ;;
     *enable_pkt_drop) # Enable packet drop
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "pkt_drop_enable" "$value" "$2"
+          edit_manifest "pkt_drop_enable" "$value"
         else
           echo "invalid value for --enable_pkt_drop"
         fi
@@ -708,10 +690,10 @@ function check_args_and_apply() {
       fi
       ;;
     *enable_dns) # Enable DNS
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "dns_enable" "$value" "$2"
+          edit_manifest "dns_enable" "$value"
         else
           echo "invalid value for --enable_dns"
         fi
@@ -721,10 +703,10 @@ function check_args_and_apply() {
       fi
       ;;
     *enable_rtt) # Enable RTT
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "rtt_enable" "$value" "$2"
+          edit_manifest "rtt_enable" "$value"
         else
           echo "invalid value for --enable_rtt"
         fi
@@ -734,10 +716,10 @@ function check_args_and_apply() {
       fi
       ;;
     *enable_network_events) # Enable Network events monitoring
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "network_events_enable" "$value" "$2"
+          edit_manifest "network_events_enable" "$value"
         else
           echo "invalid value for --enable_network_events"
         fi
@@ -747,10 +729,10 @@ function check_args_and_apply() {
       fi
       ;;
     *enable_udn_mapping) # Enable User Defined Network mapping
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "udn_enable" "$value" "$2"
+          edit_manifest "udn_enable" "$value"
         else
           echo "invalid value for --enable_udn_mapping"
         fi
@@ -760,10 +742,10 @@ function check_args_and_apply() {
       fi
       ;;
     *enable_pkt_translation) # Enable Packet translation
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
-          edit_manifest "pkt_xlat_enable" "$value" "$2"
+          edit_manifest "pkt_xlat_enable" "$value"
         else
           echo "invalid value for --enable_pkt_translation"
         fi
@@ -775,66 +757,66 @@ function check_args_and_apply() {
     *enable_all) # Enable all features
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
-        edit_manifest "pkt_drop_enable" "$value" "$2"
-        edit_manifest "dns_enable" "$value" "$2"
-        edit_manifest "rtt_enable" "$value" "$2"
-        edit_manifest "network_events_enable" "$value" "$2"
-        edit_manifest "udn_enable" "$value" "$2"
-        edit_manifest "pkt_xlat_enable" "$value" "$2"
+        edit_manifest "pkt_drop_enable" "$value"
+        edit_manifest "dns_enable" "$value"
+        edit_manifest "rtt_enable" "$value"
+        edit_manifest "network_events_enable" "$value"
+        edit_manifest "udn_enable" "$value"
+        edit_manifest "pkt_xlat_enable" "$value"
       else
         echo "invalid value for --enable_all"
       fi
       ;;
     *direction) # Configure filter direction
       if [[ "$value" == "Ingress" || "$value" == "Egress" ]]; then
-        edit_manifest "filter_direction" "$value" "$2"
+        edit_manifest "filter_direction" "$value"
       else
         echo "invalid value for --direction"
       fi
       ;;
     *peer_cidr) # Peer CIDR
-      edit_manifest "filter_peer_cidr" "$value" "$2"
+      edit_manifest "filter_peer_cidr" "$value"
       ;;
     *cidr) # Configure flow CIDR
-      edit_manifest "filter_cidr" "$value" "$2"
+      edit_manifest "filter_cidr" "$value"
       ;;
     *protocol) # Configure filter protocol
       if [[ "$value" == "TCP" || "$value" == "UDP" || "$value" == "SCTP" || "$value" == "ICMP" || "$value" == "ICMPv6" ]]; then
-        edit_manifest "filter_protocol" "$value" "$2"
+        edit_manifest "filter_protocol" "$value"
       else
         echo "invalid value for --protocol"
       fi
       ;;
     *sport) # Configure filter source port
-      edit_manifest "filter_sport" "$value" "$2"
+      edit_manifest "filter_sport" "$value"
       ;;
     *dport) # Configure filter destination port
-      edit_manifest "filter_dport" "$value" "$2"
+      edit_manifest "filter_dport" "$value"
       ;;
     *port) # Configure filter port
-      edit_manifest "filter_port" "$value" "$2"
+      edit_manifest "filter_port" "$value"
       ;;
     *sport_range) # Configure filter source port range
-      edit_manifest "filter_sport_range" "$value" "$2"
+      edit_manifest "filter_sport_range" "$value"
       ;;
     *dport_range) # Configure filter destination port range
-      edit_manifest "filter_dport_range" "$value" "$2"
+      edit_manifest "filter_dport_range" "$value"
       ;;
     *port_range) # Configure filter port range
-      edit_manifest "filter_port_range" "$value" "$2"
+      edit_manifest "filter_port_range" "$value"
       ;;
     *sports) # Configure filter source two ports using ","
-      edit_manifest "filter_sports" "$value" "$2"
+      edit_manifest "filter_sports" "$value"
       ;;
     *dports) # Configure filter destination two ports using ","
-      edit_manifest "filter_dports" "$value" "$2"
+      edit_manifest "filter_dports" "$value"
       ;;
     *ports) # Configure filter on two ports usig "," can either be srcport or dstport
-      edit_manifest "filter_ports" "$value" "$2"
+      edit_manifest "filter_ports" "$value"
       ;;
     *tcp_flags) # Configure filter TCP flags
       if [[ "$value" == "SYN" || "$value" == "SYN-ACK" || "$value" == "ACK" || "$value" == "FIN" || "$value" == "RST" || "$value" == "FIN-ACK" || "$value" == "RST-ACK" || "$value" == "PSH" || "$value" == "URG" || "$value" == "ECE" || "$value" == "CWR" ]]; then
-        edit_manifest "filter_tcp_flags" "$value" "$2"
+        edit_manifest "filter_tcp_flags" "$value"
       else
         echo "invalid value for --tcp_flags"
       fi
@@ -842,39 +824,38 @@ function check_args_and_apply() {
     *drops) # Filter packet drops
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
-        edit_manifest "filter_pkt_drops" "$value" "$2"
+        edit_manifest "filter_pkt_drops" "$value"
       else
         echo "invalid value for --drops"
       fi
       ;;
-    *regexes) # Filter using regexes
-      valueCount=$(grep -o "~" <<<"$value" | wc -l)
-      splitterCount=$(grep -o "," <<<"$value" | wc -l)
-      if [[ ${valueCount} -gt 0 && $((valueCount)) == $((splitterCount + 1)) ]]; then
-        edit_manifest "filter_regexes" "$value" "$2"
+    *query) # Filter using a custom query
+      if [[ "$value" != "" ]]; then
+        edit_manifest "filter_query" "$value"
       else
-        echo "invalid value for --regexes"
+        echo "missing value for --query"
+        exit 1
       fi
       ;;
     *icmp_type) # ICMP type
-      edit_manifest "filter_icmp_type" "$value" "$2"
+      edit_manifest "filter_icmp_type" "$value"
       ;;
     *icmp_code) # ICMP code
-      edit_manifest "filter_icmp_code" "$value" "$2"
+      edit_manifest "filter_icmp_code" "$value"
       ;;
     *peer_ip) # Peer IP
-      edit_manifest "filter_peer_ip" "$value" "$2"
+      edit_manifest "filter_peer_ip" "$value"
       ;;
     *action) # Filter action
       if [[ "$value" == "Accept" || "$value" == "Reject" ]]; then
-        edit_manifest "filter_action" "$value" "$2"
+        edit_manifest "filter_action" "$value"
       else
         echo "invalid value for --action"
       fi
       ;;
     *log-level) # Log level
       if [[ "$value" == "trace" || "$value" == "debug" || "$value" == "info" || "$value" == "warn" || "$value" == "error" || "$value" == "fatal" || "$value" == "panic" ]]; then
-        edit_manifest "log_level" "$value" "$2"
+        edit_manifest "log_level" "$value"
         logLevel=$value
         filter=${filter/$key=$logLevel/}
       else
@@ -891,7 +872,7 @@ function check_args_and_apply() {
       ;;
     *node-selector) # Node selector
       if [[ $value == *":"* ]]; then
-        edit_manifest "node_selector" "$value" "$2"
+        edit_manifest "node_selector" "$value"
       else
         echo "invalid value for --node-selector. Use --node-selector=key:val instead."
         exit 1
@@ -900,7 +881,7 @@ function check_args_and_apply() {
     *get-subnets) # Get subnets
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
-        edit_manifest "get_subnets" "$value" "$2"
+        edit_manifest "get_subnets" "$value"
       else
         echo "invalid value for --get-subnets"
       fi
@@ -913,8 +894,8 @@ function check_args_and_apply() {
   done
 
   # avoid packet capture without filters
-  if [[ "$3" = "packets" ]]; then
-    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$2")
+  if [[ "$command" = "packets" ]]; then
+    currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$manifest")
     if [[ $currentFilters == "[]" ]]; then
       echo
       echo "Error: At least one eBPF filter must be set for packet capture to avoid high resource consumption."
@@ -924,7 +905,7 @@ function check_args_and_apply() {
     fi
   fi
 
-  yaml="$(cat "$2")"
+  yaml="$(cat "$manifest")"
   applyYAML "$yaml"
   if [[ "$outputYAML" == "false" ]]; then
     ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
