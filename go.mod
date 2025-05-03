@@ -10,7 +10,7 @@ require (
 	github.com/google/gopacket v1.1.19
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/netobserv/flowlogs-pipeline v1.9.0-crc0
+	github.com/netobserv/flowlogs-pipeline v1.9.0-crc1
 	github.com/netobserv/netobserv-ebpf-agent v1.9.0-crc0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
