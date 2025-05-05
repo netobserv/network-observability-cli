@@ -66,25 +66,25 @@ function version {
 
 # agent / flp features
 function features_usage {
-  echo "  --enable_all:                 enable all eBPF features                   (default: false)"
-  echo "  --enable_dns:                 enable DNS tracking                        (default: false)"
-  echo "  --enable_ipsec:               enable IPsec tracking                      (default: false)"
-  echo "  --enable_network_events:      enable network events monitoring           (default: false)"
-  echo "  --enable_pkt_translation:     enable packet translation                  (default: false)"
-  echo "  --enable_pkt_drop:            enable packet drop                         (default: false)"
-  echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
-  echo "  --enable_udn_mapping:         enable User Defined Network mapping        (default: false)"
-  echo "  --get-subnets:                get subnets information                    (default: false)"
-  echo "  --sampling:                   rate at which packets should be sampled    (default: 1)"
+  echo "  --enable_all:                 enable all eBPF features                              (default: false)"
+  echo "  --enable_dns:                 enable DNS tracking                                   (default: false)"
+  echo "  --enable_ipsec:               enable IPsec tracking                                 (default: false)"
+  echo "  --enable_network_events:      enable network events monitoring                      (default: false)"
+  echo "  --enable_pkt_translation:     enable packet translation                             (default: false)"
+  echo "  --enable_pkt_drop:            enable packet drop                                    (default: false)"
+  echo "  --enable_rtt:                 enable RTT tracking                                   (default: false)"
+  echo "  --enable_udn_mapping:         enable User Defined Network mapping                   (default: false)"
+  echo "  --get-subnets:                get subnets information                               (default: false)"
+  echo "  --sampling:                   value that defines the ratio of packets being sampled (default: 1)"
 }
 
 # collector options
 function collector_usage {
-  echo "  --background:                 run in background                          (default: false)"
-  echo "  --copy:                       copy the output files locally              (default: prompt)"
-  echo "  --log-level:                  components logs                            (default: info)"
-  echo "  --max-time:                   maximum capture time                       (default: 5m)"
-  echo "  --max-bytes:                  maximum capture bytes                      (default: 50000000 = 50MB)"
+  echo "  --background:                 run in background                                     (default: false)"
+  echo "  --copy:                       copy the output files locally                         (default: prompt)"
+  echo "  --log-level:                  components logs                                       (default: info)"
+  echo "  --max-time:                   maximum capture time                                  (default: 5m)"
+  echo "  --max-bytes:                  maximum capture bytes                                 (default: 50000000 = 50MB)"
 }
 
 # script options
@@ -94,33 +94,33 @@ function script_usage {
 
 # agent selector / filters
 function filters_usage {
-  echo "  --action:                     filter action                              (default: Accept)"
-  echo "  --cidr:                       filter CIDR                                (default: 0.0.0.0/0)"
-  echo "  --direction:                  filter direction                           (default: n/a)"
-  echo "  --dport:                      filter destination port                    (default: n/a)"
-  echo "  --dport_range:                filter destination port range              (default: n/a)"
-  echo "  --dports:                     filter on either of two destination ports  (default: n/a)"
-  echo "  --drops:                      filter flows with only dropped packets     (default: false)"
-  echo "  --icmp_code:                  filter ICMP code                           (default: n/a)"
-  echo "  --icmp_type:                  filter ICMP type                           (default: n/a)"
-  echo "  --node-selector:              capture on specific nodes                  (default: n/a)"
-  echo "  --peer_ip:                    filter peer IP                             (default: n/a)"
-  echo "  --peer_cidr:                  filter peer CIDR                           (default: n/a)"
-  echo "  --port_range:                 filter port range                          (default: n/a)"
-  echo "  --port:                       filter port                                (default: n/a)"
-  echo "  --ports:                      filter on either of two ports              (default: n/a)"
-  echo "  --protocol:                   filter protocol                            (default: n/a)"
-  echo "  --query:                      filter flows using a custom query          (default: n/a)"
-  echo "  --sport_range:                filter source port range                   (default: n/a)"
-  echo "  --sport:                      filter source port                         (default: n/a)"
-  echo "  --sports:                     filter on either of two source ports       (default: n/a)"
-  echo "  --tcp_flags:                  filter TCP flags                           (default: n/a)"
+  echo "  --action:                     filter action                                         (default: Accept)"
+  echo "  --cidr:                       filter CIDR                                           (default: 0.0.0.0/0)"
+  echo "  --direction:                  filter direction                                      (default: n/a)"
+  echo "  --dport:                      filter destination port                               (default: n/a)"
+  echo "  --dport_range:                filter destination port range                         (default: n/a)"
+  echo "  --dports:                     filter on either of two destination ports             (default: n/a)"
+  echo "  --drops:                      filter flows with only dropped packets                (default: false)"
+  echo "  --icmp_code:                  filter ICMP code                                      (default: n/a)"
+  echo "  --icmp_type:                  filter ICMP type                                      (default: n/a)"
+  echo "  --node-selector:              capture on specific nodes                             (default: n/a)"
+  echo "  --peer_ip:                    filter peer IP                                        (default: n/a)"
+  echo "  --peer_cidr:                  filter peer CIDR                                      (default: n/a)"
+  echo "  --port_range:                 filter port range                                     (default: n/a)"
+  echo "  --port:                       filter port                                           (default: n/a)"
+  echo "  --ports:                      filter on either of two ports                         (default: n/a)"
+  echo "  --protocol:                   filter protocol                                       (default: n/a)"
+  echo "  --query:                      filter flows using a custom query                     (default: n/a)"
+  echo "  --sport_range:                filter source port range                              (default: n/a)"
+  echo "  --sport:                      filter source port                                    (default: n/a)"
+  echo "  --sports:                     filter on either of two source ports                  (default: n/a)"
+  echo "  --tcp_flags:                  filter TCP flags                                      (default: n/a)"
 }
 
 # specific filters for flows and metrics
 function flowsAndMetrics_filters_usage {
-  echo "  --interfaces:                 interfaces to monitor, comma separated     (default: n/a)"
-  echo "  --exclude_interfaces:         interfaces to exclude, comma separated     (default: lo)"
+  echo "  --interfaces:                 interfaces to monitor, comma separated                (default: n/a)"
+  echo "  --exclude_interfaces:         interfaces to exclude, comma separated                (default: lo)"
 }
 
 # specific filters for metrics
