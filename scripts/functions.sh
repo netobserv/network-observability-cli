@@ -489,13 +489,13 @@ function edit_manifest() {
 
   case "$1" in
   "sampling")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"SAMPLING\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"SAMPLING\").value|=\"$2\"" "$manifest"
     ;;
   "interfaces")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"INTERFACES\").value|=\"$2\"" "$manifest"
     ;;
   "exclude_interfaces")
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"EXCLUDE_INTERFACES\").value|=\"$2\"" "$3"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"EXCLUDE_INTERFACES\").value|=\"$2\"" "$manifest"
     ;;
   "pkt_drop_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_DROPS\").value|=\"$2\"" "$manifest"
@@ -731,16 +731,16 @@ function check_args_and_apply() {
       fi
       ;;
     *sampling) # ebpf sampling
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
-        edit_manifest "sampling" "$value" "$2"
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
+        edit_manifest "sampling" "$value"
       else 
         echo "--sampling is invalid option for packets"
         exit 1
       fi
       ;;
     *exclude_interfaces) # ebpf exclude interfaces
-      if [[ "$3" == "flows" || "$3" == "metrics" ]]; then
-        edit_manifest "exclude_interfaces" "$value" "$2"
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
+        edit_manifest "exclude_interfaces" "$value"
       else 
         echo "--exclude_interfaces is invalid option for packets"
         exit 1
