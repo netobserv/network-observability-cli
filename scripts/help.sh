@@ -89,7 +89,7 @@ function collector_usage {
 
 # script options
 function script_usage {
-  echo "  --yaml:                       generate YAML without applying it          (default: false)"
+  echo "  --yaml:                       generate YAML without applying it                     (default: false)"
 }
 
 # agent selector / filters
