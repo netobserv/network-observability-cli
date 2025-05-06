@@ -51,6 +51,8 @@ spec:
             value: "false"
           - name: ENABLE_PKT_TRANSLATION
             value: "false"
+          - name: ENABLE_IPSEC_TRACKING
+            value: "false"
           - name: ENABLE_FLOW_FILTER
             value: "false"
           - name: FLOW_FILTER_RULES

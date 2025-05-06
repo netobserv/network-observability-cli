@@ -65,6 +65,7 @@ function features_usage {
   echo "  --enable_pkt_drop:            enable packet drop                         (default: false)"
   echo "  --enable_rtt:                 enable RTT tracking                        (default: false)"
   echo "  --enable_udn_mapping:         enable User Defined Network mapping        (default: false)"
+  echo "  --enable_ipsec:               enable IPsec tracking                      (default: false)"
   echo "  --get-subnets:                get subnets information                    (default: false)"
 }
 

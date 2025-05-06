@@ -23,6 +23,7 @@ var (
 	networkEventsDisplay = "networkEvents"
 	pktTranslation       = "packetTranslation"
 	udnMapping           = "udnMapping"
+	ipSec                = "ipsec"
 	display              = option{
 		all: []optionItem{
 			// exclusive displays
@@ -35,8 +36,9 @@ var (
 			{name: "Network events", ids: []string{networkEventsDisplay}},
 			{name: "Packet translation", ids: []string{pktTranslation}},
 			{name: "UDN mapping", ids: []string{udnMapping}},
+			{name: "IPSec", ids: []string{ipSec}},
 			// all features display
-			{name: allOptions, ids: []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay, pktTranslation, udnMapping}},
+			{name: allOptions, ids: []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay, pktTranslation, udnMapping, ipSec}},
 		},
 		// standard display by default
 		current: 1,

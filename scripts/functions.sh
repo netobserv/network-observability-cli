@@ -507,6 +507,9 @@ function edit_manifest() {
   "pkt_xlat_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_PKT_TRANSLATION\").value|=\"$2\"" "$manifest"
     ;;
+  "ipsec_enable")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_IPSEC_TRACKING\").value|=\"$2\"" "$manifest"
+    ;;
   "get_subnets")
     if [[ "$2" == "true" ]]; then
       declare -A subnets
@@ -754,6 +757,19 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
+     *enable_ipsec) # Enable IPSec Tracking
+      if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
+        defaultValue "true"
+        if [[ "$value" == "true" || "$value" == "false" ]]; then
+          edit_manifest "ipsec_enable" "$value"
+        else
+          echo "invalid value for --enable_ipsec"
+        fi
+      else
+        echo "--enable_ipsec is invalid option for packets"
+        exit 1
+      fi
+      ;;
     *enable_all) # Enable all features
       defaultValue "true"
       if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -763,6 +779,7 @@ function check_args_and_apply() {
         edit_manifest "network_events_enable" "$value"
         edit_manifest "udn_enable" "$value"
         edit_manifest "pkt_xlat_enable" "$value"
+        edit_manifest "ipsec_enable" "$value"
       else
         echo "invalid value for --enable_all"
       fi
