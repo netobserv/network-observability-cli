@@ -418,7 +418,7 @@ function copyFLPConfig() {
 
 # get network enrich stage
 function getNetworkEnrichStage() {
-  enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | document_index" "$json")
+  enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | path | .[-1]" "$json")
   enrichContent=$("$YQ_BIN" e -oj ".parameters[$enrichIndex]" "$json")
   enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
   echo "$enrichContent" >${enrichJson}
@@ -427,6 +427,19 @@ function getNetworkEnrichStage() {
 function overrideNetworkEnrichStage() {
   enrichJsonStr=$(cat "$enrichJson")
   "$YQ_BIN" e -oj --inplace ".parameters[$enrichIndex] = $enrichJsonStr" "$json"
+}
+
+# get prometheus stage
+function getPromStage() {
+  promIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"prometheus\") | path | .[-1]" "$json")
+  promContent=$("$YQ_BIN" e -oj ".parameters[$promIndex]" "$json")
+  promJson="${MANIFEST_OUTPUT_PATH}/prom.json"
+  echo "$promContent" >${promJson}
+}
+
+function overridePromStage() {
+  promJsonStr=$(cat "$promJson")
+  "$YQ_BIN" e -oj --inplace ".parameters[$promIndex] = $promJsonStr" "$json"
 }
 
 # update FLP Config
@@ -634,6 +647,41 @@ function edit_manifest() {
     fi
     "$YQ_BIN" e --inplace ".spec.template.spec.nodeSelector.\"$key\" |= \"$val\"" "$manifest"
     ;;
+  "include_list")
+    # restrict metrics to matching items
+    copyFLPConfig "$manifest"
+    getPromStage
+
+    # list all matching metrics separated by new lines first
+    filteredMetrics=""
+    IFS=','
+    for match in $2; do
+      found=$("$YQ_BIN" -r ".encode.prom.metrics[] | select(.name | contains(\"$match\")).name" "$promJson")
+      if [ "${#filteredMetrics}" -gt 0 ]; then
+        filteredMetrics="${filteredMetrics}"$'\n'"${found}"
+      else 
+        filteredMetrics="$found"
+      fi
+    done
+
+    # then, format these for YQ filter function
+    echo "Matching metrics:"
+    match=""
+    IFS=$'\n'
+    for item in $filteredMetrics; do
+      echo " - $item"
+      if [ "${#match}" -gt 0 ]; then
+        match="$match,\"$item\""
+      else 
+        match="\"$item\""
+      fi
+    done
+
+    "$YQ_BIN" e --inplace ".encode.prom.metrics |= filter(.name == ($match))" "$promJson"
+
+    overridePromStage
+    updateFLPConfig "$json" "$manifest"
+    ;;
   esac
 }
 
@@ -682,8 +730,12 @@ function check_args_and_apply() {
     *enable_pkt_drop) # Enable packet drop
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
           edit_manifest "pkt_drop_enable" "$value"
+          includeList="$includeList,workload_egress_bytes_total,namespace_drop_packets_total"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_pkt_drop"
         fi
@@ -695,8 +747,12 @@ function check_args_and_apply() {
     *enable_dns) # Enable DNS
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
           edit_manifest "dns_enable" "$value"
+          includeList="$includeList,namespace_dns_latency_seconds"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_dns"
         fi
@@ -708,8 +764,12 @@ function check_args_and_apply() {
     *enable_rtt) # Enable RTT
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
           edit_manifest "rtt_enable" "$value"
+          includeList="$includeList,namespace_rtt_seconds"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_rtt"
         fi
@@ -721,8 +781,12 @@ function check_args_and_apply() {
     *enable_network_events) # Enable Network events monitoring
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
           edit_manifest "network_events_enable" "$value"
+          includeList="$includeList,namespace_network_policy_events_total"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_network_events"
         fi
@@ -903,6 +967,14 @@ function check_args_and_apply() {
         echo "invalid value for --get-subnets"
       fi
       ;;
+    *include_list) # Restrict metrics capture
+      if [[ "$command" == "metrics" ]]; then
+        includeList="$value"
+      else
+        echo "--include_list is invalid option for $command"
+        exit 1
+      fi
+      ;;
     *) # Invalid option
       echo "Invalid option: $key" >&2
       exit 1
@@ -920,8 +992,10 @@ function check_args_and_apply() {
       echo
       exit 1
     fi
+  elif [[ "$command" = "metrics" ]]; then
+    # always restrict generated metrics
+    edit_manifest "include_list" "$includeList"
   fi
-
   yaml="$(cat "$manifest")"
   applyYAML "$yaml"
   if [[ "$outputYAML" == "false" ]]; then

@@ -68,7 +68,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 features_usage
 collector_usage
 filters_usage
-specific_filters_usage
+flowsAndMetrics_filters_usage
 echo -e "|==="
 # flows example
 echo "
@@ -118,7 +118,8 @@ $ oc netobserv metrics [<option>]
 | Option | Description | Default"
 features_usage
 filters_usage
-specific_filters_usage
+flowsAndMetrics_filters_usage
+metrics_options
 echo -e "|==="
 # Metrics example
 echo "

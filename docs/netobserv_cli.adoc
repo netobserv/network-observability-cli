@@ -187,6 +187,7 @@ $ oc netobserv metrics [<option>]
 |--sports|                    filter on either of two source ports       | -
 |--tcp_flags|                 filter TCP flags                           | -
 |--interfaces|                interfaces to monitor                      | -
+|--include_list|              list of metric names to generate           | namespace_flows_total,node_ingress_bytes_total,node_egress_bytes_total,workload_ingress_bytes_total
 |===
 
 .Example running metrics capture for TCP drops

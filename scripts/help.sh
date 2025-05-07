@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# metrics includeList
+includeList="namespace_flows_total,node_ingress_bytes_total,node_egress_bytes_total,workload_ingress_bytes_total"
+
 # display main help
 function help {
   echo
@@ -108,9 +111,14 @@ function filters_usage {
   echo "  --tcp_flags:                  filter TCP flags                           (default: n/a)"
 }
 
-function specific_filters_usage {
-  # specific filters
+# specific filters for flows and metrics
+function flowsAndMetrics_filters_usage {
   echo "  --interfaces:                 interfaces to monitor                      (default: n/a)"
+}
+
+# specific filters for metrics
+function metrics_options {
+  echo "  --include_list:               list of metric names to generate           (default: $includeList)"
 }
 
 function flows_usage {
@@ -125,7 +133,7 @@ function flows_usage {
   echo
   echo "filters:"
   filters_usage
-  specific_filters_usage
+  flowsAndMetrics_filters_usage
   echo
   echo "options:"
   collector_usage
@@ -159,9 +167,12 @@ function metrics_usage {
   echo
   echo "filters:"
   filters_usage
-  specific_filters_usage
+  flowsAndMetrics_filters_usage
   echo "options:"
   script_usage
+  metrics_options
+  echo
+  echo "More information, with full list of available metrics: https://github.com/netobserv/network-observability-operator/blob/main/docs/Metrics.md"
 }
 
 function follow_usage {

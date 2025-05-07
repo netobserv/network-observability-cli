@@ -91,9 +91,7 @@
               "labels": [
                 "SrcK8S_HostName",
                 "DstK8S_HostName"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "node_ingress_bytes_total",
@@ -109,9 +107,403 @@
               "labels": [
                 "SrcK8S_HostName",
                 "DstK8S_HostName"
+              ]
+            },
+            {
+              "name": "node_egress_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "1|2",
+                  "type": "match_regex"
+                }
               ],
-              "remap": null,
-              "buckets": null
+              "valueKey": "Packets",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName"
+              ]
+            },
+            {
+              "name": "node_ingress_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "0|2",
+                  "type": "match_regex"
+                }
+              ],
+              "valueKey": "Packets",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName"
+              ]
+            },
+            {
+              "name": "node_flows_total",
+              "type": "counter",
+              "filters": [],
+              "valueKey": "",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName"
+              ]
+            },
+            {
+              "name": "node_rtt_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "TimeFlowRttNs",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "TimeFlowRttNs",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000000000
+            },
+            {
+              "name": "node_drop_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "PktDropPackets",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "PktDropPackets",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName",
+                "PktDropLatestState",
+                "PktDropLatestDropCause"
+              ]
+            },
+            {
+              "name": "node_drop_bytes_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "PktDropBytes",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "PktDropBytes",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName",
+                "PktDropLatestState",
+                "PktDropLatestDropCause"
+              ]
+            },
+            {
+              "name": "node_dns_latency_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "DnsId",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "DnsLatencyMs",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName",
+                "DnsFlagsResponseCode"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000
+            },
+            {
+              "name": "node_network_policy_events_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "NetworkEvents>Feature",
+                  "value": "acl"
+                }
+              ],
+              "valueKey": "",
+              "labels": [
+                "SrcK8S_HostName",
+                "DstK8S_HostName",
+                "NetworkEvents>Type",
+                "NetworkEvents>Namespace",
+                "NetworkEvents>Name",
+                "NetworkEvents>Action",
+                "NetworkEvents>Direction"
+              ],
+              "remap": {
+                "NetworkEvents>Action": "action",
+                "NetworkEvents>Direction": "direction",
+                "NetworkEvents>Name": "name",
+                "NetworkEvents>Namespace": "namespace",
+                "NetworkEvents>Type": "type"
+              },
+              "flatten": [
+                "NetworkEvents"
+              ]
+            },
+            {
+              "name": "namespace_egress_bytes_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "1|2",
+                  "type": "match_regex"
+                }
+              ],
+              "valueKey": "Bytes",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ]
+            },
+            {
+              "name": "namespace_ingress_bytes_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "0|2",
+                  "type": "match_regex"
+                }
+              ],
+              "valueKey": "Bytes",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ]
+            },
+            {
+              "name": "namespace_egress_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "1|2",
+                  "type": "match_regex"
+                }
+              ],
+              "valueKey": "Packets",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ]
+            },
+            {
+              "name": "namespace_ingress_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "FlowDirection",
+                  "value": "0|2",
+                  "type": "match_regex"
+                }
+              ],
+              "valueKey": "Packets",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ]
+            },
+            {
+              "name": "namespace_flows_total",
+              "type": "counter",
+              "filters": [],
+              "valueKey": "",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ]
+            },
+            {
+              "name": "namespace_rtt_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "TimeFlowRttNs",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "TimeFlowRttNs",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000000000
+            },
+            {
+              "name": "namespace_drop_packets_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "PktDropPackets",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "PktDropPackets",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "PktDropLatestState",
+                "PktDropLatestDropCause"
+              ]
+            },
+            {
+              "name": "namespace_drop_bytes_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "PktDropBytes",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "PktDropBytes",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "PktDropLatestState",
+                "PktDropLatestDropCause"
+              ]
+            },
+            {
+              "name": "namespace_dns_latency_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "DnsId",
+                  "value": "",
+                  "type": "presence"
+                }
+              ],
+              "valueKey": "DnsLatencyMs",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "DnsFlagsResponseCode"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000
+            },
+            {
+              "name": "namespace_network_policy_events_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "NetworkEvents>Feature",
+                  "value": "acl"
+                }
+              ],
+              "valueKey": "",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "NetworkEvents>Type",
+                "NetworkEvents>Namespace",
+                "NetworkEvents>Name",
+                "NetworkEvents>Action",
+                "NetworkEvents>Direction"
+              ],
+              "remap": {
+                "NetworkEvents>Action": "action",
+                "NetworkEvents>Direction": "direction",
+                "NetworkEvents>Name": "name",
+                "NetworkEvents>Namespace": "namespace",
+                "NetworkEvents>Type": "type"
+              },
+              "flatten": [
+                "NetworkEvents"
+              ]
             },
             {
               "name": "workload_egress_bytes_total",
@@ -136,9 +528,7 @@
                 "DstK8S_OwnerType",
                 "SrcK8S_Type",
                 "DstK8S_Type"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "workload_ingress_bytes_total",
@@ -163,9 +553,7 @@
                 "DstK8S_OwnerType",
                 "SrcK8S_Type",
                 "DstK8S_Type"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "workload_egress_packets_total",
@@ -190,9 +578,7 @@
                 "DstK8S_OwnerType",
                 "SrcK8S_Type",
                 "DstK8S_Type"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "workload_ingress_packets_total",
@@ -217,9 +603,7 @@
                 "DstK8S_OwnerType",
                 "SrcK8S_Type",
                 "DstK8S_Type"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "workload_flows_total",
@@ -238,9 +622,45 @@
                 "DstK8S_OwnerType",
                 "SrcK8S_Type",
                 "DstK8S_Type"
+              ]
+            },
+            {
+              "name": "workload_rtt_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "TimeFlowRttNs",
+                  "value": "",
+                  "type": "presence"
+                }
               ],
-              "remap": null,
-              "buckets": null
+              "valueKey": "TimeFlowRttNs",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "SrcK8S_OwnerName",
+                "DstK8S_OwnerName",
+                "SrcK8S_OwnerType",
+                "DstK8S_OwnerType",
+                "SrcK8S_Type",
+                "DstK8S_Type"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000000000
             },
             {
               "name": "workload_drop_packets_total",
@@ -267,9 +687,7 @@
                 "DstK8S_Type",
                 "PktDropLatestState",
                 "PktDropLatestDropCause"
-              ],
-              "remap": null,
-              "buckets": null
+              ]
             },
             {
               "name": "workload_drop_bytes_total",
@@ -296,9 +714,85 @@
                 "DstK8S_Type",
                 "PktDropLatestState",
                 "PktDropLatestDropCause"
+              ]
+            },
+            {
+              "name": "workload_dns_latency_seconds",
+              "type": "histogram",
+              "filters": [
+                {
+                  "key": "DnsId",
+                  "value": "",
+                  "type": "presence"
+                }
               ],
-              "remap": null,
-              "buckets": null
+              "valueKey": "DnsLatencyMs",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "SrcK8S_OwnerName",
+                "DstK8S_OwnerName",
+                "SrcK8S_OwnerType",
+                "DstK8S_OwnerType",
+                "SrcK8S_Type",
+                "DstK8S_Type",
+                "DnsFlagsResponseCode"
+              ],
+              "buckets": [
+                0.005,
+                0.01,
+                0.02,
+                0.03,
+                0.04,
+                0.05,
+                0.075,
+                0.1,
+                0.25,
+                1
+              ],
+              "valueScale": 1000
+            },
+            {
+              "name": "workload_network_policy_events_total",
+              "type": "counter",
+              "filters": [
+                {
+                  "key": "NetworkEvents>Feature",
+                  "value": "acl"
+                }
+              ],
+              "valueKey": "",
+              "labels": [
+                "SrcK8S_Namespace",
+                "DstK8S_Namespace",
+                "K8S_FlowLayer",
+                "SrcSubnetLabel",
+                "DstSubnetLabel",
+                "SrcK8S_OwnerName",
+                "DstK8S_OwnerName",
+                "SrcK8S_OwnerType",
+                "DstK8S_OwnerType",
+                "SrcK8S_Type",
+                "DstK8S_Type",
+                "NetworkEvents>Type",
+                "NetworkEvents>Namespace",
+                "NetworkEvents>Name",
+                "NetworkEvents>Action",
+                "NetworkEvents>Direction"
+              ],
+              "remap": {
+                "NetworkEvents>Action": "action",
+                "NetworkEvents>Direction": "direction",
+                "NetworkEvents>Name": "name",
+                "NetworkEvents>Namespace": "namespace",
+                "NetworkEvents>Type": "type"
+              },
+              "flatten": [
+                "NetworkEvents"
+              ]
             }
           ],
           "prefix": "on_demand_netobserv_",
