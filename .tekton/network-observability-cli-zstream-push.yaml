@@ -29,3 +29,6 @@ spec:
     value: Dockerfile.downstream
   pipelineRef:
     name: build-pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-network-observability-cli-zstream
+status: {}
