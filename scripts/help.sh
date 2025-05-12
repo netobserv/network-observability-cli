@@ -27,10 +27,10 @@ function help {
   echo "  netobserv flows --drops                                     # Capture dropped flows on all nodes"
   echo "  netobserv flows --query='SrcK8S_Namespace=~\"app-.*\"'        # Capture flows from any namespace starting by app-"
   echo "  netobserv packets --port=8080                               # Capture packets on port 8080"
-  echo "  netobserv metrics --enable_all                              # Capture all cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
+  echo "  netobserv metrics --enable_all                              # Capture default cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
   echo
   echo "advanced examples:"
-  echo "  Capture drops in background and copy output locally"
+  echo "  Capture flows in background and copy output locally"
   echo "    netobserv flows --background \                            # Capture flows using background mode"
   echo "    --max-time=15m \                                          # for a maximum of 15 minutes"
   echo "    --protocol=TCP --port=8080 \                              # either on TCP 8080"
@@ -51,6 +51,11 @@ function help {
   echo "    --node-selector=netobserv:true \                          # on nodes labelled with 'netobserv=true'"
   echo "    --port=80 \                                               # on port 80 only"
   echo "    --max-bytes=100000000                                     # for a maximum of 100MB"
+  echo
+  echo "  Capture node and namespace drop metrics"
+  echo "    netobserv metrics \                                       # Capture metrics"
+  echo "    --drops                                                   # including drops"
+  echo "    --include_list=node,namespace                             # for all metrics matching 'node' or 'namespace' keywords"
   echo
 }
 
