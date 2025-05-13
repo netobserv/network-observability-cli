@@ -57,12 +57,13 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 | Option | Description | Default
 |--enable_all|                enable all eBPF features                   | false
 |--enable_dns|                enable DNS tracking                        | false
+|--enable_ipsec|              enable IPsec tracking                      | false
 |--enable_network_events|     enable network events monitoring           | false
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--get-subnets|               get subnets information                    | false
+|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--background|                run in background                          | false
 |--copy|                      copy the output files locally              | prompt
 |--log-level|                 components logs                            | info
@@ -157,12 +158,13 @@ $ oc netobserv metrics [<option>]
 | Option | Description | Default
 |--enable_all|                enable all eBPF features                   | false
 |--enable_dns|                enable DNS tracking                        | false
+|--enable_ipsec|              enable IPsec tracking                      | false
 |--enable_network_events|     enable network events monitoring           | false
 |--enable_pkt_translation|    enable packet translation                  | false
 |--enable_pkt_drop|           enable packet drop                         | false
 |--enable_rtt|                enable RTT tracking                        | false
-|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--get-subnets|               get subnets information                    | false
+|--enable_udn_mapping|        enable User Defined Network mapping        | false
 |--action|                    filter action                              | Accept
 |--cidr|                      filter CIDR                                | 0.0.0.0/0
 |--direction|                 filter direction                           | -
