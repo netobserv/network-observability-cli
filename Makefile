@@ -26,14 +26,18 @@ COMMAND_ARGS ?=
 K8S_CLI_BIN_PATH = $(shell which oc 2>/dev/null || which kubectl)
 K8S_CLI_BIN ?= $(shell basename ${K8S_CLI_BIN_PATH})
 
+# Image registry such as quay or docker
+IMAGE_REGISTRY ?= quay.io
+
 # IMAGE_TAG_BASE defines the namespace and part of the image name for remote images.
-IMAGE_TAG_BASE ?= quay.io/$(IMAGE_ORG)/$(NAME)
+IMAGE_TAG_BASE ?= $(IMAGE_REGISTRY)/$(IMAGE_ORG)/$(NAME)
 
 # Image URL to use all building/pushing image targets
 IMAGE ?= $(IMAGE_TAG_BASE):$(VERSION)
 PULL_POLICY ?=Always
+
 # Agent image URL to deploy
-AGENT_IMAGE ?= quay.io/netobserv/netobserv-ebpf-agent:main
+AGENT_IMAGE ?= $(IMAGE_REGISTRY)/netobserv/netobserv-ebpf-agent:main
 
 # Image building tool (docker / podman) - docker is preferred in CI
 OCI_BIN_PATH := $(shell which docker 2>/dev/null || which podman)
