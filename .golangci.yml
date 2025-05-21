@@ -31,3 +31,5 @@ linters-settings:
         minThreshold: 3
   cyclop:
     max-complexity: 150 # TODO: reduce that to 20
+  exhaustive:
+    default-signifies-exhaustive: true
