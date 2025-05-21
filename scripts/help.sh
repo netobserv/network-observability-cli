@@ -125,7 +125,7 @@ function flowsAndMetrics_filters_usage {
 
 # specific filters for metrics
 function metrics_options {
-  echo "  --include_list:               list of metric names to generate           (default: $includeList)"
+  echo "  --include_list:               list of metric names to generate                      (default: $includeList)"
 }
 
 function flows_usage {

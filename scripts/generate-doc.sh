@@ -118,8 +118,8 @@ $ oc netobserv metrics [<option>]
 | Option | Description | Default"
 features_usage
 filters_usage
-flowsAndMetrics_filters_usage
 metrics_options
+flowsAndMetrics_filters_usage
 echo -e "|==="
 # Metrics example
 echo "
