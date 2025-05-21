@@ -28,8 +28,7 @@ var (
 
 	mutex = sync.Mutex{}
 
-	totalBytes   = int64(0)
-	totalPackets = uint32(0)
+	totalBytes = int64(0)
 
 	rootCmd = &cobra.Command{
 		Use:   "network-observability-cli",

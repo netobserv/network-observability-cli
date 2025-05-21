@@ -15,7 +15,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/rodaine/table v1.3.0
-	github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -100,3 +99,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+replace github.com/google/gopacket v1.1.19 => github.com/GameFabric/sts-pkg-gopacket v0.0.0-20230307093013-7b513277b714

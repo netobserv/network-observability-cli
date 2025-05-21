@@ -253,6 +253,7 @@ func scanner() bool {
 		case key == keyboard.KeyCtrlC, stopReceived:
 			log.Info("Ctrl-C pressed, exiting program.")
 			// exit program
+			stopReceived = true
 			return true
 		case key == keyboard.KeyArrowUp:
 			showCount++

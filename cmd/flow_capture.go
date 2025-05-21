@@ -25,13 +25,7 @@ var flowCmd = &cobra.Command{
 }
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	go func() {
-		if !scanner() {
-			return
-		}
-		// scanner returns on exit request
-		os.Exit(0)
-	}()
+	go scanner()
 
 	captureType = "Flow"
 	wg := sync.WaitGroup{}
