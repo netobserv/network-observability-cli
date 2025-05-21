@@ -2,10 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/jpillora/sizestr"
@@ -25,31 +23,12 @@ var flowCmd = &cobra.Command{
 }
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	go func() {
-		if !scanner() {
-			return
-		}
-		// scanner returns on exit request
-		os.Exit(0)
-	}()
-
 	captureType = "Flow"
-	wg := sync.WaitGroup{}
-	wg.Add(len(ports))
-	for i := range ports {
-		go func(idx int) {
-			defer wg.Done()
-			err := runFlowCaptureOnAddr(ports[idx], nodes[idx])
-			if err != nil {
-				// Only fatal errors are returned here
-				log.Fatal(err)
-			}
-		}(i)
-	}
-	wg.Wait()
+	go startFlowCollector()
+	createDisplay()
 }
 
-func runFlowCaptureOnAddr(port int, filename string) error {
+func startFlowCollector() {
 	if len(filename) > 0 {
 		log.Infof("Starting Flow Capture for %s...", filename)
 	} else {
@@ -82,7 +61,8 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		return fmt.Errorf("StartCollector failed: %w", err)
+		log.Errorf("StartCollector failed: %v", err.Error())
+		return
 	}
 	log.Trace("Started collector")
 	collectorStarted = true
@@ -105,7 +85,7 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 
 		if stopReceived {
 			log.Trace("Stop received")
-			return nil
+			return
 		}
 		// parse and display flow async
 		go parseGenericMapAndAppendFlow(fp.GenericMap.Value)
@@ -122,7 +102,8 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 		// append new line between each record to read file easilly
 		bytes, err := f.Write(append(fp.GenericMap.Value, []byte(",\n")...))
 		if err != nil {
-			return err
+			log.Error(err)
+			return
 		}
 		if !captureStarted {
 			log.Trace("Wrote flows to json")
@@ -133,7 +114,7 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 		if totalBytes > maxBytes {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-				return nil
+				return
 			}
 		}
 
@@ -143,13 +124,12 @@ func runFlowCaptureOnAddr(port int, filename string) error {
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
-				return nil
+				return
 			}
 		}
 
 		captureStarted = true
 	}
-	return nil
 }
 
 func parseGenericMapAndAppendFlow(bytes []byte) {
