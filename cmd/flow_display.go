@@ -320,10 +320,6 @@ func updateStatusTexts() {
 }
 
 func updateTable() {
-	if app == nil {
-		return
-	}
-
 	cols := []string{}
 	if display.getCurrentItem().name == rawDisplay {
 		cols = append(cols,
@@ -426,12 +422,16 @@ func updateTable() {
 	tableData.flows = flows
 
 	// refresh
-	app.Draw()
+	if app != nil {
+		app.Draw()
+	}
 }
 
 func updateScreen() {
-	mainView.Clear()
-	app.SetRoot(getMain(), true)
+	if app != nil {
+		mainView.Clear()
+		app.SetRoot(getMain(), true)
+	}
 }
 
 func (d *TableData) GetCell(row, col int) *tview.TableCell {

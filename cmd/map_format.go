@@ -467,16 +467,18 @@ func ellipsizeAndPad(text string, length int) string {
 	if length == 0 {
 		return text
 	}
-	lastSpaceIx := length
+	lastPart := length
 	currentLen := 0
 	truncatedText := text
 	for i, r := range text {
-		if unicode.IsSpace(r) {
-			lastSpaceIx = i
-		}
 		currentLen++
 		if currentLen > length {
-			truncatedText = text[:lastSpaceIx] + "…"
+			truncatedText = text[:lastPart] + "…"
+			break
+		}
+
+		if unicode.IsSpace(r) || r == '_' {
+			lastPart = i
 		}
 	}
 	return fmt.Sprintf("%-*s", length, truncatedText)
