@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jpillora/sizestr"
@@ -46,6 +49,8 @@ var (
 		cols:  []string{},
 		flows: []config.GenericMap{},
 	}
+
+	errAdvancedDisplay error
 )
 
 func createDisplay() {
@@ -66,10 +71,14 @@ func createDisplay() {
 		SetRoot(getMain(), true).
 		EnableMouse(true)
 
-	go hearbeat()
-
-	if err := app.Run(); err != nil {
-		panic(err)
+	errAdvancedDisplay = app.Run()
+	if errAdvancedDisplay == nil {
+		go hearbeat()
+	} else {
+		fmt.Printf("Can't display advanced UI: %v", errAdvancedDisplay)
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+		<-done
 	}
 }
 
@@ -87,12 +96,8 @@ func getTop() tview.Primitive {
 	// info row
 	fpsText := tview.NewTextView().SetText(getFPSText())
 	infoRow := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewTextView().SetText(
-			fmt.Sprintf("Running network-observability-cli as %s Capture", captureType),
-		), 0, 1, false).
-		AddItem(tview.NewTextView().SetText(
-			fmt.Sprintf("Log level: %s", logLevel),
-		), 0, 1, false).
+		AddItem(tview.NewTextView().SetText(getCaptureTypeText()), 0, 1, false).
+		AddItem(tview.NewTextView().SetText(getLogLevelText()), 0, 1, false).
 		AddItem(durationText.SetText(getDurationText()), 0, 1, false).
 		AddItem(sizeText.SetText(getSizeText()), 0, 1, false).
 		AddItem(fpsText, 0, 1, false).
@@ -245,6 +250,14 @@ func getBottom() tview.Primitive {
 	return flexView
 }
 
+func getCaptureTypeText() string {
+	return fmt.Sprintf("%s Capture", captureType)
+}
+
+func getLogLevelText() string {
+	return fmt.Sprintf("Log level: %s", logLevel)
+}
+
 func getEnrichmentText() string {
 	if display.getCurrentItem().name == rawDisplay {
 		return "Enrichment: n/a\n"
@@ -281,26 +294,31 @@ func getRegexesText() string {
 }
 
 func AppendFlow(genericMap config.GenericMap) {
-	// lock since we are updating lastFlows concurrently
-	mutex.Lock()
+	if errAdvancedDisplay != nil {
+		// simply print flow into logs
+		log.Printf("%v\n", genericMap)
+	} else {
+		// lock since we are updating lastFlows concurrently
+		mutex.Lock()
 
-	// add new flow to the array
-	lastFlows = append(lastFlows, genericMap)
+		// add new flow to the array
+		lastFlows = append(lastFlows, genericMap)
 
-	// sort flows according to time
-	sort.Slice(lastFlows, func(i, j int) bool {
-		if captureType == "Flow" {
-			return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
+		// sort flows according to time
+		sort.Slice(lastFlows, func(i, j int) bool {
+			if captureType == "Flow" {
+				return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
+			}
+			return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
+		})
+
+		// limit flows kept in memory
+		if len(lastFlows) > keepCount {
+			lastFlows = lastFlows[len(lastFlows)-keepCount:]
 		}
-		return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
-	})
 
-	// limit flows kept in memory
-	if len(lastFlows) > keepCount {
-		lastFlows = lastFlows[len(lastFlows)-keepCount:]
+		mutex.Unlock()
 	}
-
-	mutex.Unlock()
 }
 
 func hearbeat() {
@@ -308,8 +326,10 @@ func hearbeat() {
 		if captureEnded {
 			return
 		}
+
 		updateStatusTexts()
 		updateTable()
+
 		time.Sleep(time.Second / time.Duration(framesPerSecond))
 	}
 }

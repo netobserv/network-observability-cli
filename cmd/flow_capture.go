@@ -44,7 +44,7 @@ func startFlowCollector() {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
-	log.Trace("Created flow folder")
+	log.Debug("Created flow folder")
 
 	f, err = os.Create("./output/flow/" + filename + ".txt")
 	if err != nil {
@@ -52,11 +52,11 @@ func startFlowCollector() {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	log.Trace("Created flow logs txt file")
+	log.Debug("Created flow logs txt file")
 
 	// Initialize sqlite DB
 	db := initFlowDB(filename)
-	log.Trace("Initialized database")
+	log.Debug("Initialized database")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -64,27 +64,27 @@ func startFlowCollector() {
 		log.Errorf("StartCollector failed: %v", err.Error())
 		return
 	}
-	log.Trace("Started collector")
+	log.Debug("Started collector")
 	collectorStarted = true
 
 	go func() {
 		<-utils.ExitChannel()
-		log.Trace("Ending collector")
+		log.Debug("Ending collector")
 		close(flowPackets)
 		collector.Close()
 		db.Close()
-		log.Trace("Done")
+		log.Debug("Done")
 	}()
 
-	log.Trace("Ready ! Waiting for flows...")
+	log.Debug("Ready ! Waiting for flows...")
 	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
-			log.Tracef("Received first %d flows", len(flowPackets))
+			log.Debugf("Received first %d flows", len(flowPackets))
 		}
 
 		if stopReceived {
-			log.Trace("Stop received")
+			log.Debug("Stop received")
 			return
 		}
 		// parse and display flow async
@@ -96,7 +96,7 @@ func startFlowCollector() {
 			log.Error("Error while writing to DB:", err.Error())
 		}
 		if !captureStarted {
-			log.Trace("Wrote flows to DB")
+			log.Debug("Wrote flows to DB")
 		}
 
 		// append new line between each record to read file easilly
@@ -106,7 +106,7 @@ func startFlowCollector() {
 			return
 		}
 		if !captureStarted {
-			log.Trace("Wrote flows to json")
+			log.Debug("Wrote flows to json")
 		}
 
 		// terminate capture if max bytes reached
@@ -141,7 +141,7 @@ func parseGenericMapAndAppendFlow(bytes []byte) {
 	}
 
 	if !captureStarted {
-		log.Tracef("Parsed genericMap %v", genericMap)
+		log.Debugf("Parsed genericMap %v", genericMap)
 	}
 	AppendFlow(genericMap)
 }

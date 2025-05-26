@@ -48,14 +48,14 @@ func startPacketCollector() {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
-	log.Trace("Created pcap folder")
+	log.Debug("Created pcap folder")
 
 	pw, err := pcapng.NewFileWriter("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
-	log.Trace("Created pcapng file")
+	log.Debug("Created pcapng file")
 
 	// write pcap file header
 	so := types.SectionHeaderOptions{
@@ -67,7 +67,7 @@ func startPacketCollector() {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	log.Trace("Wrote pcap section header")
+	log.Debug("Wrote pcap section header")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -75,26 +75,26 @@ func startPacketCollector() {
 		log.Errorf("StartCollector failed: %v", err.Error())
 		return
 	}
-	log.Trace("Started collector")
+	log.Debug("Started collector")
 	collectorStarted = true
 
 	go func() {
 		<-utils.ExitChannel()
-		log.Trace("Ending collector")
+		log.Debug("Ending collector")
 		close(flowPackets)
 		collector.Close()
-		log.Trace("Done")
+		log.Debug("Done")
 	}()
 
-	log.Trace("Ready ! Waiting for packets...")
+	log.Debug("Ready ! Waiting for packets...")
 	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
-			log.Tracef("Received first %d packets", len(flowPackets))
+			log.Debugf("Received first %d packets", len(flowPackets))
 		}
 
 		if stopReceived {
-			log.Trace("Stop received")
+			log.Debug("Stop received")
 			return
 		}
 
@@ -105,7 +105,7 @@ func startPacketCollector() {
 			return
 		}
 		if !captureStarted {
-			log.Tracef("Parsed genericMap %v", genericMap)
+			log.Debugf("Parsed genericMap %v", genericMap)
 		}
 
 		data, ok := genericMap["Data"]
@@ -113,7 +113,7 @@ func startPacketCollector() {
 			// clear generic map data
 			delete(genericMap, "Data")
 			if !captureStarted {
-				log.Trace("Deleted data")
+				log.Debug("Deleted data")
 			}
 
 			// display as flow async
@@ -140,7 +140,7 @@ func startPacketCollector() {
 			}
 		} else {
 			if !captureStarted {
-				log.Trace("Data is missing")
+				log.Debug("Data is missing")
 			}
 
 			// display as flow async
