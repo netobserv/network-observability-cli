@@ -32,20 +32,24 @@ const (
 )
 
 var (
-	regexes     = []string{}
-	lastFlows   = []config.GenericMap{}
-	suggestions = []string{}
+	regexes         = []string{}
+	lastFlows       = []config.GenericMap{}
+	suggestions     = []string{}
+	selectedColumns = []string{}
 
 	showCount       = defaultShowCount
 	framesPerSecond = defaultFramesPerSecond
 	extraWidth      = defaultExtraWidth
 
-	app          *tview.Application
-	mainView     *tview.Flex
-	tableView    *tview.Table
-	durationText = tview.NewTextView()
-	sizeText     = tview.NewTextView()
-	tableData    = &TableData{
+	app                *tview.Application
+	pages              *tview.Pages
+	mainView           *tview.Flex
+	tableView          *tview.Table
+	durationText       = tview.NewTextView()
+	sizeText           = tview.NewTextView()
+	displayTextView    = tview.NewTextView()
+	enrichmentTextView = tview.NewTextView()
+	tableData          = &TableData{
 		cols:  []string{},
 		flows: []config.GenericMap{},
 	}
@@ -68,7 +72,7 @@ func createDisplay() {
 
 			return event
 		}).
-		SetRoot(getMain(), true).
+		SetRoot(getPages(false), true).
 		EnableMouse(true)
 
 	errAdvancedDisplay = app.Run()
@@ -82,9 +86,19 @@ func createDisplay() {
 	}
 }
 
+func getPages(showColumnsPopup bool) *tview.Pages {
+	pages = tview.NewPages().AddPage("main", getMain(), true, true)
+
+	if showColumnsPopup {
+		pages = pages.AddPage("modal", getColumnsModal(), true, true)
+	}
+
+	return pages
+}
+
 func getMain() tview.Primitive {
 	mainView = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(getTop(), 5, 0, false).
+		AddItem(getTop(), 4, 0, false).
 		AddItem(getTable(), 0, 1, false).
 		AddItem(getBottom(), 2, 0, false)
 	return mainView
@@ -94,25 +108,29 @@ func getTop() tview.Primitive {
 	flexView := tview.NewFlex().SetDirection(tview.FlexRow)
 
 	// info row
-	fpsText := tview.NewTextView().SetText(getFPSText())
 	infoRow := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewTextView().SetText(getCaptureTypeText()), 0, 1, false).
 		AddItem(tview.NewTextView().SetText(getLogLevelText()), 0, 1, false).
 		AddItem(durationText.SetText(getDurationText()), 0, 1, false).
-		AddItem(sizeText.SetText(getSizeText()), 0, 1, false).
-		AddItem(fpsText, 0, 1, false).
-		AddItem(tview.NewButton("-").SetSelectedFunc(func() {
-			if framesPerSecond > 1 {
-				framesPerSecond--
-			}
-			fpsText.SetText(getFPSText())
-		}), 5, 0, false).
-		AddItem(tview.NewButton("+").SetSelectedFunc(func() {
-			framesPerSecond++
-			fpsText.SetText(getFPSText())
-		}), 5, 0, false)
+		AddItem(sizeText.SetText(getSizeText()), 0, 1, false)
 
-	flexView.AddItem(infoRow, 0, 1, false)
+	if logLevel == "debug" {
+		fpsText := tview.NewTextView().SetText(getFPSText())
+		infoRow = infoRow.
+			AddItem(fpsText, 0, 1, false).
+			AddItem(tview.NewButton("-").SetSelectedFunc(func() {
+				if framesPerSecond > 1 {
+					framesPerSecond--
+				}
+				fpsText.SetText(getFPSText())
+			}), 5, 0, false).
+			AddItem(tview.NewButton("+").SetSelectedFunc(func() {
+				framesPerSecond++
+				fpsText.SetText(getFPSText())
+			}), 5, 0, false)
+	}
+
+	flexView.AddItem(infoRow, 1, 0, false)
 
 	// flows count
 	flowCountTextView := tview.NewTextView().SetText(getShowCountText())
@@ -131,43 +149,55 @@ func getTop() tview.Primitive {
 			updateScreen()
 		}), 5, 0, false)
 
-	flexView.AddItem(flowsCountRow, 0, 1, false)
+	flexView.AddItem(flowsCountRow, 1, 0, false)
 
-	// display: TODO: replace with dropdowns or popup
-	displayTextView := tview.NewTextView().SetText(getDisplayText())
+	// columns row containing cycles (display, enrichment) and custom columns picker
+	columnsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	cyclesRow := tview.NewFlex().SetDirection(tview.FlexRow)
+
+	// display
 	displayRow := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(displayTextView, 0, 1, false).
 		AddItem(tview.NewButton("←").SetSelectedFunc(func() {
+			selectedColumns = []string{}
 			display.prev()
-			displayTextView.SetText(getDisplayText())
+			updateDisplayEnrichmentTexts()
 			updateScreen()
 		}), 5, 0, false).
 		AddItem(tview.NewButton("→").SetSelectedFunc(func() {
+			selectedColumns = []string{}
 			display.next()
-			displayTextView.SetText(getDisplayText())
+			updateDisplayEnrichmentTexts()
 			updateScreen()
 		}), 5, 0, false)
 
-	flexView.AddItem(displayRow, 0, 1, false)
+	cyclesRow.AddItem(displayRow, 0, 1, false)
 
-	// enrichment: TODO: replace with dropdowns or popup
-	enrichmentTextView := tview.NewTextView().SetText(getEnrichmentText())
+	// enrichment
 	enrichmentRow := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(enrichmentTextView, 0, 1, false)
-	if display.getCurrentItem().name != rawDisplay {
+	if display.getCurrentItem().name != rawDisplay && len(selectedColumns) == 0 {
 		enrichmentRow.
 			AddItem(tview.NewButton("←").SetSelectedFunc(func() {
 				enrichment.prev()
-				enrichmentTextView.SetText(getEnrichmentText())
+				updateDisplayEnrichmentTexts()
 				updateScreen()
 			}), 5, 0, false).
 			AddItem(tview.NewButton("→").SetSelectedFunc(func() {
 				enrichment.next()
-				enrichmentTextView.SetText(getEnrichmentText())
+				updateDisplayEnrichmentTexts()
 				updateScreen()
 			}), 5, 0, false)
 	}
-	flexView.AddItem(enrichmentRow, 0, 1, false)
+	cyclesRow.AddItem(enrichmentRow, 0, 1, false)
+	updateDisplayEnrichmentTexts()
+
+	// add cycles and custom columns modal button
+	columnsRow.AddItem(cyclesRow, 0, 1, false)
+	columnsRow.AddItem(tview.NewButton("Manage columns").SetSelectedFunc(func() {
+		app.SetRoot(getPages(true), true)
+	}), 15, 0, false)
+	flexView.AddItem(columnsRow, 2, 0, false)
 
 	return flexView
 }
@@ -250,6 +280,94 @@ func getBottom() tview.Primitive {
 	return flexView
 }
 
+func getColumnsModal() tview.Primitive {
+	availableColumns := []*ColumnConfig{}
+	for _, col := range cfg.Columns {
+		if col.Field != "" {
+			availableColumns = append(availableColumns, col)
+		}
+	}
+
+	content := tview.NewFlex().SetDirection(tview.FlexRow)
+	content.SetBorder(true).SetTitle("Manage columns")
+
+	content.AddItem(tview.NewTextView().
+		SetText("Highlight a column and select / unselect it pressing the `Enter` key."), 2, 0, false)
+
+	colsTable := tview.NewTable()
+
+	setCell := func(i int, col *ColumnConfig) {
+		checkedStr := "[   ]"
+		if slices.Contains(selectedColumns, col.ID) {
+			checkedStr = "[ X ]"
+		}
+		colsTable.SetCell(i, 0, tview.NewTableCell(checkedStr))
+		colsTable.SetCell(i, 1, tview.NewTableCell(ToColName(col.ID, 40)))
+	}
+
+	setTableContent := func() {
+		for i, col := range availableColumns {
+			setCell(i, col)
+		}
+	}
+
+	colsTable.SetSelectable(true, false).SetSelectedFunc(func(row, col int) {
+		c := availableColumns[row]
+		for i, v := range selectedColumns {
+			// remove id if found
+			if v == c.ID {
+				selectedColumns = append(selectedColumns[:i], selectedColumns[i+1:]...)
+				setCell(row, c)
+				return
+			}
+		}
+		// else add it to selection
+		selectedColumns = append(selectedColumns, c.ID)
+		setCell(row, c)
+		updateDisplayEnrichmentTexts()
+	})
+
+	setTableContent()
+	content.AddItem(colsTable, 0, 1, true)
+
+	buttons := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(tview.NewButton("Restore defaults").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			for i, c := range availableColumns {
+				if c.Default {
+					selectedColumns = append(selectedColumns, c.ID)
+				}
+				setCell(i, c)
+			}
+			updateDisplayEnrichmentTexts()
+		}), 0, 1, false).
+		AddItem(tview.NewTextView(), 1, 0, false).
+		AddItem(tview.NewButton("Reset").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			setTableContent()
+			updateDisplayEnrichmentTexts()
+		}), 0, 1, false).
+		AddItem(tview.NewTextView(), 1, 0, false).
+		AddItem(tview.NewButton("Save").SetSelectedFunc(func() {
+			app.SetRoot(getPages(false), true)
+		}), 0, 1, false)
+	content.AddItem(buttons, 1, 0, false)
+
+	return getModal(content, 50, 30)
+}
+
+// Returns a new primitive which puts the provided primitive in the center and
+// sets its size to the given width and height.
+func getModal(p tview.Primitive, width, height int) tview.Primitive {
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(p, height, 1, true).
+			AddItem(nil, 0, 1, false), width, 1, true).
+		AddItem(nil, 0, 1, false)
+}
+
 func getCaptureTypeText() string {
 	return fmt.Sprintf("%s Capture", captureType)
 }
@@ -259,13 +377,18 @@ func getLogLevelText() string {
 }
 
 func getEnrichmentText() string {
-	if display.getCurrentItem().name == rawDisplay {
+	if len(selectedColumns) > 0 {
+		return ""
+	} else if display.getCurrentItem().name == rawDisplay {
 		return "Enrichment: n/a\n"
 	}
 	return fmt.Sprintf("Enrichment: %s\n", enrichment.getCurrentItem().name)
 }
 
 func getDisplayText() string {
+	if len(selectedColumns) > 0 {
+		return "Custom columns"
+	}
 	return fmt.Sprintf("Display: %s\n", display.getCurrentItem().name)
 }
 
@@ -334,6 +457,11 @@ func hearbeat() {
 	}
 }
 
+func updateDisplayEnrichmentTexts() {
+	displayTextView.SetText(getDisplayText())
+	enrichmentTextView.SetText(getEnrichmentText())
+}
+
 func updateStatusTexts() {
 	durationText.SetText(getDurationText())
 	sizeText.SetText(getSizeText())
@@ -341,7 +469,9 @@ func updateStatusTexts() {
 
 func updateTable() {
 	cols := []string{}
-	if display.getCurrentItem().name == rawDisplay {
+	if len(selectedColumns) > 0 {
+		cols = selectedColumns
+	} else if display.getCurrentItem().name == rawDisplay {
 		cols = append(cols,
 			rawDisplay,
 		)
@@ -478,7 +608,7 @@ func (d *TableData) GetCell(row, col int) *tview.TableCell {
 		bgColor = tcell.ColorWhite
 	}
 	if row == 0 {
-		return tview.NewTableCell(ToColName(id)).
+		return tview.NewTableCell(ToColName(id, ToColWidth(id))).
 			SetTextColor(color).
 			SetBackgroundColor(bgColor).
 			SetAlign(tview.AlignLeft).

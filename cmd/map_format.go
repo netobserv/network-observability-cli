@@ -496,7 +496,7 @@ func ToColWidth(id string) int {
 	return width + extraWidth
 }
 
-func ToColName(id string) string {
+func ToColName(id string, width int) string {
 	name := id
 	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
 	if colIndex != -1 {
@@ -507,7 +507,7 @@ func ToColName(id string) string {
 			name = col.Name
 		}
 	}
-	return ellipsizeAndPad(replacer.Replace(name), ToColWidth(id))
+	return ellipsizeAndPad(replacer.Replace(name), width)
 }
 
 func ToColValue(genericMap config.GenericMap, id string) string {
@@ -518,7 +518,7 @@ func ToColValue(genericMap config.GenericMap, id string) string {
 	switch id {
 	case rawDisplay:
 		outputStr = fmt.Sprintf("%v", genericMap)
-	case "EndTime":
+	case "StartTime", "EndTime":
 		if captureType == "Flow" {
 			outputStr = toTimeString(genericMap, "TimeFlowEndMs")
 		} else {
