@@ -110,12 +110,6 @@ func startPacketCollector() {
 
 		data, ok := genericMap["Data"]
 		if ok {
-			// clear generic map data
-			delete(genericMap, "Data")
-			if !captureStarted {
-				log.Debug("Deleted data")
-			}
-
 			// display as flow async
 			go AppendFlow(genericMap)
 

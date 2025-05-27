@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	hexview "github.com/jmhobbs/tview-hexview"
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 
@@ -41,18 +43,21 @@ var (
 	framesPerSecond = defaultFramesPerSecond
 	extraWidth      = defaultExtraWidth
 
-	app                *tview.Application
-	pages              *tview.Pages
-	mainView           *tview.Flex
-	tableView          *tview.Table
+	app       *tview.Application
+	pages     *tview.Pages
+	mainView  *tview.Flex
+	tableView *tview.Table
+
 	durationText       = tview.NewTextView()
 	sizeText           = tview.NewTextView()
 	displayTextView    = tview.NewTextView()
 	enrichmentTextView = tview.NewTextView()
-	tableData          = &TableData{
+
+	tableData = &TableData{
 		cols:  []string{},
 		flows: []config.GenericMap{},
 	}
+	selectedData = []byte{}
 
 	errAdvancedDisplay error
 )
@@ -66,6 +71,10 @@ func createDisplay() {
 				if app != nil {
 					app.Stop()
 				}
+			case tcell.KeyESC:
+				// reset pages when esc key pressed
+				selectedData = []byte{}
+				app.SetRoot(getPages(false), true)
 			default:
 				// nothing to do here
 			}
@@ -99,8 +108,18 @@ func getPages(showColumnsPopup bool) *tview.Pages {
 func getMain() tview.Primitive {
 	mainView = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(getTop(), 4, 0, false).
-		AddItem(getTable(), 0, 1, false).
-		AddItem(getBottom(), 2, 0, false)
+		AddItem(getTable(), 0, 1, false)
+
+	if len(selectedData) > 0 {
+		mainView = mainView.AddItem(tview.NewTextView(), 1, 0, false)
+		hex := hexview.NewHexView(selectedData)
+		hex.SetBorder(true).SetTitle("Payload")
+		mainView = mainView.AddItem(hex, 0, 1, false)
+		mainView = mainView.AddItem(tview.NewTextView().SetText("Press `ESC` to resume."), 2, 0, false)
+		tableView.ScrollToBeginning()
+	} else {
+		mainView = mainView.AddItem(getBottom(), 2, 0, false)
+	}
 	return mainView
 }
 
@@ -203,15 +222,38 @@ func getTop() tview.Primitive {
 }
 
 func getTable() *tview.Table {
+	if tableView != nil {
+		return tableView
+	}
+
 	tableView = tview.NewTable().
 		SetBorders(false).
 		SetSelectable(true, true).
-		SetSelectedFunc(func(_, _ int) {
+		SetSelectionChangedFunc(func(row, col int) {
+			if row == 0 {
+				selectedData = []byte{}
+				app.SetRoot(getPages(false), true)
+				return
+			}
+			selectedFlow := tableData.flows[row-1]
+			data, ok := selectedFlow["Data"]
+			if ok {
+				bytes, err := base64.StdEncoding.DecodeString(data.(string))
+				if err != nil {
+					log.Error("Error while decoding data", err)
+					return
+				}
+				selectedData = bytes
+				app.SetRoot(getPages(false), true)
+			}
+		}).
+		SetSelectedFunc(func(row, col int) {
 			if app != nil {
 				app.Sync()
 			}
 		}).
 		SetContent(tableData)
+
 	return tableView
 }
 
@@ -411,9 +453,9 @@ func getDurationText() string {
 
 func getRegexesText() string {
 	if len(regexes) > 0 {
-		return fmt.Sprintf("Current filters: [%s]. Press enter to add a new one and backspace to remove last one", strings.Join(regexes, ","))
+		return fmt.Sprintf("Current filters: [%s]. Press `Enter` key to add a new one and backspace to remove last one", strings.Join(regexes, ","))
 	}
-	return "Press enter to match multiple regexes at once"
+	return "Press `Enter` key to match multiple regexes at once"
 }
 
 func AppendFlow(genericMap config.GenericMap) {
@@ -451,7 +493,14 @@ func hearbeat() {
 		}
 
 		updateStatusTexts()
-		updateTable()
+		if len(selectedData) == 0 {
+			updateTable()
+		}
+
+		// refresh
+		if app != nil {
+			app.Draw()
+		}
 
 		time.Sleep(time.Second / time.Duration(framesPerSecond))
 	}
@@ -570,11 +619,6 @@ func updateTable() {
 	// update tableData
 	tableData.cols = cols
 	tableData.flows = flows
-
-	// refresh
-	if app != nil {
-		app.Draw()
-	}
 }
 
 func updateScreen() {
