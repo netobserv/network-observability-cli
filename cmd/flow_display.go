@@ -229,7 +229,7 @@ func getTable() *tview.Table {
 	tableView = tview.NewTable().
 		SetBorders(false).
 		SetSelectable(true, true).
-		SetSelectionChangedFunc(func(row, col int) {
+		SetSelectionChangedFunc(func(row, _ int) {
 			if row == 0 {
 				selectedData = []byte{}
 				app.SetRoot(getPages(false), true)
@@ -247,7 +247,7 @@ func getTable() *tview.Table {
 				app.SetRoot(getPages(false), true)
 			}
 		}).
-		SetSelectedFunc(func(row, col int) {
+		SetSelectedFunc(func(_, _ int) {
 			if app != nil {
 				app.Sync()
 			}
@@ -353,7 +353,7 @@ func getColumnsModal() tview.Primitive {
 		}
 	}
 
-	colsTable.SetSelectable(true, false).SetSelectedFunc(func(row, col int) {
+	colsTable.SetSelectable(true, false).SetSelectedFunc(func(row, _ int) {
 		c := availableColumns[row]
 		for i, v := range selectedColumns {
 			// remove id if found
