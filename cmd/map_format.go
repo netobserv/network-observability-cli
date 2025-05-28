@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
@@ -27,10 +28,12 @@ var (
 		"PktDrop", "Drop",
 		"DnsTracking", "DNS",
 		"FlowRTT", "RTT",
+		"Dropped", "Drop",
+		"L3 Layer", "L3",
 	)
 )
 
-func toCount(genericMap config.GenericMap, fieldName string) interface{} {
+func toCount(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		return sizestr.ToString(int64(v.(float64)))
@@ -38,7 +41,7 @@ func toCount(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
-func toDuration(genericMap config.GenericMap, fieldName string, factor time.Duration) interface{} {
+func toDuration(genericMap config.GenericMap, fieldName string, factor time.Duration) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		return (time.Duration(int64(v.(float64))) * factor).String()
@@ -377,7 +380,7 @@ func toProto(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func toDSCP(genericMap config.GenericMap, fieldName string) interface{} {
+func toDSCP(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		switch v.(float64) {
@@ -412,7 +415,7 @@ func toDSCP(genericMap config.GenericMap, fieldName string) interface{} {
 	return emptyText
 }
 
-func toValue(genericMap config.GenericMap, fieldName string) interface{} {
+func toValue(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
 		if reflect.TypeOf(v).Kind() == reflect.Slice {
@@ -431,7 +434,7 @@ func toValue(genericMap config.GenericMap, fieldName string) interface{} {
 			}
 			return strings.Join(arr, ",")
 		}
-		return v
+		return fmt.Sprintf("%v", v)
 	}
 	return emptyText
 }
@@ -452,7 +455,48 @@ func toTimeString(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
-func ToTableColName(id string) string {
+func toFieldName(id string) string {
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
+	if colIndex != -1 {
+		return cfg.Columns[colIndex].Field
+	}
+	return ""
+}
+
+func ellipsizeAndPad(text string, length int) string {
+	if length == 0 {
+		return text
+	}
+	lastPart := length
+	currentLen := 0
+	truncatedText := text
+	for i, r := range text {
+		currentLen++
+		if currentLen > length {
+			truncatedText = text[:lastPart] + "…"
+			break
+		}
+
+		if unicode.IsSpace(r) || r == '_' {
+			lastPart = i
+		}
+	}
+	return fmt.Sprintf("%-*s", length, truncatedText)
+}
+
+func ToColWidth(id string) int {
+	if id == rawDisplay {
+		return 0
+	}
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
+	width := 6
+	if colIndex != -1 {
+		width = cfg.Columns[colIndex].Width
+	}
+	return width + extraWidth
+}
+
+func ToColName(id string, width int) string {
 	name := id
 	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
 	if colIndex != -1 {
@@ -463,64 +507,47 @@ func ToTableColName(id string) string {
 			name = col.Name
 		}
 	}
-	return replacer.Replace(name)
+	return ellipsizeAndPad(replacer.Replace(name), width)
 }
 
-func ToTableColWidth(id string) int {
-	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
-	if colIndex != -1 {
-		return cfg.Columns[colIndex].Width
-	}
-	return 6
-}
+func ToColValue(genericMap config.GenericMap, id string) string {
+	// convert column id to its field accordingly
+	fieldName := toFieldName(id)
+	outputStr := ""
 
-func toFieldName(id string) string {
-	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
-	if colIndex != -1 {
-		return cfg.Columns[colIndex].Field
-	}
-	return ""
-}
-
-func ToTableRow(genericMap config.GenericMap, colIDs []string) []interface{} {
-	row := []interface{}{}
-
-	for _, colID := range colIDs {
-		// convert column id to its field accordingly
-		fieldName := toFieldName(colID)
-
-		switch colID {
-		case "EndTime":
-			if captureType == "Flow" {
-				row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
-			} else {
-				row = append(row, toTimeString(genericMap, "Time"))
-			}
-		// special cases where autocompletes are involved
-		case "FlowDirection", "IfDirections":
-			row = append(row, toDirection(genericMap, fieldName))
-		case "Proto":
-			row = append(row, toProto(genericMap, fieldName))
-		case "Dscp":
-			row = append(row, toDSCP(genericMap, fieldName))
-		// bytes count
-		case "Bytes":
-			row = append(row, toCount(genericMap, "Bytes"))
-		case "PktDropBytes":
-			row = append(row, toCount(genericMap, "PktDropBytes"))
-		// duration parsing
-		case "DNSLatency":
-			row = append(row, toDuration(genericMap, fieldName, time.Millisecond))
-		case "TimeFlowRttMs":
-			row = append(row, toDuration(genericMap, fieldName, time.Nanosecond))
-		case "NetworkEvents":
-			events := ovnutils.NetworkEventsToStrings(genericMap)
-			row = append(row, strings.Join(events, ", "))
-		default:
-			// else simply pick field value as text from column name
-			row = append(row, toValue(genericMap, fieldName))
+	switch id {
+	case rawDisplay:
+		outputStr = fmt.Sprintf("%v", genericMap)
+	case "StartTime", "EndTime":
+		if captureType == "Flow" {
+			outputStr = toTimeString(genericMap, "TimeFlowEndMs")
+		} else {
+			outputStr = toTimeString(genericMap, "Time")
 		}
+	// special cases where autocompletes are involved
+	case "FlowDirection", "IfDirections":
+		outputStr = toDirection(genericMap, fieldName)
+	case "Proto":
+		outputStr = toProto(genericMap, fieldName)
+	case "Dscp":
+		outputStr = toDSCP(genericMap, fieldName)
+	// bytes count
+	case "Bytes":
+		outputStr = toCount(genericMap, "Bytes")
+	case "PktDropBytes":
+		outputStr = toCount(genericMap, "PktDropBytes")
+	// duration parsing
+	case "DNSLatency":
+		outputStr = toDuration(genericMap, fieldName, time.Millisecond)
+	case "TimeFlowRttMs":
+		outputStr = toDuration(genericMap, fieldName, time.Nanosecond)
+	case "NetworkEvents":
+		events := ovnutils.NetworkEventsToStrings(genericMap)
+		outputStr = strings.Join(events, ", ")
+	default:
+		// else simply pick field value as text from column name
+		outputStr = toValue(genericMap, fieldName)
 	}
 
-	return row
+	return ellipsizeAndPad(outputStr, ToColWidth(id))
 }

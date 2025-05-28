@@ -1,52 +1,590 @@
 package cmd
 
 import (
-	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"os/signal"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
+	hexview "github.com/jmhobbs/tview-hexview"
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 
-	"github.com/eiannone/keyboard"
-	"github.com/fatih/color"
-	"github.com/rodaine/table"
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
+type TableData struct {
+	cols  []string
+	flows []config.GenericMap
+	tview.TableContentReadOnly
+}
+
 const (
-	defaultShowCount = 20
+	keepCount              = 100 // flows to keep in memory
+	defaultShowCount       = 30  // flows to display
+	defaultFramesPerSecond = 5   // frames per second
+	defaultExtraWidth      = 5   // additionnal column width
 )
 
 var (
-	regexes   = []string{}
-	lastFlows = []config.GenericMap{}
-	showCount = defaultShowCount
+	regexes         = []string{}
+	lastFlows       = []config.GenericMap{}
+	suggestions     = []string{}
+	selectedColumns = []string{}
 
-	outputBuffer *bytes.Buffer
+	showCount       = defaultShowCount
+	framesPerSecond = defaultFramesPerSecond
+	extraWidth      = defaultExtraWidth
+
+	app       *tview.Application
+	pages     *tview.Pages
+	mainView  *tview.Flex
+	tableView *tview.Table
+
+	durationText       = tview.NewTextView()
+	sizeText           = tview.NewTextView()
+	displayTextView    = tview.NewTextView()
+	enrichmentTextView = tview.NewTextView()
+
+	tableData = &TableData{
+		cols:  []string{},
+		flows: []config.GenericMap{},
+	}
+	selectedData = []byte{}
+
+	errAdvancedDisplay error
 )
 
-func AppendFlow(genericMap config.GenericMap) {
-	// lock since we are updating lastFlows concurrently
-	mutex.Lock()
+func createDisplay() {
+	app = tview.NewApplication().
+		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			switch event.Key() {
+			case tcell.KeyCtrlC:
+				log.Info("Ctrl-C pressed, exiting program.")
+				if app != nil {
+					app.Stop()
+				}
+			case tcell.KeyESC:
+				// reset pages when esc key pressed
+				selectedData = []byte{}
+				app.SetRoot(getPages(false), true)
+			default:
+				// nothing to do here
+			}
 
-	lastFlows = append(lastFlows, genericMap)
-	sort.Slice(lastFlows, func(i, j int) bool {
-		if captureType == "Flow" {
-			return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
+			return event
+		}).
+		SetRoot(getPages(false), true).
+		EnableMouse(true)
+
+	errAdvancedDisplay = app.Run()
+	if errAdvancedDisplay == nil {
+		go hearbeat()
+	} else {
+		fmt.Printf("Can't display advanced UI: %v", errAdvancedDisplay)
+		done := make(chan os.Signal, 1)
+		signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+		<-done
+	}
+}
+
+func getPages(showColumnsPopup bool) *tview.Pages {
+	pages = tview.NewPages().AddPage("main", getMain(), true, true)
+
+	if showColumnsPopup {
+		pages = pages.AddPage("modal", getColumnsModal(), true, true)
+	}
+
+	return pages
+}
+
+func getMain() tview.Primitive {
+	mainView = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(getTop(), 4, 0, false).
+		AddItem(getTable(), 0, 1, false)
+
+	if len(selectedData) > 0 {
+		mainView = mainView.AddItem(tview.NewTextView(), 1, 0, false)
+		hex := hexview.NewHexView(selectedData)
+		hex.SetBorder(true).SetTitle("Payload")
+		mainView = mainView.AddItem(hex, 0, 1, false)
+		mainView = mainView.AddItem(tview.NewTextView().SetText("Press `ESC` to resume."), 2, 0, false)
+		tableView.ScrollToBeginning()
+	} else {
+		mainView = mainView.AddItem(getBottom(), 2, 0, false)
+	}
+	return mainView
+}
+
+func getTop() tview.Primitive {
+	flexView := tview.NewFlex().SetDirection(tview.FlexRow)
+
+	// info row
+	infoRow := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(tview.NewTextView().SetText(getCaptureTypeText()), 0, 1, false).
+		AddItem(tview.NewTextView().SetText(getLogLevelText()), 0, 1, false).
+		AddItem(durationText.SetText(getDurationText()), 0, 1, false).
+		AddItem(sizeText.SetText(getSizeText()), 0, 1, false)
+
+	if logLevel == "debug" {
+		fpsText := tview.NewTextView().SetText(getFPSText())
+		infoRow = infoRow.
+			AddItem(fpsText, 0, 1, false).
+			AddItem(tview.NewButton("-").SetSelectedFunc(func() {
+				if framesPerSecond > 1 {
+					framesPerSecond--
+				}
+				fpsText.SetText(getFPSText())
+			}), 5, 0, false).
+			AddItem(tview.NewButton("+").SetSelectedFunc(func() {
+				framesPerSecond++
+				fpsText.SetText(getFPSText())
+			}), 5, 0, false)
+	}
+
+	flexView.AddItem(infoRow, 1, 0, false)
+
+	// flows count
+	flowCountTextView := tview.NewTextView().SetText(getShowCountText())
+	flowsCountRow := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(flowCountTextView, 0, 1, false).
+		AddItem(tview.NewButton("-").SetSelectedFunc(func() {
+			if showCount > 5 {
+				showCount--
+			}
+			flowCountTextView.SetText(getShowCountText())
+			updateScreen()
+		}), 5, 0, false).
+		AddItem(tview.NewButton("+").SetSelectedFunc(func() {
+			showCount++
+			flowCountTextView.SetText(getShowCountText())
+			updateScreen()
+		}), 5, 0, false)
+
+	flexView.AddItem(flowsCountRow, 1, 0, false)
+
+	// columns row containing cycles (display, enrichment) and custom columns picker
+	columnsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
+	cyclesRow := tview.NewFlex().SetDirection(tview.FlexRow)
+
+	// display
+	displayRow := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(displayTextView, 0, 1, false).
+		AddItem(tview.NewButton("←").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			display.prev()
+			updateDisplayEnrichmentTexts()
+			updateScreen()
+		}), 5, 0, false).
+		AddItem(tview.NewButton("→").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			display.next()
+			updateDisplayEnrichmentTexts()
+			updateScreen()
+		}), 5, 0, false)
+
+	cyclesRow.AddItem(displayRow, 0, 1, false)
+
+	// enrichment
+	enrichmentRow := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(enrichmentTextView, 0, 1, false)
+	if display.getCurrentItem().name != rawDisplay && len(selectedColumns) == 0 {
+		enrichmentRow.
+			AddItem(tview.NewButton("←").SetSelectedFunc(func() {
+				enrichment.prev()
+				updateDisplayEnrichmentTexts()
+				updateScreen()
+			}), 5, 0, false).
+			AddItem(tview.NewButton("→").SetSelectedFunc(func() {
+				enrichment.next()
+				updateDisplayEnrichmentTexts()
+				updateScreen()
+			}), 5, 0, false)
+	}
+	cyclesRow.AddItem(enrichmentRow, 0, 1, false)
+	updateDisplayEnrichmentTexts()
+
+	// add cycles and custom columns modal button
+	columnsRow.AddItem(cyclesRow, 0, 1, false)
+	columnsRow.AddItem(tview.NewButton("Manage columns").SetSelectedFunc(func() {
+		app.SetRoot(getPages(true), true)
+	}), 15, 0, false)
+	flexView.AddItem(columnsRow, 2, 0, false)
+
+	return flexView
+}
+
+func getTable() *tview.Table {
+	if tableView != nil {
+		return tableView
+	}
+
+	tableView = tview.NewTable().
+		SetBorders(false).
+		SetSelectable(true, true).
+		SetSelectionChangedFunc(func(row, _ int) {
+			index := row - 1
+			if row <= 0 || index >= len(tableData.flows) {
+				selectedData = []byte{}
+				app.SetRoot(getPages(false), true)
+				return
+			}
+			selectedFlow := tableData.flows[index]
+			data, ok := selectedFlow["Data"]
+			if ok {
+				bytes, err := base64.StdEncoding.DecodeString(data.(string))
+				if err != nil {
+					log.Error("Error while decoding data", err)
+					return
+				}
+				selectedData = bytes
+				app.SetRoot(getPages(false), true)
+			}
+		}).
+		SetSelectedFunc(func(_, _ int) {
+			if app != nil {
+				app.Sync()
+			}
+		}).
+		SetContent(tableData)
+
+	return tableView
+}
+
+func getBottom() tview.Primitive {
+	flexView := tview.NewFlex().SetDirection(tview.FlexColumn)
+
+	textView := tview.NewTextView().SetText(getRegexesText())
+
+	inputField := tview.NewInputField().
+		SetLabel("Live table regexes: ").
+		SetFieldWidth(30)
+
+	inputField.SetAutocompleteFunc(func(currentText string) (entries []string) {
+		if len(currentText) == 0 {
+			return
 		}
-		return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
+		for _, word := range suggestions {
+			if strings.HasPrefix(strings.ToLower(word), strings.ToLower(currentText)) {
+				entries = append(entries, word)
+			}
+		}
+		if len(entries) <= 1 {
+			entries = nil
+		}
+		return
 	})
+	// on any input event
+	inputField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyBackspace, tcell.KeyBackspace2:
+			if len(inputField.GetText()) == 0 && len(regexes) > 0 {
+				regexes = regexes[:len(regexes)-1]
+			}
+			textView.SetText(getRegexesText())
+		default:
+			// nothing to do here
+		}
+		return event
+	})
+	// after input event
+	inputField.SetAutocompletedFunc(func(text string, _, source int) bool {
+		if source != tview.AutocompletedNavigate {
+			inputField.SetText(text)
+		}
+		return source == tview.AutocompletedEnter || source == tview.AutocompletedClick
+	})
+	// after autocomplete event
+	inputField.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEnter:
+			text := inputField.GetText()
+			if len(text) > 0 {
+				regexes = append(regexes, text)
+				inputField.SetText("")
+			}
+			textView.SetText(getRegexesText())
+		default:
+			// nothing to do here
+		}
+		updateScreen()
+	})
+	flexView.AddItem(inputField, 51, 0, true)
+
+	flexView.AddItem(textView, 0, 1, false)
+
+	return flexView
+}
+
+func getColumnsModal() tview.Primitive {
+	availableColumns := []*ColumnConfig{}
+	for _, col := range cfg.Columns {
+		if col.Field != "" {
+			availableColumns = append(availableColumns, col)
+		}
+	}
+
+	content := tview.NewFlex().SetDirection(tview.FlexRow)
+	content.SetBorder(true).SetTitle("Manage columns")
+
+	content.AddItem(tview.NewTextView().
+		SetText("Highlight a column and select / unselect it pressing the `Enter` key."), 2, 0, false)
+
+	colsTable := tview.NewTable()
+
+	setCell := func(i int, col *ColumnConfig) {
+		checkedStr := "[   ]"
+		if slices.Contains(selectedColumns, col.ID) {
+			checkedStr = "[ X ]"
+		}
+		colsTable.SetCell(i, 0, tview.NewTableCell(checkedStr))
+		colsTable.SetCell(i, 1, tview.NewTableCell(ToColName(col.ID, 40)))
+	}
+
+	setTableContent := func() {
+		for i, col := range availableColumns {
+			setCell(i, col)
+		}
+	}
+
+	colsTable.SetSelectable(true, false).SetSelectedFunc(func(row, _ int) {
+		if row < 0 || row >= len(availableColumns) {
+			return
+		}
+		c := availableColumns[row]
+		for i, v := range selectedColumns {
+			// remove id if found
+			if v == c.ID {
+				selectedColumns = append(selectedColumns[:i], selectedColumns[i+1:]...)
+				setCell(row, c)
+				return
+			}
+		}
+		// else add it to selection
+		selectedColumns = append(selectedColumns, c.ID)
+		setCell(row, c)
+		updateDisplayEnrichmentTexts()
+	})
+
+	setTableContent()
+	content.AddItem(colsTable, 0, 1, true)
+
+	buttons := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(tview.NewButton("Restore defaults").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			for i, c := range availableColumns {
+				if c.Default {
+					selectedColumns = append(selectedColumns, c.ID)
+				}
+				setCell(i, c)
+			}
+			updateDisplayEnrichmentTexts()
+		}), 0, 1, false).
+		AddItem(tview.NewTextView(), 1, 0, false).
+		AddItem(tview.NewButton("Reset").SetSelectedFunc(func() {
+			selectedColumns = []string{}
+			setTableContent()
+			updateDisplayEnrichmentTexts()
+		}), 0, 1, false).
+		AddItem(tview.NewTextView(), 1, 0, false).
+		AddItem(tview.NewButton("Save").SetSelectedFunc(func() {
+			app.SetRoot(getPages(false), true)
+		}), 0, 1, false)
+	content.AddItem(buttons, 1, 0, false)
+
+	return getModal(content, 50, 30)
+}
+
+// Returns a new primitive which puts the provided primitive in the center and
+// sets its size to the given width and height.
+func getModal(p tview.Primitive, width, height int) tview.Primitive {
+	return tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(p, height, 1, true).
+			AddItem(nil, 0, 1, false), width, 1, true).
+		AddItem(nil, 0, 1, false)
+}
+
+func getCaptureTypeText() string {
+	return fmt.Sprintf("%s Capture", captureType)
+}
+
+func getLogLevelText() string {
+	return fmt.Sprintf("Log level: %s", logLevel)
+}
+
+func getEnrichmentText() string {
+	if len(selectedColumns) > 0 {
+		return ""
+	} else if display.getCurrentItem().name == rawDisplay {
+		return "Enrichment: n/a\n"
+	}
+	return fmt.Sprintf("Enrichment: %s\n", enrichment.getCurrentItem().name)
+}
+
+func getDisplayText() string {
+	if len(selectedColumns) > 0 {
+		return "Custom columns"
+	}
+	return fmt.Sprintf("Display: %s\n", display.getCurrentItem().name)
+}
+
+func getShowCountText() string {
+	return fmt.Sprintf("Showing last: %d\n", showCount)
+}
+
+func getFPSText() string {
+	return fmt.Sprintf("FPS: %d", framesPerSecond)
+}
+
+func getSizeText() string {
+	return fmt.Sprintf("Capture size: %s", sizestr.ToString(totalBytes))
+}
+
+func getDurationText() string {
+	duration := currentTime().Sub(startupTime)
+	return fmt.Sprintf("Duration: %s ", duration.Round(time.Second))
+}
+
+func getRegexesText() string {
+	if len(regexes) > 0 {
+		return fmt.Sprintf("Current filters: [%s]. Press `Enter` key to add a new one and backspace to remove last one", strings.Join(regexes, ","))
+	}
+	return "Press `Enter` key to match multiple regexes at once"
+}
+
+func AppendFlow(genericMap config.GenericMap) {
+	if errAdvancedDisplay != nil {
+		// simply print flow into logs
+		log.Printf("%v\n", genericMap)
+	} else {
+		// lock since we are updating lastFlows concurrently
+		mutex.Lock()
+
+		// add new flow to the array
+		lastFlows = append(lastFlows, genericMap)
+
+		// sort flows according to time
+		sort.Slice(lastFlows, func(i, j int) bool {
+			if captureType == "Flow" {
+				return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
+			}
+			return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
+		})
+
+		// limit flows kept in memory
+		if len(lastFlows) > keepCount {
+			lastFlows = lastFlows[len(lastFlows)-keepCount:]
+		}
+
+		mutex.Unlock()
+	}
+}
+
+func hearbeat() {
+	for {
+		if captureEnded {
+			return
+		}
+
+		updateStatusTexts()
+		if len(selectedData) == 0 {
+			updateTable()
+		}
+
+		// refresh
+		if app != nil {
+			app.Draw()
+		}
+
+		time.Sleep(time.Second / time.Duration(framesPerSecond))
+	}
+}
+
+func updateDisplayEnrichmentTexts() {
+	displayTextView.SetText(getDisplayText())
+	enrichmentTextView.SetText(getEnrichmentText())
+}
+
+func updateStatusTexts() {
+	durationText.SetText(getDurationText())
+	sizeText.SetText(getSizeText())
+}
+
+func updateTable() {
+	cols := []string{}
+	if len(selectedColumns) > 0 {
+		cols = selectedColumns
+	} else if display.getCurrentItem().name == rawDisplay {
+		cols = append(cols,
+			rawDisplay,
+		)
+	} else {
+		// main field, always show the end time
+		cols = append(cols,
+			"EndTime",
+		)
+
+		// enrichment fields
+		if enrichment.getCurrentItem().name != noOptions {
+			cols = append(cols, enrichment.getCurrentItem().ids...)
+		} else {
+			// TODO: add a new flag in the config to identify these as default non enriched fields
+			cols = append(cols,
+				"SrcAddr",
+				"SrcPort",
+				"DstAddr",
+				"DstPort",
+			)
+		}
+
+		// append interfaces and their directions between enrichment and features
+		// this is useful for pkt drop, udns etc
+		cols = append(cols,
+			"Interfaces",
+			"IfDirections",
+		)
+
+		// standard / feature fields
+		if display.getCurrentItem().name != standardDisplay {
+			for _, col := range cfg.Columns {
+				if col.Field != "" && slices.Contains(display.getCurrentItem().ids, col.Feature) {
+					cols = append(cols, col.ID)
+				}
+			}
+		} else {
+			// TODO: add a new flag in the config to identify these as default feature fields
+			cols = append(cols,
+				"FlowDirection",
+				"Proto",
+				"Dscp",
+				"Bytes",
+				"Packets",
+			)
+		}
+	}
+
+	// lastFlows may change during the render so we make a copy first
+	lfCopy := make([]config.GenericMap, len(lastFlows))
+	copy(lfCopy, lastFlows)
+
+	// apply regexes to filter flows
+	flows := []config.GenericMap{}
 	if len(regexes) > 0 {
 		// regexes may change during the render so we make a copy first
 		rCopy := make([]string, len(regexes))
 		copy(rCopy, regexes)
-		filtered := []config.GenericMap{}
-		for _, flow := range lastFlows {
+
+		for _, flow := range lfCopy {
 			match := true
 			for i := range rCopy {
 				ok, _ := regexp.MatchString(rCopy[i], fmt.Sprintf("%v", flow))
@@ -56,238 +594,91 @@ func AppendFlow(genericMap config.GenericMap) {
 				}
 			}
 			if match {
-				filtered = append(filtered, flow)
-			}
-		}
-		lastFlows = filtered
-	}
-	if len(lastFlows) > showCount {
-		lastFlows = lastFlows[len(lastFlows)-showCount:]
-	}
-
-	mutex.Unlock()
-}
-
-func hearbeat() {
-	// render only 1 frame per second to avoid flickering effects due to kubectl exec
-	ticker := time.NewTicker(time.Second)
-	for range ticker.C {
-		if captureEnded {
-			return
-		}
-		updateTable()
-	}
-
-}
-
-func updateTable() {
-	// init the output buffer if not set
-	if outputBuffer == nil {
-		buf := bytes.Buffer{}
-		outputBuffer = &buf
-	} else if outputBuffer.Len() > 0 {
-		// skip this frame if the buffer is not empty
-		// previous frame had not been rendered !
-		return
-	}
-
-	if allowClear {
-		// clear terminal to render table properly
-		writeBuf("\x1bc")
-		// no wrap
-		writeBuf("\033[?7l")
-	}
-
-	writeBuf("Running network-observability-cli as %s Capture\n", captureType)
-	writeBuf("Log level: %s ", logLevel)
-	writeBuf("Duration: %s ", currentTime().Sub(startupTime).Round(time.Second))
-	writeBuf("Capture size: %s\n", sizestr.ToString(totalBytes))
-	if len(strings.TrimSpace(options)) > 0 {
-		writeBuf("Options: %s\n", options)
-	}
-
-	if totalBytes > 0 {
-		if strings.Contains(options, "background=true") {
-			writeBuf("Showing last: %d\n", showCount)
-			writeBuf("Display: %s\n", display.getCurrentItem().name)
-			writeBuf("Enrichment: %s\n", enrichment.getCurrentItem().name)
-		} else {
-			writeBuf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", showCount)
-			writeBuf("Display: %s Use Left / Right keyboard arrows to cycle views\n", display.getCurrentItem().name)
-			writeBuf("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", enrichment.getCurrentItem().name)
-		}
-
-		if display.getCurrentItem().name == rawDisplay {
-			outputBuffer.WriteString("Raw flow logs:\n")
-			for _, flow := range lastFlows {
-				writeBuf("%v\n", flow)
-			}
-			writeBuf("%s\n", strings.Repeat("-", 500))
-		} else {
-			// recreate table from scratch
-			headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
-			columnFmt := color.New(color.FgHiYellow).SprintfFunc()
-
-			// main field, always show the end time
-			colIDs := []string{
-				"EndTime",
-			}
-
-			// enrichment fields
-			if enrichment.getCurrentItem().name != noOptions {
-				colIDs = append(colIDs, enrichment.getCurrentItem().ids...)
-			} else {
-				// TODO: add a new flag in the config to identify these as default non enriched fields
-				colIDs = append(colIDs,
-					"SrcAddr",
-					"SrcPort",
-					"DstAddr",
-					"DstPort",
-				)
-			}
-
-			// append interfaces and their directions between enrichment and features
-			// this is useful for pkt drop, udns etc
-			colIDs = append(colIDs,
-				"Interfaces",
-				"IfDirections",
-			)
-
-			// standard / feature fields
-			if display.getCurrentItem().name != standardDisplay {
-				for _, col := range cfg.Columns {
-					if col.Field != "" && slices.Contains(display.getCurrentItem().ids, col.Feature) {
-						colIDs = append(colIDs, col.ID)
-					}
-				}
-			} else {
-				// TODO: add a new flag in the config to identify these as default feature fields
-				colIDs = append(colIDs,
-					"FlowDirection",
-					"Proto",
-					"Dscp",
-					"Bytes",
-					"Packets",
-				)
-			}
-
-			colInterfaces := make([]interface{}, len(colIDs))
-			for i, id := range colIDs {
-				colInterfaces[i] = ToTableColName(id)
-			}
-			tbl := table.New(colInterfaces...)
-			tbl.WithWriter(outputBuffer)
-			tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-
-			// append most recent rows
-			for _, flow := range lastFlows {
-				tbl.AddRow(ToTableRow(flow, colIDs)...)
-			}
-
-			// inserting empty row ensure minimum column sizes
-			emptyRow := []interface{}{}
-			for _, id := range colIDs {
-				emptyRow = append(emptyRow, strings.Repeat("-", ToTableColWidth(id)))
-			}
-			tbl.AddRow(emptyRow...)
-
-			// print table
-			tbl.Print()
-		}
-
-		if len(keyboardError) > 0 {
-			writeBuf(keyboardError)
-		} else {
-			if len(regexes) > 0 {
-				writeBuf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
-			} else {
-				writeBuf("Type anything to filter incoming flows in view\n")
+				flows = append(flows, flow)
 			}
 		}
 	} else {
-		writeBuf("\n\nCollector is waiting for messages... Please wait.")
+		flows = lfCopy
 	}
 
-	if allowClear {
-		printBuf()
+	// limit filtered flows to display size
+	if len(flows) > showCount {
+		flows = flows[len(flows)-showCount:]
 	}
-}
 
-func writeBuf(s string, a ...any) {
-	if len(a) > 0 {
-		outputBuffer.WriteString(fmt.Sprintf(s, a...))
-	} else {
-		outputBuffer.WriteString(s)
-	}
-}
-
-func printBuf() {
-	if captureEnded {
-		return
-	}
-	// write new display
-	_, err := os.Stdout.Write(outputBuffer.Bytes())
-	if err != nil {
-		fmt.Printf("Error occured while writing stdout: %v", err)
-	}
-	// reset buffer
-	outputBuffer.Reset()
-}
-
-// scanner returns true in case of normal exit (end of program execution) or false in case of error
-func scanner() bool {
-	if err := keyboard.Open(); err != nil {
-		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
-		return false
-	}
-	defer func() {
-		_ = keyboard.Close()
-	}()
-
-	for {
-		char, key, err := keyboard.GetKey()
-		if err != nil {
-			panic(err)
-		}
-		switch {
-		case key == keyboard.KeyCtrlC, stopReceived:
-			log.Info("Ctrl-C pressed, exiting program.")
-			// exit program
-			return true
-		case key == keyboard.KeyArrowUp:
-			showCount++
-		case key == keyboard.KeyArrowDown:
-			if showCount > 10 {
-				showCount--
+	suggestions = []string{}
+	for _, flow := range flows {
+		for k, v := range flow {
+			if !slices.Contains(suggestions, k) {
+				suggestions = append(suggestions, k)
 			}
-		case key == keyboard.KeyArrowRight:
-			display.next()
-		case key == keyboard.KeyArrowLeft:
-			display.prev()
-		case key == keyboard.KeyPgup:
-			enrichment.next()
-		case key == keyboard.KeyPgdn:
-			enrichment.prev()
-		case key == keyboard.KeyBackspace || key == keyboard.KeyBackspace2:
-			if len(regexes) > 0 {
-				lastIndex := len(regexes) - 1
-				if len(regexes[lastIndex]) > 0 {
-					regexes[lastIndex] = regexes[lastIndex][:len(regexes[lastIndex])-1]
-				} else {
-					regexes = regexes[:lastIndex]
-				}
-			}
-		case key == keyboard.KeyEnter:
-			regexes = append(regexes, "")
-		default:
-			if len(regexes) == 0 {
-				regexes = []string{string(char)}
-			} else {
-				lastIndex := len(regexes) - 1
-				regexes[lastIndex] += string(char)
+
+			valueStr := fmt.Sprintf("%v", v)
+			if !slices.Contains(suggestions, valueStr) {
+				suggestions = append(suggestions, valueStr)
 			}
 		}
-		// force update to reduce the latency feeling due to low fps
-		updateTable()
 	}
+
+	// update tableData
+	tableData.cols = cols
+	tableData.flows = flows
+}
+
+func updateScreen() {
+	if app != nil {
+		mainView.Clear()
+		app.SetRoot(getMain(), true)
+	}
+}
+
+func (d *TableData) GetCell(row, col int) *tview.TableCell {
+	if len(d.cols) == 0 {
+		return tview.NewTableCell("Initializing...")
+	} else if row < 0 {
+		return tview.NewTableCell("invalid row")
+	} else if col < 0 || col >= len(d.cols) {
+		return tview.NewTableCell("invalid col")
+	}
+
+	id := d.cols[col]
+	width := ToColWidth(id)
+	color := tcell.ColorWhite
+	bgColor := tcell.ColorBlack
+	if row == 0 {
+		color = tcell.ColorWhite
+		bgColor = tcell.ColorBlue
+	} else if col == 0 {
+		color = tcell.ColorYellow
+		bgColor = tcell.ColorBlack
+	} else if id == "EndTime" {
+		color = tcell.ColorYellow
+		bgColor = tcell.ColorWhite
+	}
+	if row == 0 {
+		return tview.NewTableCell(ToColName(id, ToColWidth(id))).
+			SetTextColor(color).
+			SetBackgroundColor(bgColor).
+			SetAlign(tview.AlignLeft).
+			SetMaxWidth(width)
+	}
+	index := row - 1
+	if index < len(d.flows) {
+		return tview.NewTableCell(ToColValue(d.flows[index], id)).
+			SetTextColor(color).
+			SetBackgroundColor(bgColor).
+			SetAlign(tview.AlignLeft).
+			SetMaxWidth(width)
+	}
+
+	// index out of bounds due to concurrent update
+	return tview.NewTableCell("")
+}
+
+func (d *TableData) GetRowCount() int {
+	return len(d.flows) + 1
+}
+
+func (d *TableData) GetColumnCount() int {
+	return len(d.cols)
 }

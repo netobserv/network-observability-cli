@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/gopacket/layers"
@@ -28,25 +27,12 @@ var pktCmd = &cobra.Command{
 }
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	go scanner()
-
 	captureType = "Packet"
-	wg := sync.WaitGroup{}
-	wg.Add(len(ports))
-	for i := range ports {
-		go func(idx int) {
-			defer wg.Done()
-			err := runPacketCaptureOnAddr(ports[idx], nodes[idx])
-			if err != nil {
-				// Only fatal error are returned
-				log.Fatal(err)
-			}
-		}(i)
-	}
-	wg.Wait()
+	go startPacketCollector()
+	createDisplay()
 }
 
-func runPacketCaptureOnAddr(port int, filename string) error {
+func startPacketCollector() {
 	if len(filename) > 0 {
 		log.Infof("Starting Packet Capture for %s...", filename)
 	} else {
@@ -62,14 +48,14 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		log.Errorf("Create directory failed: %v", err.Error())
 		log.Fatal(err)
 	}
-	log.Trace("Created pcap folder")
+	log.Debug("Created pcap folder")
 
 	pw, err := pcapng.NewFileWriter("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
 		log.Errorf("Create file %s failed: %v", filename, err.Error())
 		log.Fatal(err)
 	}
-	log.Trace("Created pcapng file")
+	log.Debug("Created pcapng file")
 
 	// write pcap file header
 	so := types.SectionHeaderOptions{
@@ -81,54 +67,49 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	log.Trace("Wrote pcap section header")
+	log.Debug("Wrote pcap section header")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		return fmt.Errorf("StartCollector failed: %w", err)
+		log.Errorf("StartCollector failed: %v", err.Error())
+		return
 	}
-	log.Trace("Started collector")
+	log.Debug("Started collector")
 	collectorStarted = true
 
 	go func() {
 		<-utils.ExitChannel()
-		log.Trace("Ending collector")
+		log.Debug("Ending collector")
 		close(flowPackets)
 		collector.Close()
-		log.Trace("Done")
+		log.Debug("Done")
 	}()
 
-	log.Trace("Ready ! Waiting for packets...")
+	log.Debug("Ready ! Waiting for packets...")
 	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
-			log.Tracef("Received first %d packets", len(flowPackets))
+			log.Debugf("Received first %d packets", len(flowPackets))
 		}
 
 		if stopReceived {
-			log.Trace("Stop received")
-			return nil
+			log.Debug("Stop received")
+			return
 		}
 
 		genericMap := config.GenericMap{}
 		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
 			log.Error("Error while parsing json", err)
-			return nil
+			return
 		}
 		if !captureStarted {
-			log.Tracef("Parsed genericMap %v", genericMap)
+			log.Debugf("Parsed genericMap %v", genericMap)
 		}
 
 		data, ok := genericMap["Data"]
 		if ok {
-			// clear generic map data
-			delete(genericMap, "Data")
-			if !captureStarted {
-				log.Trace("Deleted data")
-			}
-
 			// display as flow async
 			go AppendFlow(genericMap)
 
@@ -139,7 +120,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			b, err := base64.StdEncoding.DecodeString(data.(string))
 			if err != nil {
 				log.Error("Error while decoding data", err)
-				return nil
+				return
 			}
 
 			// write enriched data as interface
@@ -148,11 +129,12 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			// then append packet to file using totalPackets as unique id
 			err = pw.WriteEnhancedPacketBlock(totalPackets, ts, b, types.EnhancedPacketOptions{})
 			if err != nil {
-				return err
+				log.Error(err)
+				return
 			}
 		} else {
 			if !captureStarted {
-				log.Trace("Data is missing")
+				log.Debug("Data is missing")
 			}
 
 			// display as flow async
@@ -164,7 +146,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		if totalBytes > maxBytes {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-				return nil
+				return
 			}
 		}
 		totalPackets++
@@ -175,18 +157,17 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
-				return nil
+				return
 			}
 		}
 
 		captureStarted = true
 	}
-	return nil
 }
 
 func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {
 	var io types.InterfaceOptions
-	srcType := toValue(*genericMap, "SrcK8S_Type").(string)
+	srcType := toValue(*genericMap, "SrcK8S_Type")
 	if srcType != emptyText {
 		io = types.InterfaceOptions{
 			Name: fmt.Sprintf(
