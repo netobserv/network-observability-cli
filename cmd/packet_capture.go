@@ -5,18 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/gopacket/layers"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
+	"github.com/gopacket/gopacket/pcapgo"
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap"
-	"github.com/ryankurte/go-pcapng"
-	"github.com/ryankurte/go-pcapng/types"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +57,6 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			":", "") // get rid of offensive colons
 	}
 
-	var f *os.File
 	err := os.MkdirAll("./output/pcap/", 0700)
 	if err != nil {
 		log.Errorf("Create directory failed: %v", err.Error())
@@ -64,24 +64,20 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 	}
 	log.Trace("Created pcap folder")
 
-	pw, err := pcapng.NewFileWriter("./output/pcap/" + filename + ".pcapng")
-	if err != nil {
-		log.Errorf("Create file %s failed: %v", filename, err.Error())
-		log.Fatal(err)
-	}
-	log.Trace("Created pcapng file")
-
-	// write pcap file header
-	so := types.SectionHeaderOptions{
-		Comment:     filename,
-		Application: "netobserv-cli",
-	}
-	err = pw.WriteSectionHeader(so)
+	f, err := os.Create("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	log.Trace("Wrote pcap section header")
+	log.Trace("Created pcapng file")
+
+	ngw, err := pcapgo.NewNgWriter(f, layers.LinkTypeEthernet)
+	if err != nil {
+		log.Error("Error while creating writer", err)
+		return nil
+	}
+	defer ngw.Flush()
+	log.Trace("Wrote pcap section header & interface")
 
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
@@ -98,6 +94,10 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		collector.Close()
 		log.Trace("Done")
 	}()
+
+	var srcComment strings.Builder
+	var dstComment strings.Builder
+	var commonComment strings.Builder
 
 	log.Trace("Ready ! Waiting for packets...")
 	go hearbeat()
@@ -141,15 +141,53 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 				log.Error("Error while decoding data", err)
 				return nil
 			}
+			// sort generic map keys to keep comments ordered
+			keys := make([]string, 0, len(genericMap))
+			for k := range genericMap {
+				// ignore time field
+				if k == "Time" {
+					continue
+				}
+				keys = append(keys, k)
+
+			}
+			sort.Strings(keys)
+
+			// generate comments per category
+			srcComment.WriteString("Source\n")
+			dstComment.WriteString("Destination\n")
+			commonComment.WriteString("Common\n")
+			for _, k := range keys {
+				id := toColID(k)
+				str := fmt.Sprintf("%s: %v\n", ToTableColName(id), toDisplayValue(genericMap, id, k))
+				if strings.HasPrefix(k, "Src") {
+					srcComment.WriteString(str)
+				} else if strings.HasPrefix(k, "Dst") {
+					dstComment.WriteString(str)
+				} else {
+					commonComment.WriteString(str)
+				}
+			}
 
 			// write enriched data as interface
-			writeEnrichedData(pw, &genericMap)
-
-			// then append packet to file using totalPackets as unique id
-			err = pw.WriteEnhancedPacketBlock(totalPackets, ts, b, types.EnhancedPacketOptions{})
-			if err != nil {
-				return err
+			if err := ngw.WritePacketWithOptions(gopacket.CaptureInfo{
+				Timestamp:     ts,
+				Length:        len(b),
+				CaptureLength: len(b),
+			}, b, pcapgo.NgPacketOptions{
+				Comments: []string{
+					srcComment.String(),
+					dstComment.String(),
+					commonComment.String(),
+				},
+			}); err != nil {
+				log.Error("Error while writing packet", err)
+				return nil
 			}
+
+			srcComment.Reset()
+			dstComment.Reset()
+			commonComment.Reset()
 		} else {
 			if !captureStarted {
 				log.Trace("Data is missing")
@@ -167,7 +205,6 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 				return nil
 			}
 		}
-		totalPackets++
 
 		// terminate capture if max time reached
 		now := currentTime()
@@ -182,37 +219,4 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		captureStarted = true
 	}
 	return nil
-}
-
-func writeEnrichedData(pw *pcapng.FileWriter, genericMap *config.GenericMap) {
-	var io types.InterfaceOptions
-	srcType := toValue(*genericMap, "SrcK8S_Type").(string)
-	if srcType != emptyText {
-		io = types.InterfaceOptions{
-			Name: fmt.Sprintf(
-				"%s: %s -> %s: %s",
-				srcType,
-				toValue(*genericMap, "SrcK8S_Name"),
-				toValue(*genericMap, "DstK8S_Type"),
-				toValue(*genericMap, "DstK8S_Name")),
-			Description: fmt.Sprintf(
-				"%s: %s Namespace: %s -> %s: %s Namespace: %s",
-				toValue(*genericMap, "SrcK8S_OwnerType"),
-				toValue(*genericMap, "SrcK8S_OwnerName"),
-				toValue(*genericMap, "SrcK8S_Namespace"),
-				toValue(*genericMap, "DstK8S_OwnerType"),
-				toValue(*genericMap, "DstK8S_OwnerName"),
-				toValue(*genericMap, "DstK8S_Namespace"),
-			),
-		}
-	} else {
-		io.Name = "Unknown resource"
-		io = types.InterfaceOptions{
-			Name: "Unknown kubernetes resource",
-		}
-	}
-	err := pw.WriteInterfaceDescription(uint16(layers.LinkTypeEthernet), io)
-	if err != nil {
-		log.Fatal(err)
-	}
 }

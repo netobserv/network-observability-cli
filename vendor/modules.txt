@@ -69,16 +69,18 @@ github.com/google/go-cmp/cmp/internal/value
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/gopacket v1.1.19
-## explicit; go 1.12
-github.com/google/gopacket
-github.com/google/gopacket/layers
 # github.com/google/pprof v0.0.0-20250423184734-337e5dd93bb4
 ## explicit; go 1.23.0
 github.com/google/pprof/profile
 # github.com/google/uuid v1.6.0
 ## explicit
 github.com/google/uuid
+# github.com/gopacket/gopacket v1.3.2-0.20250513021322-b23ac340366c
+## explicit; go 1.23.0
+github.com/gopacket/gopacket
+github.com/gopacket/gopacket/endian
+github.com/gopacket/gopacket/layers
+github.com/gopacket/gopacket/pcapgo
 # github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 ## explicit; go 1.20
 github.com/gorilla/websocket
@@ -210,10 +212,6 @@ github.com/prometheus/procfs/internal/util
 # github.com/rodaine/table v1.3.0
 ## explicit; go 1.14
 github.com/rodaine/table
-# github.com/ryankurte/go-pcapng v0.0.0-20170712041429-73fd1a63fab4
-## explicit
-github.com/ryankurte/go-pcapng
-github.com/ryankurte/go-pcapng/types
 # github.com/segmentio/kafka-go v0.4.47
 ## explicit; go 1.15
 github.com/segmentio/kafka-go/sasl
@@ -274,6 +272,7 @@ go.uber.org/automaxprocs/internal/runtime
 go.uber.org/automaxprocs/maxprocs
 # golang.org/x/net v0.39.0
 ## explicit; go 1.23.0
+golang.org/x/net/bpf
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset

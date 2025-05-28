@@ -474,6 +474,14 @@ func ToTableColWidth(id string) int {
 	return 6
 }
 
+func toColID(field string) string {
+	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.Field == field })
+	if colIndex != -1 {
+		return cfg.Columns[colIndex].ID
+	}
+	return ""
+}
+
 func toFieldName(id string) string {
 	colIndex := slices.IndexFunc(cfg.Columns, func(c *ColumnConfig) bool { return c.ID == id })
 	if colIndex != -1 {
@@ -482,45 +490,47 @@ func toFieldName(id string) string {
 	return ""
 }
 
+func toDisplayValue(genericMap config.GenericMap, colID string, fieldName string) interface{} {
+	switch colID {
+	case "EndTime":
+		if captureType == "Flow" {
+			return toTimeString(genericMap, "TimeFlowEndMs")
+		}
+		return toTimeString(genericMap, "Time")
+	// special cases where autocompletes are involved
+	case "FlowDirection", "IfDirections":
+		return toDirection(genericMap, fieldName)
+	case "Proto":
+		return toProto(genericMap, fieldName)
+	case "Dscp":
+		return toDSCP(genericMap, fieldName)
+	// bytes count
+	case "Bytes":
+		return toCount(genericMap, "Bytes")
+	case "PktDropBytes":
+		return toCount(genericMap, "PktDropBytes")
+	// duration parsing
+	case "DNSLatency":
+		return toDuration(genericMap, fieldName, time.Millisecond)
+	case "TimeFlowRttMs":
+		return toDuration(genericMap, fieldName, time.Nanosecond)
+	case "NetworkEvents":
+		events := ovnutils.NetworkEventsToStrings(genericMap)
+		return strings.Join(events, ", ")
+	default:
+		// else simply pick field value as text from column name
+		return toValue(genericMap, fieldName)
+	}
+}
+
 func ToTableRow(genericMap config.GenericMap, colIDs []string) []interface{} {
 	row := []interface{}{}
 
 	for _, colID := range colIDs {
 		// convert column id to its field accordingly
 		fieldName := toFieldName(colID)
-
-		switch colID {
-		case "EndTime":
-			if captureType == "Flow" {
-				row = append(row, toTimeString(genericMap, "TimeFlowEndMs"))
-			} else {
-				row = append(row, toTimeString(genericMap, "Time"))
-			}
-		// special cases where autocompletes are involved
-		case "FlowDirection", "IfDirections":
-			row = append(row, toDirection(genericMap, fieldName))
-		case "Proto":
-			row = append(row, toProto(genericMap, fieldName))
-		case "Dscp":
-			row = append(row, toDSCP(genericMap, fieldName))
-		// bytes count
-		case "Bytes":
-			row = append(row, toCount(genericMap, "Bytes"))
-		case "PktDropBytes":
-			row = append(row, toCount(genericMap, "PktDropBytes"))
-		// duration parsing
-		case "DNSLatency":
-			row = append(row, toDuration(genericMap, fieldName, time.Millisecond))
-		case "TimeFlowRttMs":
-			row = append(row, toDuration(genericMap, fieldName, time.Nanosecond))
-		case "NetworkEvents":
-			events := ovnutils.NetworkEventsToStrings(genericMap)
-			row = append(row, strings.Join(events, ", "))
-		default:
-			// else simply pick field value as text from column name
-			row = append(row, toValue(genericMap, fieldName))
-		}
+		// append value to row
+		row = append(row, toDisplayValue(genericMap, colID, fieldName))
 	}
-
 	return row
 }

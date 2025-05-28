@@ -235,10 +235,10 @@ func printBuf() {
 }
 
 // scanner returns true in case of normal exit (end of program execution) or false in case of error
-func scanner() bool {
+func scanner() {
 	if err := keyboard.Open(); err != nil {
 		keyboardError = fmt.Sprintf("Keyboard not supported %v", err)
-		return false
+		return
 	}
 	defer func() {
 		_ = keyboard.Close()
@@ -253,7 +253,8 @@ func scanner() bool {
 		case key == keyboard.KeyCtrlC, stopReceived:
 			log.Info("Ctrl-C pressed, exiting program.")
 			// exit program
-			return true
+			stopReceived = true
+			return
 		case key == keyboard.KeyArrowUp:
 			showCount++
 		case key == keyboard.KeyArrowDown:
