@@ -230,12 +230,13 @@ func getTable() *tview.Table {
 		SetBorders(false).
 		SetSelectable(true, true).
 		SetSelectionChangedFunc(func(row, _ int) {
-			if row == 0 {
+			index := row - 1
+			if row <= 0 || index >= len(tableData.flows) {
 				selectedData = []byte{}
 				app.SetRoot(getPages(false), true)
 				return
 			}
-			selectedFlow := tableData.flows[row-1]
+			selectedFlow := tableData.flows[index]
 			data, ok := selectedFlow["Data"]
 			if ok {
 				bytes, err := base64.StdEncoding.DecodeString(data.(string))
@@ -354,6 +355,9 @@ func getColumnsModal() tview.Primitive {
 	}
 
 	colsTable.SetSelectable(true, false).SetSelectedFunc(func(row, _ int) {
+		if row < 0 || row >= len(availableColumns) {
+			return
+		}
 		c := availableColumns[row]
 		for i, v := range selectedColumns {
 			// remove id if found
@@ -631,9 +635,9 @@ func updateScreen() {
 func (d *TableData) GetCell(row, col int) *tview.TableCell {
 	if len(d.cols) == 0 {
 		return tview.NewTableCell("Initializing...")
-	} else if row == -1 {
+	} else if row < 0 {
 		return tview.NewTableCell("invalid row")
-	} else if col == -1 || col >= len(d.cols) {
+	} else if col < 0 || col >= len(d.cols) {
 		return tview.NewTableCell("invalid col")
 	}
 
