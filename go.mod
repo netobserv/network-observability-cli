@@ -7,7 +7,7 @@ toolchain go1.23.5
 require (
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/fatih/color v1.18.0
-	github.com/google/gopacket v1.1.19
+	github.com/gopacket/gopacket v1.3.2-0.20250513021322-b23ac340366c
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/netobserv/flowlogs-pipeline v1.9.0-crc1
@@ -99,5 +99,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
-
-replace github.com/google/gopacket v1.1.19 => github.com/GameFabric/sts-pkg-gopacket v0.0.0-20230307093013-7b513277b714

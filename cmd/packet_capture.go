@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcapgo"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
+	"github.com/gopacket/gopacket/pcapgo"
 	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
@@ -170,16 +170,17 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			}
 
 			// write enriched data as interface
-			if err := ngw.WritePacket(gopacket.CaptureInfo{
+			if err := ngw.WritePacketWithOptions(gopacket.CaptureInfo{
 				Timestamp:     ts,
 				Length:        len(b),
 				CaptureLength: len(b),
+			}, b, pcapgo.NgPacketOptions{
 				Comments: []string{
 					srcComment.String(),
 					dstComment.String(),
 					commonComment.String(),
 				},
-			}, b); err != nil {
+			}); err != nil {
 				log.Error("Error while writing packet", err)
 				return nil
 			}
