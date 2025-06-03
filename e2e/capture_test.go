@@ -68,12 +68,8 @@ func TestFlowCapture(t *testing.T) {
 			assert.Contains(t, str, "pod/collector created")
 			assert.Contains(t, str, "pod/collector condition met")
 			// check that CLI is running
-			assert.Contains(t, str, "Running network-observability-cli as Flow Capture")
-			assert.Contains(t, str, "Time")
-			assert.Contains(t, str, "Src Name")
-			assert.Contains(t, str, "Src Namespace")
-			assert.Contains(t, str, "Dst Name")
-			assert.Contains(t, str, "Dst Namespace")
+			assert.Contains(t, str, "Starting Flow Capture...")
+			assert.Contains(t, str, "Started collector")
 			// check that script terminated
 			assert.Contains(t, str, "command terminated")
 			return ctx
@@ -146,7 +142,8 @@ func TestPacketCapture(t *testing.T) {
 			assert.Contains(t, str, "pod/collector created")
 			assert.Contains(t, str, "pod/collector condition met")
 			// check that CLI is running
-			assert.Contains(t, str, "Running network-observability-cli as Packet Capture")
+			assert.Contains(t, str, "Starting Packet Capture...")
+			assert.Contains(t, str, "Started collector")
 			// check that script terminated
 			assert.Contains(t, str, "command terminated")
 			return ctx
