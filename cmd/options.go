@@ -24,7 +24,10 @@ var (
 	pktTranslation       = "packetTranslation"
 	udnMapping           = "udnMapping"
 	ipSec                = "ipsec"
-	display              = option{
+
+	defaultDisplayIndex = 1
+
+	display = option{
 		all: []optionItem{
 			// exclusive displays
 			{name: rawDisplay},
@@ -41,7 +44,7 @@ var (
 			{name: allOptions, ids: []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay, pktTranslation, udnMapping, ipSec}},
 		},
 		// standard display by default
-		current: 1,
+		current: defaultDisplayIndex,
 	}
 
 	// enrichments
@@ -50,6 +53,7 @@ var (
 			// no enrichment
 			{name: noOptions},
 			// per field enrichments
+			{name: "IP & Port", ids: []string{"SrcAddr", "SrcPort", "DstAddr", "DstPort"}},
 			{name: "Cluster", ids: []string{"ClusterName"}},
 			{name: "Zone", ids: []string{"SrcZone", "DstZone"}},
 			{name: "Host", ids: []string{"SrcK8S_HostIP", "DstK8S_HostIP", "SrcK8S_HostName", "DstK8S_HostName", "FlowDirection"}},
@@ -71,7 +75,7 @@ var (
 			}},
 		},
 		// resource enrichment by default
-		current: 6,
+		current: 7,
 	}
 )
 
