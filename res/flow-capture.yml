@@ -37,6 +37,8 @@ spec:
             value: ""
           - name: EXCLUDE_INTERFACES
             value: "lo"
+          - name: PREFERRED_INTERFACE_FOR_MAC_PREFIX
+            value: "0a:58=eth0"
           - name: SAMPLING
             value: "1"
           - name: ENABLE_RTT
