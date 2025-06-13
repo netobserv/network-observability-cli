@@ -119,13 +119,13 @@ function filters_usage {
 
 # specific filters for flows and metrics
 function flowsAndMetrics_filters_usage {
-  echo "  --interfaces:                 interfaces to monitor, comma separated                (default: n/a)"
-  echo "  --exclude_interfaces:         interfaces to exclude, comma separated                (default: lo)"
+  echo "  --interfaces:                 list of interfaces to monitor, comma separated        (default: n/a)"
+  echo "  --exclude_interfaces:         list of interfaces to exclude, comma separated        (default: lo)"
 }
 
 # specific filters for metrics
 function metrics_options {
-  echo "  --include_list:               list of metric names to generate                      (default: $includeList)"
+  echo "  --include_list:               list of metric names to generate, comma separated     (default: $includeList)"
 }
 
 function flows_usage {
