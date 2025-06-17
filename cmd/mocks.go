@@ -53,14 +53,12 @@ func MockForever() {
 		time.Sleep(1 * time.Second)
 	}
 
-	for _, port := range ports {
-		cc, err := grpc.ConnectClient("127.0.0.1", port)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for {
-			go sendMock(wait, cc.Client())
-			<-wait
-		}
+	cc, err := grpc.ConnectClient("127.0.0.1", port)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		go sendMock(wait, cc.Client())
+		<-wait
 	}
 }

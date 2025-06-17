@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gopacket/gopacket"
@@ -29,25 +28,12 @@ var pktCmd = &cobra.Command{
 }
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	go scanner()
-
 	captureType = "Packet"
-	wg := sync.WaitGroup{}
-	wg.Add(len(ports))
-	for i := range ports {
-		go func(idx int) {
-			defer wg.Done()
-			err := runPacketCaptureOnAddr(ports[idx], nodes[idx])
-			if err != nil {
-				// Only fatal error are returned
-				log.Fatal(err)
-			}
-		}(i)
-	}
-	wg.Wait()
+	go startPacketCollector()
+	createDisplay()
 }
 
-func runPacketCaptureOnAddr(port int, filename string) error {
+func startPacketCollector() {
 	if len(filename) > 0 {
 		log.Infof("Starting Packet Capture for %s...", filename)
 	} else {
@@ -59,10 +45,10 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 
 	err := os.MkdirAll("./output/pcap/", 0700)
 	if err != nil {
-		log.Errorf("Create directory failed: %v", err.Error())
-		log.Fatal(err)
+		log.Error("Create directory failed", err)
+		return
 	}
-	log.Trace("Created pcap folder")
+	log.Debug("Created pcap folder")
 
 	f, err := os.Create("./output/pcap/" + filename + ".pcapng")
 	if err != nil {
@@ -74,7 +60,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 	ngw, err := pcapgo.NewNgWriter(f, layers.LinkTypeEthernet)
 	if err != nil {
 		log.Error("Error while creating writer", err)
-		return nil
+		return
 	}
 	defer ngw.Flush()
 	log.Trace("Wrote pcap section header & interface")
@@ -82,17 +68,18 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 	flowPackets := make(chan *genericmap.Flow, 100)
 	collector, err := grpc.StartCollector(port, flowPackets)
 	if err != nil {
-		return fmt.Errorf("StartCollector failed: %w", err)
+		log.Error("StartCollector failed", err)
+		return
 	}
-	log.Trace("Started collector")
+	log.Debug("Started collector")
 	collectorStarted = true
 
 	go func() {
 		<-utils.ExitChannel()
-		log.Trace("Ending collector")
+		log.Debug("Ending collector")
 		close(flowPackets)
 		collector.Close()
-		log.Trace("Done")
+		log.Debug("Done")
 	}()
 
 	var srcComment strings.Builder
@@ -103,34 +90,28 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
-			log.Tracef("Received first %d packets", len(flowPackets))
+			log.Debugf("Received first %d packets", len(flowPackets))
 		}
 
 		if stopReceived {
-			log.Trace("Stop received")
-			return nil
+			log.Debug("Stop received")
+			return
 		}
 
 		genericMap := config.GenericMap{}
 		err := json.Unmarshal(fp.GenericMap.Value, &genericMap)
 		if err != nil {
 			log.Error("Error while parsing json", err)
-			return nil
+			return
 		}
 		if !captureStarted {
-			log.Tracef("Parsed genericMap %v", genericMap)
+			log.Debugf("Parsed genericMap %v", genericMap)
 		}
 
 		data, ok := genericMap["Data"]
 		if ok {
-			// clear generic map data
-			delete(genericMap, "Data")
-			if !captureStarted {
-				log.Trace("Deleted data")
-			}
-
 			// display as flow async
-			go AppendFlow(genericMap)
+			go AppendFlow(genericMap.Copy())
 
 			// Get capture timestamp
 			ts := time.Unix(int64(genericMap["Time"].(float64)), 0)
@@ -139,13 +120,13 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			b, err := base64.StdEncoding.DecodeString(data.(string))
 			if err != nil {
 				log.Error("Error while decoding data", err)
-				return nil
+				return
 			}
 			// sort generic map keys to keep comments ordered
 			keys := make([]string, 0, len(genericMap))
 			for k := range genericMap {
 				// ignore time field
-				if k == "Time" {
+				if k == "Time" || k == "Data" {
 					continue
 				}
 				keys = append(keys, k)
@@ -159,7 +140,8 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			commonComment.WriteString("Common\n")
 			for _, k := range keys {
 				id := toColID(k)
-				str := fmt.Sprintf("%s: %v\n", ToTableColName(id), toDisplayValue(genericMap, id, k))
+				// add name and value without truncating text
+				str := fmt.Sprintf("%s: %v\n", toColName(id, 0), toColValue(genericMap, id, 0))
 				if strings.HasPrefix(k, "Src") {
 					srcComment.WriteString(str)
 				} else if strings.HasPrefix(k, "Dst") {
@@ -182,7 +164,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 				},
 			}); err != nil {
 				log.Error("Error while writing packet", err)
-				return nil
+				return
 			}
 
 			srcComment.Reset()
@@ -190,7 +172,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 			commonComment.Reset()
 		} else {
 			if !captureStarted {
-				log.Trace("Data is missing")
+				log.Debug("Data is missing")
 			}
 
 			// display as flow async
@@ -202,7 +184,7 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		if totalBytes > maxBytes {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
-				return nil
+				return
 			}
 		}
 
@@ -212,11 +194,10 @@ func runPacketCaptureOnAddr(port int, filename string) error {
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
-				return nil
+				return
 			}
 		}
 
 		captureStarted = true
 	}
-	return nil
 }
