@@ -78,13 +78,18 @@ function features_usage {
   echo "  --sampling:                   value that defines the ratio of packets being sampled (default: 1)"
 }
 
-# collector options
-function collector_usage {
+# flow and packets collector options
+function flowsAndPackets_collector_usage {
   echo "  --background:                 run in background                                     (default: false)"
   echo "  --copy:                       copy the output files locally                         (default: prompt)"
   echo "  --log-level:                  components logs                                       (default: info)"
   echo "  --max-time:                   maximum capture time                                  (default: 5m)"
   echo "  --max-bytes:                  maximum capture bytes                                 (default: 50000000 = 50MB)"
+}
+
+# fmetrics collector options
+function metrics_collector_usage {
+  echo "  --max-time:                   maximum capture time                                  (default: 1h)"
 }
 
 # script options
@@ -143,7 +148,7 @@ function flows_usage {
   flowsAndMetrics_filters_usage
   echo
   echo "options:"
-  collector_usage
+  flowsAndPackets_collector_usage
   script_usage
 }
 
@@ -158,7 +163,7 @@ function packets_usage {
   filters_usage
   echo
   echo "options:"
-  collector_usage
+  flowsAndPackets_collector_usage
   script_usage
 }
 
@@ -176,6 +181,7 @@ function metrics_usage {
   filters_usage
   flowsAndMetrics_filters_usage
   echo "options:"
+  metrics_collector_usage
   script_usage
   metrics_options
   echo
