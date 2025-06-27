@@ -127,6 +127,10 @@ github.com/onsi/ginkgo/v2 v2.23.4 h1:ktYTpKJAVZnDT4VjxSbiBenUjmlL/5QkBEocaWXiQus
 github.com/onsi/ginkgo/v2 v2.23.4/go.mod h1:Bt66ApGPBFzHyR+JO10Zbt0Gsp4uWxu5mIOTusL46e8=
 github.com/onsi/gomega v1.37.0 h1:CdEG8g0S133B4OswTDC/5XPSzE1OeP29QOioj2PID2Y=
 github.com/onsi/gomega v1.37.0/go.mod h1:8D9+Txp43QWKhM24yyOBEdpkzN8FvJyAwecBgsU4KU0=
+github.com/openshift/api v0.0.0-20231120222239-b86761094ee3 h1:nLhV2lbWrJ3E3hx0/97G3ZZvppC67cNwo+CLp7/PAbA=
+github.com/openshift/api v0.0.0-20231120222239-b86761094ee3/go.mod h1:qNtV0315F+f8ld52TLtPvrfivZpdimOzTi3kn9IVbtU=
+github.com/openshift/client-go v0.0.0-20231121143148-910ca30a1a9a h1:4FVrw8hz0Wb3izbf6JfOEK+pJTYpEvteRR73mCh2g/A=
+github.com/openshift/client-go v0.0.0-20231121143148-910ca30a1a9a/go.mod h1:arApQobmOjZqtxw44TwnQdUCH+t9DgZ8geYPFqksHws=
 github.com/ovn-org/libovsdb v0.7.1-0.20240820095311-ce1951614a20 h1:OoDvzyaK7F/ZANIIFOgb4Haj7mye3Hle0fYZZNdidSs=
 github.com/ovn-org/libovsdb v0.7.1-0.20240820095311-ce1951614a20/go.mod h1:dJbxEaalQl83nn904K32FaMjlH/qOObZ0bj4ejQ78AI=
 github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250227173154-57a2590a1d16 h1:t4NphP6IIFRe5/2NGc1MD0e72pLYIzaG9YizrYyk84Y=
