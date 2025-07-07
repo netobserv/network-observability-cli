@@ -51,7 +51,7 @@ ifneq ($(CLEAN_BUILD),)
 	LDFLAGS ?= -X 'main.buildVersion=${VERSION}-${BUILD_SHA}' -X 'main.buildDate=${BUILD_DATE}'
 endif
 
-GOLANGCI_LINT_VERSION = v1.64.6
+GOLANGCI_LINT_VERSION = v2.2.1
 BASH_VERSION = v4.2.0
 YQ_VERSION = v4.45.1
 
@@ -83,7 +83,9 @@ prepare:
 .PHONY: prereqs
 prereqs: ## Install dependencies
 	@echo "### Installing dependencies"
-	GOFLAGS="" go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+	test -f ./bin/golangci-lint-${GOLANGCI_LINT_VERSION} || ( \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s ${GOLANGCI_LINT_VERSION} \
+		&& mv ./bin/golangci-lint ./bin/golangci-lint-${GOLANGCI_LINT_VERSION})
 	GOFLAGS="" go install github.com/mikefarah/yq/v4@${YQ_VERSION}
 
 .PHONY: vendors
@@ -134,7 +136,7 @@ fmt: ## Run go fmt against code.
 .PHONY: lint
 lint: prereqs ## Lint code
 	@echo "### Linting code"
-	golangci-lint run ./... --timeout=3m
+	./bin/golangci-lint-${GOLANGCI_LINT_VERSION} run ./... --timeout=3m
 ifeq (, $(shell which shellcheck))
 	@echo "### shellcheck could not be found, skipping shell lint"
 else

@@ -74,6 +74,7 @@ func toDirection(genericMap config.GenericMap, fieldName string) string {
 	return emptyText
 }
 
+//nolint:cyclop
 func toProto(genericMap config.GenericMap, fieldName string) string {
 	v, ok := genericMap[fieldName]
 	if ok {
