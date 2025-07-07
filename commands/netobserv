@@ -255,7 +255,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
     echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
     echo "Use 'oc netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
     echo
-    echo "Capture end automatically in $maxTime"
+    echo "Capture ends automatically in $maxTime"
   fi
 else
   echo "Unexpected exception occured on $command"
