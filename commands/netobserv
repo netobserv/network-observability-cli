@@ -253,7 +253,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
     echo "Metrics capture started."
     consoleURL="$(oc whoami --show-console)"
     echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
-    echo "Use 'oc netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
+    echo "Use '${K8S_CLI_BIN} netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
     echo
     echo "Capture ends automatically in $maxTime"
   fi
