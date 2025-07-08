@@ -247,7 +247,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
     echo " - '${K8S_CLI_BIN} netobserv copy' to copy the generated files locally"
     echo " - '${K8S_CLI_BIN} netobserv cleanup' to remove the netobserv components"
     echo
-    echo "Capture end automatically in $maxTime or reaching $maxBytes bytes"
+    echo "Capture ends automatically in $maxTime or reaching $maxBytes bytes"
   else
     runBackground="true"
     echo "Metrics capture started."
