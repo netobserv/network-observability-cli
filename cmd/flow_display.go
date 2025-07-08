@@ -215,7 +215,7 @@ func updateTable() {
 
 func writeBuf(s string, a ...any) {
 	if len(a) > 0 {
-		outputBuffer.WriteString(fmt.Sprintf(s, a...))
+		fmt.Fprintf(outputBuffer, s, a...)
 	} else {
 		outputBuffer.WriteString(s)
 	}

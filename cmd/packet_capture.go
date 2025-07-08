@@ -47,6 +47,7 @@ func runPacketCapture(_ *cobra.Command, _ []string) {
 	wg.Wait()
 }
 
+//nolint:cyclop
 func runPacketCaptureOnAddr(port int, filename string) error {
 	if len(filename) > 0 {
 		log.Infof("Starting Packet Capture for %s...", filename)

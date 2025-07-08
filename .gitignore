@@ -8,3 +8,4 @@ cli-e2e-img.tar
 e2e/commands
 e2e/output
 e2e-logs
+bin/
