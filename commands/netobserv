@@ -85,7 +85,7 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options=( "$@" )
+    options=("$@")
     # run flows command
     command="flows"
     ;;
@@ -99,7 +99,7 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options=( "$@" )
+    options=("$@")
     # run packets command
     command="packets"
     ;;
@@ -113,9 +113,11 @@ case "$1" in
     ;;
   *)
     shift # remove first argument
-    options=( "$@" )
+    options=("$@")
     # run metrics command
     command="metrics"
+    # override maxTime default to 1h for metrics only
+    maxTime="1h"
     ;;
   esac
   ;;
@@ -181,7 +183,7 @@ trap cleanup EXIT
 
 setup
 
-if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics" ]]; then
   # convert options to string
   optionStr="${options//--/}"
   optionStr="${optionStr// /|}"
@@ -189,7 +191,7 @@ if [[ "$command" == "flows" || "$command" == "packets" ]]; then
   # prepare commands & args
   runCommand="sleep infinity"
   execCommand="/network-observability-cli get-$command ${optionStr:+"--options" "${optionStr}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
-  if [[ "$runBackground" == "true" || "$outputYAML" == "true" ]]; then
+  if [[ "$runBackground" == "true" || "$outputYAML" == "true" || "$command" == "metrics" ]]; then
     runCommand="bash -c \"$execCommand && $runCommand\""
     execCommand=""
   fi
@@ -199,18 +201,29 @@ if [[ "$command" == "flows" || "$command" == "packets" ]]; then
   --command -- $runCommand"
 
   if [[ "$outputYAML" == "true" ]]; then
-    echo "Check the generated YAML file in output folder."
-    echo
-    echo "You can create $command agents by executing:"
-    echo " ${K8S_CLI_BIN} apply -f ./output/${command}_capture_${dateName}.yml"
-    echo
-    echo "Then create the collector using:"
-    echo -e " $cmd"
-    echo
-    echo "And follow its progression with:"
-    echo " ${K8S_CLI_BIN} logs collector -n $namespace -f"
-    echo
-    exit 0
+    if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+      echo "Check the generated YAML file in output folder."
+      echo
+      echo "You can create $command agents by executing:"
+      echo " ${K8S_CLI_BIN} apply -f ./output/${command}_capture_${dateName}.yml"
+      echo
+      echo "Then create the collector using:"
+      echo -e " $cmd"
+      echo
+      echo "And follow its progression with:"
+      echo " ${K8S_CLI_BIN} logs collector -n $namespace -f"
+      echo
+      exit 0
+    else
+      echo "Check the generated YAML file in output folder."
+      echo
+      echo "You can create metrics agents by executing:"
+      echo " ${K8S_CLI_BIN} apply -f ./output/${command}_capture_${dateName}.yml"
+      echo
+      echo "Then open your OCP Console and search for netobserv-cli dashboard"
+      echo
+      exit 0
+    fi
   fi
 
   echo "Running network-observability-cli get-$cmd... "
@@ -228,28 +241,22 @@ if [[ "$command" == "flows" || "$command" == "packets" ]]; then
       -n $namespace \
       collector \
       -- $execCommand
-  else
+  elif [[ "$command" == "flows" || "$command" == "packets" ]]; then
     echo "Background capture started. Use:"
     echo " - '${K8S_CLI_BIN} netobserv follow' to see the capture progress"
     echo " - '${K8S_CLI_BIN} netobserv copy' to copy the generated files locally"
     echo " - '${K8S_CLI_BIN} netobserv cleanup' to remove the netobserv components"
-  fi
-elif [ "$command" = "metrics" ]; then
-  if [[ "$outputYAML" == "true" ]]; then
-    echo "Check the generated YAML file in output folder."
     echo
-    echo "You can create metrics agents by executing:"
-    echo " ${K8S_CLI_BIN} apply -f ./output/${command}_capture_${dateName}.yml"
-    echo 
-    echo "Then open your OCP Console and search for netobserv-cli dashboard"
+    echo "Capture ends automatically in $maxTime or reaching $maxBytes bytes"
+  else
+    runBackground="true"
+    echo "Metrics capture started."
+    consoleURL="$(oc whoami --show-console)"
+    echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
+    echo "Use '${K8S_CLI_BIN} netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
     echo
-    exit 0
+    echo "Capture ends automatically in $maxTime"
   fi
-  runBackground="true"
-  echo "Metrics capture started."
-  consoleURL="$(oc whoami --show-console)"
-  echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
-  echo "Use 'oc netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
 else
   echo "Unexpected exception occured on $command"
   exit 1

@@ -168,6 +168,7 @@ $ oc netobserv metrics [<option>]
 |--enable_udn_mapping|        enable User Defined Network mapping                   | false
 |--get-subnets|               get subnets information                               | false
 |--sampling|                  value that defines the ratio of packets being sampled | 1
+|--max-time|                  maximum capture time                                  | 1h
 |--action|                    filter action                                         | Accept
 |--cidr|                      filter CIDR                                           | 0.0.0.0/0
 |--direction|                 filter direction                                      | -
