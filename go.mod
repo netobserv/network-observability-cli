@@ -1,21 +1,20 @@
 module github.com/netobserv/network-observability-cli
 
-go 1.23.0
+go 1.23.3
 
-toolchain go1.23.5
+toolchain go1.23.6
 
 require (
-	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
-	github.com/fatih/color v1.18.0
+	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/gopacket/gopacket v1.3.2-0.20250513021322-b23ac340366c
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/navidys/tvxwidgets v0.11.1
 	github.com/netobserv/flowlogs-pipeline v1.9.0-crc1
 	github.com/netobserv/netobserv-ebpf-agent v1.9.0-crc0
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
 	github.com/openshift/client-go v0.0.0-20231121143148-910ca30a1a9a
-	github.com/rodaine/table v1.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -24,6 +23,13 @@ require (
 )
 
 require github.com/openshift/api v0.0.0-20231120222239-b86761094ee3 // indirect
+
+require (
+	github.com/gdamore/encoding v1.0.1 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -47,12 +53,11 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jmhobbs/tview-hexview v0.0.0-20230122051941-38d407ce0567
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -62,10 +67,11 @@ require (
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250227173154-57a2590a1d16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.22.0 // indirect
+	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.64.0 // indirect
+	github.com/prometheus/common v0.64.0
 	github.com/prometheus/procfs v0.16.1 // indirect
+	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
 	github.com/segmentio/kafka-go v0.4.48 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/vladimirvivien/gexe v0.5.0
