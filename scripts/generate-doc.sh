@@ -66,7 +66,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |===
 | Option | Description | Default"
 features_usage
-collector_usage
+flowsAndPackets_collector_usage
 filters_usage
 flowsAndMetrics_filters_usage
 echo -e "|==="
@@ -92,7 +92,7 @@ $ oc netobserv packets [<option>]
 [cols=\"1,1,1\",options=\"header\"]
 |===
 | Option | Description | Default"
-collector_usage
+flowsAndPackets_collector_usage
 filters_usage
 echo -e "|==="
 # packets example
@@ -117,6 +117,7 @@ $ oc netobserv metrics [<option>]
 |===
 | Option | Description | Default"
 features_usage
+metrics_collector_usage
 filters_usage
 metrics_options
 flowsAndMetrics_filters_usage

@@ -74,11 +74,14 @@ func init() {
 		os.Exit(0)
 	}()
 
-	// IPFIX flow
+	// flow
 	rootCmd.AddCommand(flowCmd)
 
 	// packet
 	rootCmd.AddCommand(pktCmd)
+
+	// metrics
+	rootCmd.AddCommand(metricCmd)
 }
 
 func onInit() {

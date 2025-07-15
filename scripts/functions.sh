@@ -970,8 +970,13 @@ function check_args_and_apply() {
       filter=${filter/$key=$maxTime/}
       ;;
     *max-bytes) # Max bytes
-      maxBytes=$value
-      filter=${filter/$key=$maxBytes/}
+      if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+        maxBytes=$value
+        filter=${filter/$key=$maxBytes/}
+      else 
+        echo "--max-bytes is invalid option for metrics"
+        exit 1
+      fi
       ;;
     *node-selector) # Node selector
       if [[ $value == *":"* ]]; then
