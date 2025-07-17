@@ -10,7 +10,7 @@ require (
 	github.com/gopacket/gopacket v1.3.2-0.20250513021322-b23ac340366c
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.28
-	github.com/netobserv/flowlogs-pipeline v1.9.0-crc1
+	github.com/netobserv/flowlogs-pipeline v1.9.1-community
 	github.com/netobserv/netobserv-ebpf-agent v1.9.1-community
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.37.0
@@ -23,7 +23,10 @@ require (
 	sigs.k8s.io/e2e-framework v0.6.0
 )
 
-require github.com/openshift/api v0.0.0-20231120222239-b86761094ee3 // indirect
+require (
+	github.com/netsampler/goflow2 v1.3.7 // indirect
+	github.com/openshift/api v0.0.0-20231120222239-b86761094ee3 // indirect
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
