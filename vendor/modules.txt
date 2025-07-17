@@ -132,7 +132,7 @@ github.com/mwitkow/go-conntrack
 # github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
 ## explicit
 github.com/mxk/go-flowrate/flowrate
-# github.com/netobserv/flowlogs-pipeline v1.9.0-crc1
+# github.com/netobserv/flowlogs-pipeline v1.9.1-community
 ## explicit; go 1.23.0
 github.com/netobserv/flowlogs-pipeline/pkg/api
 github.com/netobserv/flowlogs-pipeline/pkg/config
@@ -143,6 +143,15 @@ github.com/netobserv/flowlogs-pipeline/pkg/utils
 # github.com/netobserv/netobserv-ebpf-agent v1.9.1-community
 ## explicit; go 1.23.0
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils
+# github.com/netsampler/goflow2 v1.3.7
+## explicit; go 1.18
+github.com/netsampler/goflow2/decoders/netflow
+github.com/netsampler/goflow2/decoders/netflow/templates
+github.com/netsampler/goflow2/decoders/netflowlegacy
+github.com/netsampler/goflow2/decoders/sflow
+github.com/netsampler/goflow2/decoders/utils
+github.com/netsampler/goflow2/pb
+github.com/netsampler/goflow2/producer
 # github.com/onsi/ginkgo/v2 v2.23.4
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
