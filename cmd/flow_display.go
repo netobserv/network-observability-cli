@@ -98,31 +98,31 @@ func updateTable() {
 		writeBuf("\033[?7l")
 	}
 
-	writeBuf("Running network-observability-cli as %s Capture\n", captureType)
-	writeBuf("Log level: %s ", logLevel)
-	writeBuf("Duration: %s ", currentTime().Sub(startupTime).Round(time.Second))
-	writeBuf("Capture size: %s\n", sizestr.ToString(totalBytes))
+	writeBuff("Running network-observability-cli as %s Capture\n", captureType)
+	writeBuff("Log level: %s ", logLevel)
+	writeBuff("Duration: %s ", currentTime().Sub(startupTime).Round(time.Second))
+	writeBuff("Capture size: %s\n", sizestr.ToString(totalBytes))
 	if len(strings.TrimSpace(options)) > 0 {
-		writeBuf("Options: %s\n", options)
+		writeBuff("Options: %s\n", options)
 	}
 
 	if totalBytes > 0 {
 		if strings.Contains(options, "background=true") {
-			writeBuf("Showing last: %d\n", showCount)
-			writeBuf("Display: %s\n", display.getCurrentItem().name)
-			writeBuf("Enrichment: %s\n", enrichment.getCurrentItem().name)
+			writeBuff("Showing last: %d\n", showCount)
+			writeBuff("Display: %s\n", display.getCurrentItem().name)
+			writeBuff("Enrichment: %s\n", enrichment.getCurrentItem().name)
 		} else {
-			writeBuf("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", showCount)
-			writeBuf("Display: %s Use Left / Right keyboard arrows to cycle views\n", display.getCurrentItem().name)
-			writeBuf("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", enrichment.getCurrentItem().name)
+			writeBuff("Showing last: %d Use Up / Down keyboard arrows to increase / decrease limit\n", showCount)
+			writeBuff("Display: %s Use Left / Right keyboard arrows to cycle views\n", display.getCurrentItem().name)
+			writeBuff("Enrichment: %s Use Page Up / Page Down keyboard keys to cycle enrichment scopes\n", enrichment.getCurrentItem().name)
 		}
 
 		if display.getCurrentItem().name == rawDisplay {
 			outputBuffer.WriteString("Raw flow logs:\n")
 			for _, flow := range lastFlows {
-				writeBuf("%v\n", flow)
+				writeBuff("%v\n", flow)
 			}
-			writeBuf("%s\n", strings.Repeat("-", 500))
+			writeBuff("%s\n", strings.Repeat("-", 500))
 		} else {
 			// recreate table from scratch
 			headerFmt := color.New(color.BgHiBlue, color.Bold).SprintfFunc()
@@ -199,7 +199,7 @@ func updateTable() {
 			writeBuf(keyboardError)
 		} else {
 			if len(regexes) > 0 {
-				writeBuf("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
+				writeBuff("Live table filter: %s Press enter to match multiple regexes at once\n", regexes)
 			} else {
 				writeBuf("Type anything to filter incoming flows in view\n")
 			}
@@ -213,12 +213,12 @@ func updateTable() {
 	}
 }
 
-func writeBuf(s string, a ...any) {
-	if len(a) > 0 {
-		fmt.Fprintf(outputBuffer, s, a...)
-	} else {
-		outputBuffer.WriteString(s)
-	}
+func writeBuf(s string) {
+	outputBuffer.WriteString(s)
+}
+
+func writeBuff(s string, a ...any) {
+	fmt.Fprintf(outputBuffer, s, a...)
 }
 
 func printBuf() {
