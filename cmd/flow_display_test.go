@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,20 +9,16 @@ import (
 
 func TestFlowDisplayRefreshDelay(t *testing.T) {
 	setup(t)
-	assert.Nil(t, outputBuffer)
+	assert.Empty(t, getTableRows())
 
 	parseGenericMapAndAppendFlow([]byte(`{"TimeFlowEndMs": 1709741962017}`))
-	assert.Nil(t, outputBuffer)
+	assert.Empty(t, getTableRows())
 
-	updateTable()
-	rows := strings.Split(outputBuffer.String(), "\n")
-
-	assert.Equal(t, 5, len(rows))
-	assert.Equal(t, `Running network-observability-cli as Flow Capture`, rows[0])
-	assert.Equal(t, `Log level: info Duration: 0s Capture size: 0B`, rows[1])
-	assert.Empty(t, rows[2])
-	assert.Empty(t, rows[3])
-	assert.Equal(t, `Collector is waiting for messages... Please wait.`, rows[4])
+	updateTableAndSuggestions()
+	rows := getTableRows()
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src Kind       Dst Kind       Src Name            Dst Name            Src Namespace       Dst Namespace       Interfaces     Interface Dirs Node Dir       L3 Protocol    L3 DSCP        Bytes     Packets   ", rows[0])
+	assert.Equal(t, "17:19:22.017000     n/a            n/a            n/a                 n/a                 n/a                 n/a                 n/a            n/a            n/a            n/a            n/a            n/a       n/a       ", rows[1])
 }
 
 func TestFlowDisplayDefaultDisplay(t *testing.T) {
@@ -31,22 +26,13 @@ func TestFlowDisplayDefaultDisplay(t *testing.T) {
 
 	parseGenericMapAndAppendFlow([]byte(sampleFlow))
 	tickTimeAndAddBytes()
-	updateTable()
+	updateTableAndSuggestions()
 
 	// get table output as string
-	rows := strings.Split(outputBuffer.String(), "\n")
-
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `Running network-observability-cli as Flow Capture`, rows[0])
-	assert.Equal(t, `Log level: info Duration: 1s Capture size: 1B`, rows[1])
-	assert.Equal(t, `Showing last: 20 Use Up / Down keyboard arrows to increase / decrease limit`, rows[2])
-	assert.Equal(t, `Display: Standard Use Left / Right keyboard arrows to cycle views`, rows[3])
-	assert.Equal(t, `Enrichment: Resource Use Page Up / Page Down keyboard keys to cycle enrichment scopes`, rows[4])
-	assert.Equal(t, `End Time         Src Kind    Dst Kind    Src Name         Dst Name         Src Namespace    Dst Namespace     Interfaces       Interface Dirs  Node Dir    L3 Layer Protocol  L3 Layer DSCP  Bytes  Packets  `, rows[5])
-	assert.Equal(t, `17:25:28.703000  Pod         Pod         src-pod          dst-pod          first-namespace  second-namespace  f18b970c2ce8fdd  Egress          Ingress     TCP                Standard       456B   5        `, rows[6])
-	assert.Equal(t, `---------------  ----------  ----------  ---------------  ---------------  ---------------  ---------------   ----------       ----------      ----------  ----------         ----------     -----  -----    `, rows[7])
-	assert.Equal(t, `Type anything to filter incoming flows in view`, rows[8])
-	assert.Empty(t, rows[9])
+	rows := getTableRows()
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src Kind       Dst Kind       Src Name            Dst Name            Src Namespace       Dst Namespace       Interfaces     Interface Dirs Node Dir       L3 Protocol    L3 DSCP        Bytes     Packets   ", rows[0])
+	assert.Equal(t, "17:25:28.703000     Pod            Pod            src-pod             dst-pod             first-namespace     second-namespace    f18b970c2ce8fddEgress         Ingress        TCP            Standard       456B      5         ", rows[1])
 }
 
 func TestFlowDisplayMultipleFlows(t *testing.T) {
@@ -79,33 +65,22 @@ func TestFlowDisplayMultipleFlows(t *testing.T) {
 		tickTimeAndAddBytes()
 	}
 
-	updateTable()
+	updateTableAndSuggestions()
 
 	// get table output as string
-	rows := strings.Split(outputBuffer.String(), "\n")
-	// table must display only 29 rows (20 flows (max displayed limit) + headers + footer + empty line)
-	assert.Equal(t, 29, len(rows))
-	// header
-	assert.Equal(t, `Running network-observability-cli as Flow Capture`, rows[0])
-	assert.Equal(t, `Log level: info Duration: 1s Capture size: 41B`, rows[1])
-	assert.Equal(t, `Showing last: 20 Use Up / Down keyboard arrows to increase / decrease limit`, rows[2])
-	assert.Equal(t, `Display: Standard Use Left / Right keyboard arrows to cycle views`, rows[3])
-	assert.Equal(t, `Enrichment: None Use Page Up / Page Down keyboard keys to cycle enrichment scopes`, rows[4])
+	rows := getTableRows()
+	// table must display only 31 rows (30 flows (max displayed limit) + 1 columns row)
+	assert.Equal(t, 31, len(rows))
 	// table columns
-	assert.Equal(t, `End Time         Src IP      Src Port    Dst IP      Dst Port    Interfaces  Interface Dirs  Node Dir    L3 Layer Protocol  L3 Layer DSCP  Bytes  Packets  `, rows[5])
-	// first flow is the 21st one that came to the display
-	assert.Equal(t, `00:00:21.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            21KB   1        `, rows[6])
-	assert.Equal(t, `00:00:22.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            22KB   1        `, rows[7])
-	assert.Equal(t, `00:00:23.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            23KB   1        `, rows[8])
-	assert.Equal(t, `00:00:24.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            24KB   1        `, rows[9])
-	assert.Equal(t, `00:00:25.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            25KB   1        `, rows[10])
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Node Dir       L3 Protocol    L3 DSCP        Bytes     Packets   ", rows[0])
+	// first flow is the 11th one that came to the display
+	assert.Equal(t, "00:00:11.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            11KB      1         ", rows[1])
+	assert.Equal(t, "00:00:12.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            12KB      1         ", rows[2])
+	assert.Equal(t, "00:00:13.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            13KB      1         ", rows[3])
+	assert.Equal(t, "00:00:14.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            14KB      1         ", rows[4])
+	assert.Equal(t, "00:00:15.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            15KB      1         ", rows[5])
 	// last flow is the 40th one
-	assert.Equal(t, `00:00:40.000000  10.0.0.5    n/a         10.0.0.6    n/a         n/a         n/a             n/a         n/a                n/a            40KB   1        `, rows[25])
-	assert.Equal(t, `---------------  ----------  ----------  ----------  ----------  ----------  ----------      ----------  ----------         ----------     -----  -----    `, rows[26])
-	// footer
-	assert.Equal(t, `Type anything to filter incoming flows in view`, rows[27])
-	assert.Empty(t, rows[28])
-
+	assert.Equal(t, "00:00:40.000000     10.0.0.5       n/a            10.0.0.6       n/a            n/a            n/a            n/a            n/a            n/a            40KB      1         ", rows[30])
 }
 
 func TestFlowDisplayAdvancedDisplay(t *testing.T) {
@@ -130,61 +105,49 @@ func TestFlowDisplayAdvancedDisplay(t *testing.T) {
 		setup(t)
 		parseGenericMapAndAppendFlow([]byte(sampleFlow))
 		tickTimeAndAddBytes()
-		updateTable()
+		updateTableAndSuggestions()
 
 		// get table output per rows
-		return strings.Split(outputBuffer.String(), "\n")
+		return getTableRows()
 	}
 
 	// set display without enrichment
 	rows := getRows(allOptions, []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay}, noOptions, []string{})
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  Dropped Bytes  Dropped Packets  Drop State         Drop Cause                            Drop Flags  DNS Id  DNS Latency  DNS RCode  DNS Error  Flow RTT  Network Events                                                      `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          32B            1                TCP_INVALID_STATE  SKB_DROP_REASON_TCP_INVALID_SEQUENCE  16          31319   1ms          NoError    0          10µs      Allowed by default allow from local node policy, direction Ingress  `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      -----          -----            ----------         ----------                            ----------  -----   -----        -----      -----      -----     ---------------                                                     `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Drop BytesDrop…     Drop State     Drop Cause     Drop Flags     DNS Id    DNS…      DNS RCode DNS Error Flow RTT  Network Events      ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         32B       1         TCP_INVALID…   SKB_DROP…      16             31319     1ms       NoError   0         10µs      Allowed by default… ", rows[1])
 
 	// set display to standard
 	rows = getRows(standardDisplay, []string{}, noOptions, []string{})
 
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  Node Dir    L3 Layer Protocol  L3 Layer DSCP  Bytes  Packets  `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          Ingress     TCP                Standard       456B   5        `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      ----------  ----------         ----------     -----  -----    `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Node Dir       L3 Protocol    L3 DSCP        Bytes     Packets   ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         Ingress        TCP            Standard       456B      5         ", rows[1])
 
 	// set display to pktDrop
 	rows = getRows("Packet drops", []string{pktDropFeature}, noOptions, []string{})
 
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  Dropped Bytes  Dropped Packets  Drop State         Drop Cause                            Drop Flags  `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          32B            1                TCP_INVALID_STATE  SKB_DROP_REASON_TCP_INVALID_SEQUENCE  16          `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      -----          -----            ----------         ----------                            ----------  `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Drop BytesDrop…     Drop State     Drop Cause     Drop Flags     ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         32B       1         TCP_INVALID…   SKB_DROP…      16             ", rows[1])
 
 	// set display to DNS
 	rows = getRows("DNS", []string{dnsFeature}, noOptions, []string{})
 
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  DNS Id  DNS Latency  DNS RCode  DNS Error  `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          31319   1ms          NoError    0          `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      -----   -----        -----      -----      `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs DNS Id    DNS…      DNS RCode DNS Error ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         31319     1ms       NoError   0         ", rows[1])
 
 	// set display to RTT
 	rows = getRows("RTT", []string{rttFeature}, noOptions, []string{})
 
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  Flow RTT  `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          10µs      `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      -----     `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Flow RTT  ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         10µs      ", rows[1])
 
 	// set display to NetworkEvents
 	rows = getRows("Network events", []string{networkEventsDisplay}, noOptions, []string{})
-	assert.Equal(t, 10, len(rows))
-	assert.Equal(t, `End Time         Src IP       Src Port    Dst IP       Dst Port    Interfaces       Interface Dirs  Network Events                                                      `, rows[5])
-	assert.Equal(t, `17:25:28.703000  10.128.0.29  1234        10.129.0.26  5678        f18b970c2ce8fdd  Egress          Allowed by default allow from local node policy, direction Ingress  `, rows[6])
-	assert.Equal(t, `---------------  ----------   ----------  ----------   ----------  ----------       ----------      ---------------                                                     `, rows[7])
-	assert.Empty(t, rows[9])
+	assert.Equal(t, 2, len(rows))
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Network Events      ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         Allowed by default… ", rows[1])
 }
