@@ -17,6 +17,9 @@ import (
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 
 	"github.com/gdamore/tcell/v2"
+	// Package extended contains an extended set of terminal descriptions
+	// to have a better chance of working by default
+	_ "github.com/gdamore/tcell/v2/terminfo/extended"
 	"github.com/rivo/tview"
 )
 
