@@ -3,13 +3,10 @@ package cmd
 import (
 	"encoding/base64"
 	"fmt"
-	"os"
-	"os/signal"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	hexview "github.com/jmhobbs/tview-hexview"
@@ -114,14 +111,8 @@ func createDisplay() {
 		EnableMouse(true)
 
 	errAdvancedDisplay = app.Run()
-	if errAdvancedDisplay == nil {
-		go hearbeat()
-	} else {
-		log.Debugf("Can't display advanced UI: %v", errAdvancedDisplay)
-		app = nil
-		done := make(chan os.Signal, 1)
-		signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-		<-done
+	if errAdvancedDisplay != nil {
+		log.Fatalf("Can't display advanced UI: %v", errAdvancedDisplay)
 	}
 }
 

@@ -43,7 +43,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 	g.It("OCP-73458: Verify regexes filters are applied", g.Label("Regexes"), func() {
 		// capture upto 500KB
 		nsfilter := "openshift-monitoring"
-		cliArgs := []string{"flows", fmt.Sprintf("--query=SrcK8S_Namespace=~\"%s\"", nsfilter), "--copy=true", "--max-bytes=500000"}
+		cliArgs := []string{"flows", fmt.Sprintf("--query=SrcK8S_Namespace=~\"%s\"", nsfilter), "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Run()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -77,7 +77,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 
 	g.It("OCP-82597: Verify sampling value of 1 is applied in captured flows", g.Label("Sampling"), func() {
 		// capture upto 500KB with sampling=1
-		cliArgs := []string{"flows", "--sampling=1", "--copy=true", "--max-bytes=500000"}
+		cliArgs := []string{"flows", "--sampling=1", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Run()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -113,7 +113,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Serial, func() 
 
 	g.It("OCP-82597: Verify excluded interface genev_sys_6081 does not appear in captured flows", g.Label("ExcludeInterface"), func() {
 		// capture upto 500KB with exclude_interfaces=genev_sys_6081
-		cliArgs := []string{"flows", "--exclude_interfaces=genev_sys_6081", "--copy=true", "--max-bytes=500000"}
+		cliArgs := []string{"flows", "--exclude_interfaces=genev_sys_6081", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		cmd := exec.Command(ocNetObservBinPath, cliArgs...)
 		err := cmd.Run()
 		o.Expect(err).NotTo(o.HaveOccurred())
