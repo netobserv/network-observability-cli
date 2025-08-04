@@ -55,23 +55,22 @@ func TestFlowCapture(t *testing.T) {
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", StartupDate+"-flowOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-flowOutput"), []byte(output), 0666)
 			assert.Nil(t, err)
 
-			str := string(output)
-			assert.NotEmpty(t, str)
+			assert.NotEmpty(t, output)
 			// ensure script setup is fine
-			assert.Contains(t, str, "namespace/netobserv-cli created")
-			assert.Contains(t, str, "serviceaccount/netobserv-cli created")
-			assert.Contains(t, str, "service/collector created")
-			assert.Contains(t, str, "daemonset.apps/netobserv-cli created")
-			assert.Contains(t, str, "pod/collector created")
-			assert.Contains(t, str, "pod/collector condition met")
+			assert.Contains(t, output, "namespace/netobserv-cli created")
+			assert.Contains(t, output, "serviceaccount/netobserv-cli created")
+			assert.Contains(t, output, "service/collector created")
+			assert.Contains(t, output, "daemonset.apps/netobserv-cli created")
+			assert.Contains(t, output, "pod/collector created")
+			assert.Contains(t, output, "pod/collector condition met")
 			// check that CLI is running
-			assert.Contains(t, str, "Starting Flow Capture...")
-			assert.Contains(t, str, "Started collector")
+			assert.Contains(t, output, "Starting Flow Capture...")
+			assert.Contains(t, output, "Started collector")
 			// check that script terminated
-			assert.Contains(t, str, "command terminated")
+			assert.Contains(t, output, "command terminated")
 			return ctx
 		},
 	).Assess("check downloaded output flow files",
@@ -129,23 +128,22 @@ func TestPacketCapture(t *testing.T) {
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", StartupDate+"-packetOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-packetOutput"), []byte(output), 0666)
 			assert.Nil(t, err)
 
-			str := string(output)
-			assert.NotEmpty(t, str)
+			assert.NotEmpty(t, output)
 			// ensure script setup is fine
-			assert.Contains(t, str, "namespace/netobserv-cli created")
-			assert.Contains(t, str, "serviceaccount/netobserv-cli created")
-			assert.Contains(t, str, "service/collector created")
-			assert.Contains(t, str, "daemonset.apps/netobserv-cli created")
-			assert.Contains(t, str, "pod/collector created")
-			assert.Contains(t, str, "pod/collector condition met")
+			assert.Contains(t, output, "namespace/netobserv-cli created")
+			assert.Contains(t, output, "serviceaccount/netobserv-cli created")
+			assert.Contains(t, output, "service/collector created")
+			assert.Contains(t, output, "daemonset.apps/netobserv-cli created")
+			assert.Contains(t, output, "pod/collector created")
+			assert.Contains(t, output, "pod/collector condition met")
 			// check that CLI is running
-			assert.Contains(t, str, "Starting Packet Capture...")
-			assert.Contains(t, str, "Started collector")
+			assert.Contains(t, output, "Starting Packet Capture...")
+			assert.Contains(t, output, "Started collector")
 			// check that script terminated
-			assert.Contains(t, str, "command terminated")
+			assert.Contains(t, output, "command terminated")
 			return ctx
 		},
 	).Assess("check downloaded output pcap files",
