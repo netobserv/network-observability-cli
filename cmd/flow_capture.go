@@ -23,9 +23,9 @@ var flowCmd = &cobra.Command{
 }
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	captureType = "Flow"
+	capture = Flow
 	go startFlowCollector()
-	createDisplay()
+	createFlowDisplay()
 }
 
 func startFlowCollector() {
