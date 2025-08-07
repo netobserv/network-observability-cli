@@ -1,4 +1,4 @@
-//go:build int
+//go:build !e2e
 
 package integrationtests
 
