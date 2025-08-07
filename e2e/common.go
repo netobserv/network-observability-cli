@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"io"
 	"os/exec"
-	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -14,27 +13,123 @@ import (
 )
 
 const (
-	CommandTimeout = 60 * time.Second
+	StartCommandWait  = 30 * time.Second
+	RunCommandTimeout = 60 * time.Second
 )
 
 var (
 	StartupDate = time.Now().Format("20060102-150405")
 )
 
-// run command with tty support
-func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, error) {
-	cmdStr := path.Join("commands", commandName)
-	log.WithFields(logrus.Fields{"cmd": cmdStr, "arg": arg}).Info("running command")
+// start command with tty support and wait for some time before returning output
+// the command will keep running after this call
+func StartCommand(log *logrus.Entry, commandName string, arg ...string) (string, error) {
+	log.WithFields(logrus.Fields{"cmd": commandName, "arg": arg}).Info("Starting command")
 
-	log.Print("Executing command...")
-	cmd := exec.Command(cmdStr, arg...)
+	cmd := exec.Command(commandName, arg...)
 	cmd.Env = append(cmd.Environ(), "isE2E=true")
 
 	outPipe, _ := cmd.StdoutPipe()
 	errPipe, _ := cmd.StderrPipe()
 
-	timer := time.AfterFunc(CommandTimeout, func() {
-		log.Print("Terminating command...")
+	var sb strings.Builder
+	go func(_ io.ReadCloser) {
+		reader := bufio.NewReader(errPipe)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			sb.WriteString(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(errPipe)
+
+	go func(_ io.ReadCloser) {
+		reader := bufio.NewReader(outPipe)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			sb.WriteString(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(outPipe)
+
+	// start async
+	go func() {
+		log.Debug("Starting async ...")
+		_, err := pty.Start(cmd)
+		if err != nil {
+			log.Errorf("Start returned error: %v", err)
+		}
+	}()
+
+	log.Debugf("Waiting %v ...", StartCommandWait)
+	time.Sleep(StartCommandWait)
+
+	log.Debug("Returning result while command still running")
+	return sb.String(), nil
+}
+
+// run command with tty support and wait for stop
+func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, error) {
+	log.WithFields(logrus.Fields{"cmd": commandName, "arg": arg}).Info("Running command")
+
+	cmd := exec.Command(commandName, arg...)
+	cmd.Env = append(cmd.Environ(), "isE2E=true")
+
+	outPipe, _ := cmd.StdoutPipe()
+	errPipe, _ := cmd.StderrPipe()
+
+	var sb strings.Builder
+	go func(_ io.ReadCloser) {
+		reader := bufio.NewReader(errPipe)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			sb.WriteString(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(errPipe)
+
+	go func(_ io.ReadCloser) {
+		reader := bufio.NewReader(outPipe)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			sb.WriteString(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(outPipe)
+
+	log.Debug("Starting ...")
+	_, err := pty.Start(cmd)
+	if err != nil {
+		log.Errorf("Start returned error: %v", err)
+		return "", err
+	}
+
+	log.Debug("Waiting ...")
+	err = cmd.Wait()
+	if err != nil {
+		log.Errorf("Wait returned error: %v", err)
+	}
+
+	// TODO: find why this returns -1. That may be related to pty implementation
+	/*if cmd.ProcessState.ExitCode() != 0 {
+		return sb.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
+	}*/
+
+	return sb.String(), nil
+}
+
+// run command with tty support and terminate it after timeout
+// it will also simulate a keyboard input during the run
+func RunCommandAndTerminate(log *logrus.Entry, commandName string, arg ...string) (string, error) {
+	log.WithFields(logrus.Fields{"cmd": commandName, "arg": arg}).Info("Running command and terminate")
+
+	cmd := exec.Command(commandName, arg...)
+	cmd.Env = append(cmd.Environ(), "isE2E=true")
+
+	outPipe, _ := cmd.StdoutPipe()
+	errPipe, _ := cmd.StderrPipe()
+
+	timer := time.AfterFunc(RunCommandTimeout, func() {
+		log.Debug("Terminating command...")
 		err := cmd.Process.Signal(syscall.SIGTERM)
 		if err != nil {
 			log.Error(err)
@@ -61,13 +156,15 @@ func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, e
 		}
 	}(outPipe)
 
+	log.Debug("Starting ...")
 	in, err := pty.Start(cmd)
 	if err != nil {
-		panic(err)
+		log.Errorf("Start returned error: %v", err)
+		return "", err
 	}
 
 	timer = time.AfterFunc(30*time.Second, func() {
-		log.Print("Simulating keyboard typing...")
+		log.Debug("Simulating keyboard typing...")
 		_, err := in.Write([]byte("netobserv"))
 		if err != nil {
 			log.Error(err)
@@ -75,9 +172,16 @@ func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, e
 	})
 	defer timer.Stop()
 
-	if err := cmd.Wait(); err != nil {
-		return sb.String(), err
+	log.Debug("Waiting ...")
+	err = cmd.Wait()
+	if err != nil {
+		log.Errorf("Wait returned error: %v", err)
 	}
+
+	// TODO: find why this returns -1. That may be related to pty implementation
+	/*if cmd.ProcessState.ExitCode() != 0 {
+		return sb.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
+	}*/
 
 	return sb.String(), nil
 }

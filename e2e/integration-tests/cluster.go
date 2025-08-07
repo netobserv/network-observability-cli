@@ -1,3 +1,5 @@
+//go:build int
+
 package integrationtests
 
 import (
@@ -54,6 +56,14 @@ func getDaemonSet(clientset *kubernetes.Clientset, daemonset string, ns string) 
 	}
 
 	return ds, nil
+}
+
+func getNamespace(clientset *kubernetes.Clientset, name string) (*corev1.Namespace, error) {
+	namespace, err := clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return namespace, nil
 }
 
 func getNamespacePods(clientset *kubernetes.Clientset, namespace string, options *metav1.ListOptions) ([]string, error) {

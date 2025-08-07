@@ -179,7 +179,12 @@ case "$1" in
   ;;
 esac
 
-trap cleanup EXIT
+function onExit() {
+  cleanup
+  exit 0
+}
+
+trap onExit EXIT
 
 setup
 

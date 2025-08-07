@@ -1,24 +1,59 @@
+//go:build int
+
 package integrationtests
 
 import (
 	"context"
 	"io/fs"
-	"log"
 	"os"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/sirupsen/logrus"
 )
 
-func isCollectorReady(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, false, func(context.Context) (done bool, err error) {
+const (
+	PollInterval = 5 * time.Second
+	PollTimeout  = 10 * time.Minute
+)
+
+var (
+	clog = logrus.WithField("component", "cli")
+)
+
+func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
+		namespace, err := getNamespace(clientset, cliNS)
+		if exists {
+			if err != nil {
+				return false, err
+			}
+			return namespace != nil, err
+		} else if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func isCollector(clientset *kubernetes.Clientset, cliNS string, ready bool) (bool, error) {
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
 		collectorPod, err := getNamespacePods(clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
 		if err != nil {
 			return false, err
 		}
-		return len(collectorPod) > 0, nil
+		if ready {
+			return len(collectorPod) > 0, nil
+		}
+		return len(collectorPod) == 0, nil
 	})
 	if err != nil {
 		return false, err
@@ -27,8 +62,7 @@ func isCollectorReady(clientset *kubernetes.Clientset, cliNS string) (bool, erro
 }
 
 func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cliNS string) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, false, func(context.Context) (done bool, err error) {
-
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
 		cliDaemonset, err := getDaemonSet(clientset, daemonsetName, cliNS)
 		if err != nil {
 			return false, err
@@ -41,19 +75,35 @@ func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cli
 	return true, nil
 }
 
-func isCLIReady(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
-	collectorReady, err := isCollectorReady(clientset, cliNS)
+func isCLIRuning(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
+	namespaceCreated, err := isNamespace(clientset, cliNS, true)
 	if err != nil {
 		return false, err
 	}
-	log.Printf("Collector ready: %v", collectorReady)
+	clog.Debugf("Namespace created: %v", namespaceCreated)
+
 	daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
 	if err != nil {
 		return false, err
 	}
-	log.Printf("Daemonset ready: %v", daemonsetReady)
+	clog.Debugf("Daemonset ready: %v", daemonsetReady)
 
-	return collectorReady && daemonsetReady, nil
+	collectorReady, err := isCollector(clientset, cliNS, true)
+	if err != nil {
+		return false, err
+	}
+	clog.Debugf("Collector ready: %v", collectorReady)
+
+	return namespaceCreated && daemonsetReady && collectorReady, nil
+}
+
+func isCLIDone(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
+	collectorDone, err := isCollector(clientset, cliNS, false)
+	if err != nil {
+		return false, err
+	}
+	clog.Debugf("Collector done: %v", collectorDone)
+	return collectorDone, nil
 }
 
 // get latest flows.json file

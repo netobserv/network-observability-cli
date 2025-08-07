@@ -24,7 +24,7 @@ var (
 func TestFlowFiltersYAML(t *testing.T) {
 	f1 := features.New("flow yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "flows",
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "flows",
 				"--protocol=TCP",
 				"--port=8080",
 				"or",
@@ -120,7 +120,7 @@ func TestFlowFiltersYAML(t *testing.T) {
 func TestPacketFiltersYAML(t *testing.T) {
 	f1 := features.New("packet yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "packets",
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "packets",
 				"--node-selector=netobserv:true",
 				"--port=80",
 				"--yaml")
@@ -215,7 +215,7 @@ func TestPacketFiltersYAML(t *testing.T) {
 func TestMetricYAML(t *testing.T) {
 	f1 := features.New("metric yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "metrics", "--yaml")
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "metrics", "--yaml")
 			assert.Nil(t, err)
 
 			err = os.WriteFile(path.Join("output", StartupDate+"-metricYAMLOutput"), []byte(output), 0666)
