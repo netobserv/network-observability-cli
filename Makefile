@@ -118,6 +118,10 @@ tests-e2e: oc-commands ## Run e2e tests using kind cluster
 	$(OCI_BIN) save -o cli-e2e-img.tar ${IMAGE}
 	GOOS=$(GOOS) go test -p 1 -timeout 30m -v -mod vendor -tags e2e ./e2e/...
 
+.PHONY: tests-int
+tests-int: ## Run e2e integration tests. You need a running cluster connected
+	GOOS= go test -p 1 -timeout 30m -v -mod vendor ./e2e/integration-tests/...
+
 .PHONY: coverage-report
 coverage-report: ## Generate coverage report
 	@echo "### Generating coverage report"
