@@ -1,7 +1,7 @@
 ARG BUILDVERSION
 
 # Make kubectl & oc scripts available for copy
-FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c0.assembly.stream.el9 as ose-cli
+FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.19.0-202507291138.p0.g298429b.assembly.stream.el9 as ose-cli
 
 # Build the manager binary
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23 as builder
