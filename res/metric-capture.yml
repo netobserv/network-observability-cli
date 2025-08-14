@@ -54,6 +54,8 @@ spec:
           - name: FLOW_FILTER_RULES
             value: >-
               []
+          - name: TC_ATTACH_MODE
+            value: "any"
           - name: EXPORT
             value: "direct-flp"
           - name: FLP_CONFIG
