@@ -479,7 +479,6 @@ function edit_manifest() {
   fi
 
   if [[ $1 == "filter_"* && $1 != "filter_query" ]]; then
-    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_FLOW_FILTER\").value|=\"true\"" "$manifest"
     # add first filter in the array
     currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$manifest")
     if [[ $currentFilters == "[]" ]]; then
