@@ -15,12 +15,38 @@ func TestFormatTableRows(t *testing.T) {
 	err := json.Unmarshal([]byte(sampleFlow), &flow)
 	assert.Nil(t, err)
 
-	tableRow := ToTableRow(flow, []string{"EndTime", "SrcAddr", "DstAddr", "Bytes", "Packets", "FlowDirection", "Proto", "Dscp"})
-	assert.Equal(t, []interface{}{"17:25:28.703000", "10.128.0.29", "10.129.0.26", "456B", float64(5), "Ingress", "TCP", "Standard"}, tableRow)
+	// large fields
+	assert.Equal(t, "17:25:28.703000     ", toColValue(flow, "EndTime", toColWidth("EndTime")))
+	assert.Equal(t, "us-east-1d          ", toColValue(flow, "SrcZone", toColWidth("SrcZone")))
+	assert.Equal(t, "us-west-1a          ", toColValue(flow, "DstZone", toColWidth("DstZone")))
+	assert.Equal(t, "my-deployment       ", toColValue(flow, "SrcK8S_OwnerName", toColWidth("SrcK8S_OwnerName")))
+	assert.Equal(t, "my-statefulset      ", toColValue(flow, "DstK8S_OwnerName", toColWidth("DstK8S_OwnerName")))
+	assert.Equal(t, "src-pod             ", toColValue(flow, "SrcK8S_Name", toColWidth("SrcK8S_Name")))
+	assert.Equal(t, "dst-pod             ", toColValue(flow, "DstK8S_Name", toColWidth("DstK8S_Name")))
 
-	tableRow = ToTableRow(flow, []string{"SrcZone", "DstZone", "SrcK8S_HostName", "DstK8S_HostName", "SrcK8S_OwnerName", "DstK8S_OwnerName", "SrcK8S_Name", "DstK8S_Name"})
-	assert.Equal(t, []interface{}{"us-east-1d", "us-west-1a", "ip-XX-X-X-XX1.ec2.internal", "ip-XX-X-X-XX2.ec2.internal", "my-deployment", "my-statefulset", "src-pod", "dst-pod"}, tableRow)
+	// truncated
+	assert.Equal(t, "ip-XX-X-X-XX1.ec2.in…", toColValue(flow, "SrcK8S_HostName", toColWidth("SrcK8S_HostName")))
+	assert.Equal(t, "ip-XX-X-X-XX2.ec2.in…", toColValue(flow, "DstK8S_HostName", toColWidth("DstK8S_HostName")))
 
-	tableRow = ToTableRow(flow, []string{"PktDropBytes", "PktDropPackets", "PktDropLatestState", "PktDropLatestDropCause", "DNSLatency", "DNSResponseCode", "TimeFlowRttMs"})
-	assert.Equal(t, []interface{}{"32B", float64(1), "TCP_INVALID_STATE", "SKB_DROP_REASON_TCP_INVALID_SEQUENCE", "1ms", "NoError", "10µs"}, tableRow)
+	// skip truncate
+	assert.Equal(t, "ip-XX-X-X-XX1.ec2.internal", toColValue(flow, "SrcK8S_HostName", 0))
+	assert.Equal(t, "ip-XX-X-X-XX2.ec2.internal", toColValue(flow, "DstK8S_HostName", 0))
+
+	// medium
+	assert.Equal(t, "10.128.0.29    ", toColValue(flow, "SrcAddr", toColWidth("SrcAddr")))
+	assert.Equal(t, "10.129.0.26    ", toColValue(flow, "DstAddr", toColWidth("DstAddr")))
+	assert.Equal(t, "Ingress        ", toColValue(flow, "FlowDirection", toColWidth("FlowDirection")))
+	assert.Equal(t, "TCP            ", toColValue(flow, "Proto", toColWidth("Proto")))
+	assert.Equal(t, "Standard       ", toColValue(flow, "Dscp", toColWidth("Dscp")))
+	assert.Equal(t, "TCP_INVALID…   ", toColValue(flow, "PktDropLatestState", toColWidth("PktDropLatestState")))
+	assert.Equal(t, "SKB_DROP…      ", toColValue(flow, "PktDropLatestDropCause", toColWidth("PktDropLatestDropCause")))
+
+	// small
+	assert.Equal(t, "456B      ", toColValue(flow, "Bytes", toColWidth("Bytes")))
+	assert.Equal(t, "5         ", toColValue(flow, "Packets", toColWidth("Packets")))
+	assert.Equal(t, "32B       ", toColValue(flow, "PktDropBytes", toColWidth("PktDropBytes")))
+	assert.Equal(t, "1         ", toColValue(flow, "PktDropPackets", toColWidth("PktDropPackets")))
+	assert.Equal(t, "1ms       ", toColValue(flow, "DNSLatency", toColWidth("DNSLatency")))
+	assert.Equal(t, "NoError   ", toColValue(flow, "DNSResponseCode", toColWidth("DNSResponseCode")))
+	assert.Equal(t, "10µs      ", toColValue(flow, "TimeFlowRttMs", toColWidth("TimeFlowRttMs")))
 }

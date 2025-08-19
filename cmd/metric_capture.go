@@ -28,10 +28,6 @@ func runMetricCapture(_ *cobra.Command, _ []string) {
 		duration := now.Sub(startupTime)
 		if int(duration) > int(maxTime) {
 			log.Infof("Capture reached %s, exiting now...", maxTime)
-
-			if allowClear {
-				resetTerminal()
-			}
 			out, err := exec.Command("/oc-netobserv", "stop").Output()
 			if err != nil {
 				log.Fatal(err)

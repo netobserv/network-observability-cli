@@ -70,8 +70,7 @@ var (
 
 func TestDefaultArguments(t *testing.T) {
 	assert.Equal(t, "info", logLevel)
-	assert.Equal(t, []int{9999}, ports)
-	assert.Equal(t, []string{""}, nodes)
+	assert.Equal(t, 9999, port)
 	assert.Empty(t, options)
 }
 
@@ -83,12 +82,32 @@ func setup(t *testing.T) {
 	regexes = []string{}
 	lastFlows = []config.GenericMap{}
 
+	// clear previous table content
+	tableData = &TableData{
+		cols:  []string{},
+		flows: []config.GenericMap{},
+	}
+
 	// load config
 	err := LoadConfig()
 	assert.Equal(t, nil, err)
+}
 
-	allowClear = false
-	outputBuffer = nil
+func getTableRows() []string {
+	arr := []string{}
+	if len(tableData.cols) == 0 || len(tableData.flows) == 0 {
+		return arr
+	}
+
+	for i := range len(tableData.flows) + 1 {
+		str := ""
+		for j := range tableData.cols {
+			str += tableData.GetCell(i, j).Text
+		}
+		arr = append(arr, str)
+	}
+
+	return arr
 }
 
 func resetTime() {

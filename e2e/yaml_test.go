@@ -24,7 +24,7 @@ var (
 func TestFlowFiltersYAML(t *testing.T) {
 	f1 := features.New("flow yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "flows",
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "flows",
 				"--protocol=TCP",
 				"--port=8080",
 				"or",
@@ -32,18 +32,17 @@ func TestFlowFiltersYAML(t *testing.T) {
 				"--yaml")
 			assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", StartupDate+"-flowYAMLOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-flowYAMLOutput"), []byte(output), 0666)
 			assert.Nil(t, err)
 
-			str := string(output)
-			assert.NotEmpty(t, str)
+			assert.NotEmpty(t, output)
 			// ensure script setup is fine
-			assert.Contains(t, str, "creating netobserv-cli namespace")
-			assert.Contains(t, str, "creating service account")
-			assert.Contains(t, str, "creating collector service")
-			assert.Contains(t, str, "creating flow-capture agents")
+			assert.Contains(t, output, "creating netobserv-cli namespace")
+			assert.Contains(t, output, "creating service account")
+			assert.Contains(t, output, "creating collector service")
+			assert.Contains(t, output, "creating flow-capture agents")
 			// check CLI done successfully
-			assert.Contains(t, str, "Check the generated YAML file in output folder")
+			assert.Contains(t, output, "Check the generated YAML file in output folder")
 
 			return ctx
 		},
@@ -121,24 +120,23 @@ func TestFlowFiltersYAML(t *testing.T) {
 func TestPacketFiltersYAML(t *testing.T) {
 	f1 := features.New("packet yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "packets",
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "packets",
 				"--node-selector=netobserv:true",
 				"--port=80",
 				"--yaml")
 			assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", StartupDate+"-packetYAMLOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-packetYAMLOutput"), []byte(output), 0666)
 			assert.Nil(t, err)
 
-			str := string(output)
-			assert.NotEmpty(t, str)
+			assert.NotEmpty(t, output)
 			// ensure script setup is fine
-			assert.Contains(t, str, "creating netobserv-cli namespace")
-			assert.Contains(t, str, "creating service account")
-			assert.Contains(t, str, "creating collector service")
-			assert.Contains(t, str, "creating packet-capture agents")
+			assert.Contains(t, output, "creating netobserv-cli namespace")
+			assert.Contains(t, output, "creating service account")
+			assert.Contains(t, output, "creating collector service")
+			assert.Contains(t, output, "creating packet-capture agents")
 			// check CLI done successfully
-			assert.Contains(t, str, "Check the generated YAML file in output folder")
+			assert.Contains(t, output, "Check the generated YAML file in output folder")
 
 			return ctx
 		},
@@ -217,21 +215,20 @@ func TestPacketFiltersYAML(t *testing.T) {
 func TestMetricYAML(t *testing.T) {
 	f1 := features.New("metric yaml").Setup(
 		func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			output, err := RunCommand(ylog, "oc-netobserv", "metrics", "--yaml")
+			output, err := RunCommand(ylog, "commands/oc-netobserv", "metrics", "--yaml")
 			assert.Nil(t, err)
 
-			err = os.WriteFile(path.Join("output", StartupDate+"-metricYAMLOutput"), output, 0666)
+			err = os.WriteFile(path.Join("output", StartupDate+"-metricYAMLOutput"), []byte(output), 0666)
 			assert.Nil(t, err)
 
-			str := string(output)
-			assert.NotEmpty(t, str)
+			assert.NotEmpty(t, output)
 			// ensure script setup is fine
-			assert.Contains(t, str, "creating netobserv-cli namespace")
-			assert.Contains(t, str, "creating service account")
-			assert.Contains(t, str, "creating service monitor")
-			assert.Contains(t, str, "creating metric-capture agents")
+			assert.Contains(t, output, "creating netobserv-cli namespace")
+			assert.Contains(t, output, "creating service account")
+			assert.Contains(t, output, "creating service monitor")
+			assert.Contains(t, output, "creating metric-capture agents")
 			// check CLI done successfully
-			assert.Contains(t, str, "Check the generated YAML file in output folder.")
+			assert.Contains(t, output, "Check the generated YAML file in output folder.")
 
 			return ctx
 		},

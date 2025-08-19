@@ -17,8 +17,8 @@ import (
 var (
 	log      = logrus.New()
 	logLevel string
-	ports    []int
-	nodes    []string
+	port     int
+	filename string
 	options  string
 	maxTime  time.Duration
 	maxBytes int64
@@ -44,8 +44,6 @@ var (
 	captureEnded     = false
 	stopReceived     = false
 	useMocks         = false
-	keyboardError    = ""
-	allowClear       = true
 )
 
 // Execute executes the root command.
@@ -57,8 +55,8 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(onInit)
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "loglevel", "l", "info", "Log level")
-	rootCmd.PersistentFlags().IntSliceVarP(&ports, "ports", "", []int{9999}, "TCP ports to listen")
-	rootCmd.PersistentFlags().StringSliceVarP(&nodes, "nodes", "", []string{""}, "Node names per port (optionnal)")
+	rootCmd.PersistentFlags().IntVarP(&port, "port", "", 9999, "TCP port to listen")
+	rootCmd.PersistentFlags().StringVarP(&filename, "filename", "", "", "Output file name")
 	rootCmd.PersistentFlags().StringVarP(&options, "options", "", "", "Options(s)")
 	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
 	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
@@ -87,10 +85,6 @@ func init() {
 func onInit() {
 	lvl, _ := logrus.ParseLevel(logLevel)
 	log.SetLevel(lvl)
-
-	if len(nodes) != len(ports) {
-		log.Fatalf("specified nodes names doesn't match ports length")
-	}
 
 	err := LoadConfig()
 	if err != nil {
@@ -133,21 +127,15 @@ func showKernelVersion() {
 	}
 }
 
-func resetTerminal() {
-	// clear terminal to render table properly
-	fmt.Print("\x1bc")
-	// no wrap
-	fmt.Print("\033[?7l")
-}
-
 func onLimitReached() bool {
 	shouldExit := false
 	if !captureEnded {
+		captureEnded = true
+		if app != nil && errAdvancedDisplay == nil {
+			app.Stop()
+		}
 		if strings.Contains(options, "background=true") {
 			captureEnded = true
-			if allowClear {
-				resetTerminal()
-			}
 			out, err := exec.Command("/oc-netobserv", "stop").Output()
 			if err != nil {
 				log.Fatal(err)
