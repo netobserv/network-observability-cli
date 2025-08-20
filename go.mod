@@ -5,10 +5,11 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/gdamore/tcell/v2 v2.7.1
+	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/gopacket/gopacket v1.3.2-0.20250513021322-b23ac340366c
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.29
+	github.com/navidys/tvxwidgets v0.11.1
 	github.com/netobserv/flowlogs-pipeline v1.9.1-community
 	github.com/netobserv/netobserv-ebpf-agent v1.9.1-community
 	github.com/onsi/ginkgo/v2 v2.23.4
@@ -22,7 +23,7 @@ require (
 )
 
 require (
-	github.com/gdamore/encoding v1.0.0 // indirect
+	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/netsampler/goflow2 v1.3.7 // indirect
@@ -65,9 +66,9 @@ require (
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20250227173154-57a2590a1d16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.22.0 // indirect
+	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.65.0 // indirect
+	github.com/prometheus/common v0.65.0
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
 	github.com/segmentio/kafka-go v0.4.48 // indirect

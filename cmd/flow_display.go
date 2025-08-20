@@ -7,10 +7,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	hexview "github.com/jmhobbs/tview-hexview"
-	"github.com/jpillora/sizestr"
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 
 	"github.com/gdamore/tcell/v2"
@@ -27,10 +25,9 @@ type TableData struct {
 }
 
 const (
-	keepCount              = 100 // flows to keep in memory
-	defaultShowCount       = 30  // flows to display
-	defaultFramesPerSecond = 5   // frames per second
-	defaultExtraWidth      = 5   // additionnal column width
+	keepCount            = 100 // flows to keep in memory
+	defaultFlowShowCount = 30  // flows to display
+	defaultExtraWidth    = 5   // additionnal column width
 )
 
 var (
@@ -40,36 +37,26 @@ var (
 	suggestions     = []string{}
 	selectedColumns = []string{}
 
-	showCount       = defaultShowCount
-	framesPerSecond = defaultFramesPerSecond
-	extraWidth      = defaultExtraWidth
+	extraWidth = defaultExtraWidth
 
-	app         *tview.Application
-	pages       *tview.Pages
-	mainView    *tview.Flex
 	tableView   *tview.Table
 	filtersView *tview.Flex
 
-	durationText       = tview.NewTextView()
-	sizeText           = tview.NewTextView()
 	displayTextView    = tview.NewTextView()
 	enrichmentTextView = tview.NewTextView()
 
-	inputField      *tview.InputField
-	playPauseButton *tview.Button
+	inputField *tview.InputField
 
 	tableData = &TableData{
 		cols:  []string{},
 		flows: []config.GenericMap{},
 	}
-	showColumnsPopup   bool
-	paused             = false
-	selectedData       = []byte{}
-	focus              = "inputField"
-	errAdvancedDisplay error
+	selectedData = []byte{}
 )
 
-func createDisplay() {
+func createFlowDisplay() {
+	focus = "inputField"
+	showCount = defaultFlowShowCount
 	app = tview.NewApplication().
 		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			//nolint:exhaustive
@@ -110,25 +97,17 @@ func createDisplay() {
 		SetRoot(getPages(), true).
 		EnableMouse(true)
 
+	go hearbeat()
+
 	errAdvancedDisplay = app.Run()
 	if errAdvancedDisplay != nil {
 		log.Fatalf("Can't display advanced UI: %v", errAdvancedDisplay)
 	}
 }
 
-func getPages() *tview.Pages {
-	pages = tview.NewPages().AddPage("main", getMain(), true, true)
-
-	if showColumnsPopup {
-		pages = pages.AddPage("modal", getColumnsModal(), true, true)
-	}
-
-	return pages
-}
-
-func getMain() tview.Primitive {
+func getFlowMain() tview.Primitive {
 	mainView = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(getTop(), 4, 0, false)
+		AddItem(getFlowTop(), 4, 0, false)
 
 	mainView.AddItem(getTable(), 0, 1, focus == "table")
 
@@ -144,59 +123,14 @@ func getMain() tview.Primitive {
 	return mainView
 }
 
-func getTop() tview.Primitive {
+func getFlowTop() tview.Primitive {
 	flexView := tview.NewFlex().SetDirection(tview.FlexRow)
 
 	// info row
-	playPauseButton = tview.NewButton(getPlayPauseText()).SetSelectedFunc(func() {
-		pause(!paused)
-	})
-	infoRow := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewTextView().SetText(getCaptureTypeText()), 0, 1, false).
-		AddItem(playPauseButton, 10, 0, false)
-	if logLevel != "info" {
-		infoRow.AddItem(tview.NewTextView().SetText(getLogLevelText()), 0, 1, false)
-	}
-	infoRow.
-		AddItem(durationText.SetText(getDurationText()).SetTextAlign(tview.AlignCenter), 0, 1, false).
-		AddItem(sizeText.SetText(getSizeText()).SetTextAlign(tview.AlignCenter), 0, 1, false)
-	if logLevel == "debug" {
-		fpsText := tview.NewTextView().SetText(getFPSText()).SetTextAlign(tview.AlignCenter)
-		infoRow.
-			AddItem(fpsText, 0, 1, false).
-			AddItem(tview.NewButton("-").SetSelectedFunc(func() {
-				if framesPerSecond > 1 {
-					framesPerSecond--
-				}
-				fpsText.SetText(getFPSText())
-			}), 5, 0, false).
-			AddItem(tview.NewButton("+").SetSelectedFunc(func() {
-				framesPerSecond++
-				fpsText.SetText(getFPSText())
-			}), 5, 0, false)
-	}
-	infoRow.AddItem(tview.NewTextView(), 16, 0, false)
-	flexView.AddItem(infoRow, 1, 0, false)
+	flexView.AddItem(getInfoRow(), 1, 0, false)
 
 	// flows count
-	flowCountTextView := tview.NewTextView().SetText(getShowCountText())
-	flowsCountRow := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(flowCountTextView, 0, 1, false).
-		AddItem(tview.NewButton("-").SetSelectedFunc(func() {
-			if showCount > 5 {
-				showCount--
-			}
-			flowCountTextView.SetText(getShowCountText())
-			updateScreen()
-		}), 5, 0, false).
-		AddItem(tview.NewButton("+").SetSelectedFunc(func() {
-			showCount++
-			flowCountTextView.SetText(getShowCountText())
-			updateScreen()
-		}), 5, 0, false).
-		AddItem(tview.NewTextView(), 0, 2, false)
-	flowsCountRow.AddItem(tview.NewTextView(), 16, 0, false)
-	flexView.AddItem(flowsCountRow, 1, 0, false)
+	flexView.AddItem(getCountRow(), 1, 0, false)
 
 	// columns row containing cycles (display, enrichment) and custom columns picker
 	columnsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -252,7 +186,7 @@ func getTop() tview.Primitive {
 	// add cycles and custom columns modal button
 	columnsRow.AddItem(cyclesCol, 0, 1, false)
 	columnsRow.AddItem(tview.NewButton(" Manage columns ").SetSelectedFunc(func() {
-		showColumnsPopup = true
+		showPopup = true
 		app.SetRoot(getPages(), true)
 	}), 16, 0, false)
 	flexView.AddItem(columnsRow, 2, 0, false)
@@ -486,27 +420,8 @@ func getColumnsModal() tview.Primitive {
 	return getModal(content, 50, 30)
 }
 
-// Returns a new primitive which puts the provided primitive in the center and
-// sets its size to the given width and height.
-func getModal(p tview.Primitive, width, height int) tview.Primitive {
-	return tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			AddItem(p, height, 1, true).
-			AddItem(nil, 0, 1, false), width, 1, true).
-		AddItem(nil, 0, 1, false)
-}
-
-func getCaptureTypeText() string {
-	return fmt.Sprintf("%s Capture", captureType)
-}
-
-func getPlayPauseText() string {
-	if paused {
-		return "⏸︎"
-	}
-	return "⏵︎"
+func getcaptureText() string {
+	return fmt.Sprintf("%s Capture", capture)
 }
 
 func getTableTitle() string {
@@ -536,21 +451,8 @@ func getDisplayText() string {
 	return fmt.Sprintf("Display: %s\n", display.getCurrentItem().name)
 }
 
-func getShowCountText() string {
+func getFlowShowCountText() string {
 	return fmt.Sprintf("Showing last: %d\n", showCount)
-}
-
-func getFPSText() string {
-	return fmt.Sprintf("FPS: %d", framesPerSecond)
-}
-
-func getSizeText() string {
-	return fmt.Sprintf("Capture size: %s", sizestr.ToString(totalBytes))
-}
-
-func getDurationText() string {
-	duration := currentTime().Sub(startupTime)
-	return fmt.Sprintf("Duration: %s ", duration.Round(time.Second))
 }
 
 func AppendFlow(genericMap config.GenericMap) {
@@ -572,7 +474,7 @@ func AppendFlow(genericMap config.GenericMap) {
 
 		// sort flows according to time
 		sort.Slice(lastFlows, func(i, j int) bool {
-			if captureType == "Flow" {
+			if capture == Flow {
 				return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
 			}
 			return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
@@ -587,32 +489,9 @@ func AppendFlow(genericMap config.GenericMap) {
 	}
 }
 
-func hearbeat() {
-	for {
-		if captureEnded {
-			return
-		}
-
-		updateStatusTexts()
-		updateTableAndSuggestions()
-
-		// refresh
-		if app != nil {
-			app.Draw()
-		}
-
-		time.Sleep(time.Second / time.Duration(framesPerSecond))
-	}
-}
-
 func updateDisplayEnrichmentTexts() {
 	displayTextView.SetText(getDisplayText())
 	enrichmentTextView.SetText(getEnrichmentText())
-}
-
-func updateStatusTexts() {
-	durationText.SetText(getDurationText())
-	sizeText.SetText(getSizeText())
 }
 
 func getCols() []string {
@@ -739,19 +618,6 @@ func updateTableAndSuggestions() {
 			}
 		}
 	}
-}
-
-func updateScreen() {
-	if app != nil {
-		showColumnsPopup = false
-		app.SetRoot(getPages(), true)
-	}
-}
-
-func pause(pause bool) {
-	paused = pause
-	playPauseButton.SetLabel(getPlayPauseText())
-	updateScreen()
 }
 
 func selectData(data []byte) {
