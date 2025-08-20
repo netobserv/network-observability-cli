@@ -81,6 +81,7 @@ func setup(t *testing.T) {
 	// clear filters and previous flows
 	regexes = []string{}
 	lastFlows = []config.GenericMap{}
+	showCount = defaultFlowShowCount
 
 	// clear previous table content
 	tableData = &TableData{
