@@ -195,14 +195,24 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
 
   # prepare commands & args
   runCommand="sleep infinity"
-  execCommand="/network-observability-cli get-$command ${optionStr:+"--options" "${optionStr}"} --loglevel $logLevel --maxtime $maxTime --maxbytes $maxBytes"
-  if [[ "$runBackground" == "true" || "$outputYAML" == "true" || "$command" == "metrics" ]]; then
+  execCommand="/network-observability-cli get-$command${optionStr:+" --options" "${optionStr}"} --loglevel $logLevel --maxtime $maxTime"
+  if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+    execCommand="$execCommand --maxbytes $maxBytes"
+  else 
+    copy="false"
+  fi
+  
+  if [[ "$runBackground" == "true" || "$outputYAML" == "true" ]]; then
     runCommand="bash -c \"$execCommand && $runCommand\""
     execCommand=""
   fi
+
+  # override extra configs
+  overrides="'{\"spec\":{\"serviceAccount\": \"netobserv-cli\"}}'"
+
   cmd="${K8S_CLI_BIN} run -n $namespace collector \\
   --image=$img --image-pull-policy='Always' --restart='Never' \\
-  --overrides='{\"spec\": {\"serviceAccount\": \"netobserv-cli\"}}' \\
+  --overrides=$overrides \\
   --command -- $runCommand"
 
   if [[ "$outputYAML" == "true" ]]; then
@@ -231,7 +241,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
     fi
   fi
 
-  echo "Running network-observability-cli get-$cmd... "
+  echo "Running collector $cmd... "
   eval "$cmd"
 
   ${K8S_CLI_BIN} wait \
@@ -242,10 +252,12 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
   captureStarted=true
 
   if [ -n "${execCommand}" ]; then
-    ${K8S_CLI_BIN} exec -i --tty \
+    echo "Executing collector command... "
+    cmd="${K8S_CLI_BIN} exec -i --tty \
       -n $namespace \
       collector \
-      -- $execCommand
+      -- $execCommand"
+    eval "$cmd"
   elif [[ "$command" == "flows" || "$command" == "packets" ]]; then
     echo "Background capture started. Use:"
     echo " - '${K8S_CLI_BIN} netobserv follow' to see the capture progress"
@@ -258,9 +270,9 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
     echo "Metrics capture started."
     consoleURL="$(oc whoami --show-console)"
     echo "Open ${consoleURL}/monitoring/dashboards/netobserv-cli to see generated metrics."
-    echo "Use '${K8S_CLI_BIN} netobserv stop' to stop the collection and 'oc netobserv cleanup' to remove everything."
+    echo "Use '${K8S_CLI_BIN} netobserv stop' to stop the collection and '${K8S_CLI_BIN} netobserv cleanup' to remove everything."
     echo
-    echo "Capture ends automatically in $maxTime"
+    echo "Capture end automatically in $maxTime"
   fi
 else
   echo "Unexpected exception occured on $command"

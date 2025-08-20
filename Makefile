@@ -98,7 +98,7 @@ vendors: ## Refresh vendors directory.
 .PHONY: compile
 compile: ## Build the binary
 	@echo "### Compiling project"
-	GOARCH=${GOARCH} go build -mod vendor -a -o $(OUTPUT)
+	GOARCH=${GOARCH} go build ${BUILD_FLAGS} -mod vendor -o $(OUTPUT)
 
 .PHONY: test
 test: ## Test code using go test

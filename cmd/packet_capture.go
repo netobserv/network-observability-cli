@@ -34,9 +34,9 @@ var (
 )
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	captureType = "Packet"
+	capture = Packet
 	go startPacketCollector()
-	createDisplay()
+	createFlowDisplay()
 }
 
 //nolint:cyclop
