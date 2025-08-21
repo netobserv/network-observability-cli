@@ -519,6 +519,15 @@ func toColName(id string, width int) string {
 	return ellipsizeAndPad(replacer.Replace(name), width)
 }
 
+func toMetricName(query string, width int) string {
+	name := query
+	// remove prefixes
+	name = strings.ReplaceAll(name, "on_demand_netobserv_", "")
+	// remove times
+	name = strings.ReplaceAll(name, "[2m]", "")
+	return ellipsizeAndPad(replacer.Replace(name), width)
+}
+
 func toColValue(genericMap config.GenericMap, id string, width int) string {
 	// convert column id to its field accordingly
 	fieldName := toFieldName(id)
@@ -528,7 +537,7 @@ func toColValue(genericMap config.GenericMap, id string, width int) string {
 	case rawDisplay:
 		outputStr = fmt.Sprintf("%v", genericMap)
 	case "StartTime", "EndTime":
-		if captureType == "Flow" {
+		if capture == Flow {
 			outputStr = toTimeString(genericMap, "TimeFlowEndMs")
 		} else {
 			outputStr = toTimeString(genericMap, "Time")
