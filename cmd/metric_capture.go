@@ -17,7 +17,16 @@ var metricCmd = &cobra.Command{
 }
 
 var (
-	client *api.Client
+	client           *api.Client
+	selectedDuration = 0
+	durations        = []string{"5m", "10m", "30m", "1h", "6h"}
+	metricCounts     = map[string]int{
+		"5m":  60,
+		"10m": 70,
+		"30m": 80,
+		"1h":  90,
+		"6h":  100,
+	}
 )
 
 func runMetricCapture(c *cobra.Command, _ []string) {
@@ -86,10 +95,13 @@ func queryGraph(ctx context.Context, client api.Client, index int) {
 func queryProm(ctx context.Context, client api.Client, promQL string) (*Query, *Matrix) {
 	now := currentTime()
 
-	ran := 5 * time.Minute
+	ran, err := time.ParseDuration(durations[selectedDuration])
+	if err != nil {
+		log.Fatal(err)
+	}
 	end := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
 	start := end.Add(-ran)
-	step := ran / time.Duration(showCount)
+	step := time.Duration(ran.Nanoseconds() / int64(showCount))
 
 	// update query with start / end / step
 	query := Query{

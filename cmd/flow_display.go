@@ -130,7 +130,7 @@ func getFlowTop() tview.Primitive {
 	flexView.AddItem(getInfoRow(), 1, 0, false)
 
 	// flows count
-	flexView.AddItem(getCountRow(), 1, 0, false)
+	flexView.AddItem(getCountRow(true), 1, 0, false)
 
 	// columns row containing cycles (display, enrichment) and custom columns picker
 	columnsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
@@ -186,7 +186,7 @@ func getFlowTop() tview.Primitive {
 	// add cycles and custom columns modal button
 	columnsRow.AddItem(cyclesCol, 0, 1, false)
 	columnsRow.AddItem(tview.NewButton(" Manage columns ").SetSelectedFunc(func() {
-		showPopup = true
+		popup = PopupColumns
 		app.SetRoot(getPages(), true)
 	}), 16, 0, false)
 	flexView.AddItem(columnsRow, 2, 0, false)

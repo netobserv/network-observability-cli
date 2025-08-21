@@ -12,18 +12,28 @@ const (
 	defaultFramesPerSecond = 5 // frames per second
 )
 
+type PopupState int
+
+const (
+	PopupHidden PopupState = iota
+	PopupColumns
+	PopupPanels
+	PopupTimeRange
+)
+
 var (
 	app             *tview.Application
 	pages           *tview.Pages
 	mainView        *tview.Flex
 	playPauseButton *tview.Button
 
-	durationText = tview.NewTextView()
-	sizeText     = tview.NewTextView()
+	durationText  = tview.NewTextView()
+	sizeText      = tview.NewTextView()
+	countTextView = tview.NewTextView()
 
 	showCount          = 1
 	framesPerSecond    = defaultFramesPerSecond
-	showPopup          bool
+	popup              PopupState
 	paused             = false
 	errAdvancedDisplay error
 	focus              = ""
@@ -33,13 +43,13 @@ func getPages() *tview.Pages {
 	if capture == Metric {
 		pages = tview.NewPages().AddPage("main", getMetricMain(), true, true)
 
-		if showPopup {
+		if popup == PopupPanels {
 			pages = pages.AddPage("modal", getMetricsModal(), true, true)
 		}
 	} else {
 		pages = tview.NewPages().AddPage("main", getFlowMain(), true, true)
 
-		if showPopup {
+		if popup == PopupColumns {
 			pages = pages.AddPage("modal", getColumnsModal(), true, true)
 		}
 	}
@@ -70,9 +80,7 @@ func getInfoRow() tview.Primitive {
 		infoRow.AddItem(tview.NewTextView().SetText(getLogLevelText()), 0, 1, false)
 	}
 	infoRow.AddItem(durationText.SetText(getDurationText()).SetTextAlign(tview.AlignCenter), 0, 1, false)
-	if capture != Metric {
-		infoRow.AddItem(sizeText.SetText(getSizeText()).SetTextAlign(tview.AlignCenter), 0, 1, false)
-	}
+	infoRow.AddItem(sizeText.SetText(getSizeText()).SetTextAlign(tview.AlignCenter), 0, 1, false)
 	if logLevel == "debug" {
 		fpsText := tview.NewTextView().SetText(getFPSText()).SetTextAlign(tview.AlignCenter)
 		infoRow.
@@ -92,8 +100,8 @@ func getInfoRow() tview.Primitive {
 	return infoRow
 }
 
-func getCountRow() tview.Primitive {
-	countTextView := tview.NewTextView().SetText(getShowCountText())
+func getCountRow(useSpacer bool) *tview.Flex {
+	countTextView.SetText(getShowCountText())
 	countRow := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(countTextView, 0, 1, false).
 		AddItem(tview.NewButton("-").SetSelectedFunc(func() {
@@ -117,7 +125,9 @@ func getCountRow() tview.Primitive {
 			updateScreen()
 		}), 5, 0, false).
 		AddItem(tview.NewTextView(), 0, 2, false)
-	countRow.AddItem(tview.NewTextView(), 16, 0, false)
+	if useSpacer {
+		countRow.AddItem(tview.NewTextView(), 16, 0, false)
+	}
 	return countRow
 }
 
@@ -145,7 +155,10 @@ func getDurationText() string {
 }
 
 func getSizeText() string {
-	return fmt.Sprintf("Capture size: %s", sizestr.ToString(totalBytes))
+	if capture != Metric {
+		return fmt.Sprintf("Capture size: %s", sizestr.ToString(totalBytes))
+	}
+	return ""
 }
 
 func updateStatusTexts() {
@@ -183,7 +196,7 @@ func pause(pause bool) {
 
 func updateScreen() {
 	if app != nil {
-		showPopup = false
+		popup = PopupHidden
 		app.SetRoot(getPages(), true)
 	}
 }
