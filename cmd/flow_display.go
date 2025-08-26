@@ -130,7 +130,7 @@ func getFlowTop() tview.Primitive {
 	flexView.AddItem(getInfoRow(), 1, 0, false)
 
 	// flows count
-	flexView.AddItem(getCountRow(), 1, 0, false)
+	flexView.AddItem(getCountRow(true), 1, 0, false)
 
 	// columns row containing cycles (display, enrichment) and custom columns picker
 	columnsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
