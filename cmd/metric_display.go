@@ -14,8 +14,7 @@ import (
 
 const (
 	// 24h hh:mm:ss: 14:23:20
-	HHMMSS24h              = "15:04:05"
-	defaultMetricShowCount = 150
+	HHMMSS24h = "15:04:05"
 )
 
 type Graph struct {
@@ -64,7 +63,7 @@ var (
 )
 
 func createMetricDisplay() {
-	showCount = defaultMetricShowCount
+	updateShowMetricCount()
 	updateGraphs(false)
 
 	app = tview.NewApplication().
@@ -97,12 +96,24 @@ func createMetricDisplay() {
 func getMetricTop() tview.Primitive {
 	topView := tview.NewFlex().SetDirection(tview.FlexRow)
 	topView.AddItem(getInfoRow(), 1, 0, false)
-	topView.AddItem(getCountRow(), 1, 0, false)
+	countRow := getCountRow(false)
+	// add time range dropdown
+	countRow.AddItem(tview.NewDropDown().
+		SetLabel("Time range ").
+		SetOptions(durations, nil).
+		SetCurrentOption(selectedDuration).
+		SetSelectedFunc(func(_ string, index int) {
+			selectedDuration = index
+			updateShowMetricCount()
+			updateGraphs(true)
+		}).
+		SetFieldWidth(5), 16, 0, false)
+	topView.AddItem(countRow, 1, 0, false)
 
 	// panels row containing cycles and custom panels picker
 	panelsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
 
-	// display
+	// panels
 	panelsRow.AddItem(panelsTextView, 0, 1, false)
 	if len(selectedPanels) == 0 {
 		panelsRow.
@@ -126,15 +137,22 @@ func getMetricTop() tview.Primitive {
 			}), 10, 0, false)
 	}
 	panelsRow.AddItem(tview.NewTextView(), 0, 2, false)
-	updatePanels(false)
+	if !paused {
+		updatePanels(false)
+	}
 
-	// add cycles and custom columns modal button
+	// add panels modal button
 	panelsRow.AddItem(tview.NewButton(" Manage panels ").SetSelectedFunc(func() {
 		showPopup = true
 		app.SetRoot(getPages(), true)
 	}), 16, 0, false)
 	topView.AddItem(panelsRow, 1, 0, false)
 	return topView
+}
+
+func updateShowMetricCount() {
+	showCount = metricCounts[durations[selectedDuration]]
+	countTextView.SetText(getShowCountText())
 }
 
 func getGraphs() tview.Primitive {
@@ -318,35 +336,33 @@ func updatePanels(query bool) {
 }
 
 func updatePlots() {
-	if !paused {
-		for index := range graphs {
-			if graphs[index].Plot != nil {
-				graphs[index].Plot.SetXAxisLabelFunc(func(i int) string {
-					return graphs[index].Query.Range.Start.Add(time.Duration(i) * graphs[index].Query.Range.Step).Format(HHMMSS24h)
+	for index := range graphs {
+		if graphs[index].Plot != nil {
+			graphs[index].Plot.SetXAxisLabelFunc(func(i int) string {
+				return graphs[index].Query.Range.Start.Add(time.Duration(i) * graphs[index].Query.Range.Step).Format(HHMMSS24h)
+			})
+
+			if len(graphs[index].Labels) > 0 {
+				graphs[index].Plot.SetFocusFunc(func() {
+					mainView.AddItem(getLegends(graphs[index].Query.PromQL, graphs[index].Labels, graphs[index].Legends, graphs[index].Data), len(graphs[index].Legends)+3, 0, false)
 				})
+				graphs[index].Plot.SetBlurFunc(func() {
+					if legendView != nil {
+						mainView.RemoveItem(legendView)
+					}
+				})
+			}
 
-				if len(graphs[index].Labels) > 0 {
-					graphs[index].Plot.SetFocusFunc(func() {
-						mainView.AddItem(getLegends(graphs[index].Query.PromQL, graphs[index].Labels, graphs[index].Legends, graphs[index].Data), len(graphs[index].Legends)+3, 0, false)
-					})
-					graphs[index].Plot.SetBlurFunc(func() {
-						if legendView != nil {
-							mainView.RemoveItem(legendView)
-						}
-					})
-				}
-
-				if graphs[index].Data != nil {
-					graphs[index].Plot.SetData(graphs[index].Data)
-				}
+			if graphs[index].Data != nil {
+				graphs[index].Plot.SetData(graphs[index].Data)
 			}
 		}
 	}
 }
 
 func appendMetrics(query *Query, matrix *Matrix, index int) {
-	// Skip if query / matrix are invalid or when graph array changed in between
-	if query == nil || matrix == nil || index >= len(graphs) || graphs[index].Query.PromQL != query.PromQL {
+	// Skip if paused, query / matrix are invalid or when graph array changed in between
+	if paused || query == nil || matrix == nil || index >= len(graphs) || graphs[index].Query.PromQL != query.PromQL {
 		return
 	}
 
