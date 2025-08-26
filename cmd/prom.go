@@ -66,7 +66,7 @@ func newTransport(timeout time.Duration, skipTLS bool, capath string, userCertPa
 		if capath != "" {
 			caCert, err := os.ReadFile(capath)
 			if err != nil {
-				log.Errorf("Cannot load loki ca certificate: %v", err)
+				log.Errorf("Cannot load ca certificate: %v", err)
 			} else {
 				pool := x509.NewCertPool()
 				pool.AppendCertsFromPEM(caCert)
@@ -77,7 +77,7 @@ func newTransport(timeout time.Duration, skipTLS bool, capath string, userCertPa
 		if userCertPath != "" {
 			cert, err := tls.LoadX509KeyPair(userCertPath, userKeyPath)
 			if err != nil {
-				log.Errorf("Cannot load loki user certificate: %v", err)
+				log.Errorf("Cannot load user certificate: %v", err)
 			} else {
 				transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
 			}
