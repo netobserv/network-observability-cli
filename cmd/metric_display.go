@@ -89,7 +89,7 @@ func createMetricDisplay() {
 
 	errAdvancedDisplay = app.Run()
 	if errAdvancedDisplay != nil {
-		log.Fatalf("Can't display advanced UI: %v", errAdvancedDisplay)
+		log.Errorf("Can't display advanced UI: %v", errAdvancedDisplay)
 	}
 }
 

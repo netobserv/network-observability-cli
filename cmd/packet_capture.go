@@ -90,7 +90,6 @@ func startPacketCollector() {
 	}()
 
 	log.Trace("Ready ! Waiting for packets...")
-	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
 			log.Debugf("Received first %d packets", len(flowPackets))

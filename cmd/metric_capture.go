@@ -50,9 +50,11 @@ func startMetricCollector(ctx context.Context) {
 
 	// save client to be able to call queries from display
 	client = &cl
+	log.Debug("Created client")
 
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
+	log.Trace("Ready ! Querying metrics...")
 	for ; true; <-ticker.C {
 		if stopReceived {
 			log.Debug("Stop received")
