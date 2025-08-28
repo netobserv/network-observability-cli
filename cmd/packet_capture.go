@@ -34,9 +34,9 @@ var (
 )
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
-	captureType = "Packet"
+	capture = Packet
 	go startPacketCollector()
-	createDisplay()
+	createFlowDisplay()
 }
 
 //nolint:cyclop
@@ -90,7 +90,6 @@ func startPacketCollector() {
 	}()
 
 	log.Trace("Ready ! Waiting for packets...")
-	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
 			log.Debugf("Received first %d packets", len(flowPackets))
