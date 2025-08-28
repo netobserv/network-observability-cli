@@ -371,6 +371,9 @@ func appendMetrics(query *Query, matrix *Matrix, index int) {
 
 	// then update data
 	if len(*matrix) > 0 {
+		if len(*matrix) > len(colors) {
+			*matrix = (*matrix)[:len(colors)] // avoid color indexing crash
+		}
 		labels := []string{}
 		legends := make([]map[string]string, len(*matrix))
 		data := make([][]float64, len(*matrix))
