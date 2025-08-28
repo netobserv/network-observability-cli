@@ -205,7 +205,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		})
 
 		// Run metrics command
-		cliArgs := []string{"metrics"}
+		cliArgs := []string{"metrics", "--background"}
 		out, err := e2e.StartCommand(ilog, ocNetObservBinPath, cliArgs...)
 		writeOutput(StartupDate+"-metricsOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
