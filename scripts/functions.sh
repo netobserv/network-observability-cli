@@ -701,6 +701,30 @@ function defaultValue() {
   fi
 }
 
+function waitDaemonset(){
+    echo "Waiting for daemonset pods to be ready..."
+    retries=10
+    while [[ $retries -ge 0 ]];do
+        sleep 5
+        ready=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.numberReady}")
+        required=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.desiredNumberScheduled}")
+        reasons=$($K8S_CLI_BIN get pods -n "$namespace" -o jsonpath='{.items[*].status.containerStatuses[*].state.waiting.reason}')
+        IFS=" " read -r -a reasons <<< "$(echo "${reasons[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+        echo "$ready/$required Ready. Reason(s): $reasons"
+        if printf '%s\0' "${reasons[@]}" | grep -Fxqz -- 'CrashLoopBackOff'; then
+          break
+        elif [[ $ready -eq $required ]]; then
+          return
+        fi
+        ((retries--))
+    done
+    echo
+    echo "ERROR: Daemonset pods failed to start:" 
+    ${K8S_CLI_BIN} logs daemonset/netobserv-cli -n "$namespace" --tail=1
+    echo
+    exit 1
+}
+
 # Check if $options are valid
 function check_args_and_apply() {
   # Iterate through the command-line arguments
@@ -1025,7 +1049,7 @@ function check_args_and_apply() {
   yaml="$(cat "$manifest")"
   applyYAML "$yaml"
   if [[ "$outputYAML" == "false" ]]; then
-    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
+    waitDaemonset
   fi
   rm -rf ${MANIFEST_OUTPUT_PATH}
 }
