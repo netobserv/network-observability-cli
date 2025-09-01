@@ -710,7 +710,7 @@ function waitDaemonset(){
         required=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.desiredNumberScheduled}")
         reasons=$($K8S_CLI_BIN get pods -n "$namespace" -o jsonpath='{.items[*].status.containerStatuses[*].state.waiting.reason}')
         IFS=" " read -r -a reasons <<< "$(echo "${reasons[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
-        echo "$ready/$required Ready. Reason(s): $reasons"
+        echo "$ready/$required Ready. Reason(s): ${reasons[*]}"
         if printf '%s\0' "${reasons[@]}" | grep -Fxqz -- 'CrashLoopBackOff'; then
           break
         elif [[ $ready -eq $required ]]; then
