@@ -164,6 +164,51 @@ function clusterIsReady() {
   fi
 }
 
+function checkClusterVersion() {
+  version=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].version}')
+  if [[ -z "${version}" ]]; then
+    echo "Can't check version since cluster is not OpenShift"
+  else 
+    returnCode=0
+    result=""
+  
+    echo "OpenShift version: $version"
+    if [[ "$command" = "packets" ]]; then
+      compare_versions "$version" 4.16.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Packet capture requires OpenShift 4.16 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_network_events"* ]]; then
+      compare_versions "$version" 4.19.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Network events requires OpenShift 4.19 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_udn_mapping"* ]]; then
+      compare_versions "$version" 4.18.0
+      if [ "$result" -eq 0 ]; then
+          echo "- UDN mapping requires OpenShift 4.18 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_pkt_drop"* ]]; then
+      compare_versions "$version" 4.14.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Packet drops requires OpenShift 4.14 or higher"
+          returnCode=1
+      fi
+    fi
+
+    return $returnCode
+  fi
+}
+
 function namespaceFound() {
   # ensure namespace doesn't exist, else we should not override content
   if ${K8S_CLI_BIN} get namespace "$namespace" --ignore-not-found=true | grep -q "$namespace"; then
@@ -261,6 +306,11 @@ function setup() {
   if [[ "$outputYAML" == "false" ]]; then
     if ! clusterIsReady; then
       printf 'You must be connected to cluster\n' >&2
+      exit 1
+    fi
+
+    if ! checkClusterVersion; then
+      printf 'Remove not compatible features and try again\n' >&2
       exit 1
     fi
 
