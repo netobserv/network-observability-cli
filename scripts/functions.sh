@@ -165,14 +165,42 @@ function clusterIsReady() {
 }
 
 function checkClusterVersion() {
-  version=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].version}')
-  if [[ -z "${version}" ]]; then
+  states=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].state}')
+  if [[ -z "${states}" ]]; then
     echo "Can't check version since cluster is not OpenShift"
   else 
+    versions=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].version}')
+    version=""
+
+    # get the current version finding *Completed* state
+    if [[ "$(declare -p states)" =~ "declare -a" ]]; then
+      # handle states and versions as arrays
+      if [ "${#states[@]}" -eq "${#versions[@]}" ]; then
+        for i in "${!states[@]}"; do
+          if [[ "${states[$i]}" = "Completed" ]]; then
+              version="${versions[$i]}"
+          fi
+        done
+      fi
+    else
+      # handle states and versions as strings
+      if [ "${states}" = "Completed" ]; then
+          version="${versions}"
+      fi
+    fi
+
+    if [ -z "${version}" ]; then
+      # allow running if no version found since the user may be running an upgrade
+      echo "Warning: can't find current version in the clusterversion history"
+      echo "Is the cluster upgrading?"
+      return 0
+    else 
+      echo "OpenShift version: $version"
+    fi
+
     returnCode=0
     result=""
-  
-    echo "OpenShift version: $version"
+
     if [[ "$command" = "packets" ]]; then
       compare_versions "$version" 4.16.0
       if [ "$result" -eq 0 ]; then
