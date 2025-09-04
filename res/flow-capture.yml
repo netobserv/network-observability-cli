@@ -24,7 +24,16 @@ spec:
         image: "{{AGENT_IMAGE_URL}}"
         imagePullPolicy: Always
         securityContext:
-          privileged: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+              - "BPF"
+              - "PERFMON"
+              - "NET_ADMIN"
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
           runAsUser: 0
         env:
           - name: CACHE_ACTIVE_TIMEOUT
@@ -68,16 +77,16 @@ spec:
         volumeMounts:
             - name: bpf-kernel-debug
               mountPath: /sys/kernel/debug
-              mountPropagation: Bidirectional
+              mountPropagation: HostToContainer
             - name: var-run-ovn
               mountPath: /var/run/ovn
-              mountPropagation: Bidirectional
+              mountPropagation: HostToContainer
             - name: var-run-ovs
               mountPath: /var/run/openvswitch
-              mountPropagation: Bidirectional
+              mountPropagation: HostToContainer
             - name: var-run-netns
               mountPath: /var/run/netns
-              mountPropagation: Bidirectional
+              mountPropagation: HostToContainer
       volumes:
         - name: bpf-kernel-debug
           hostPath:

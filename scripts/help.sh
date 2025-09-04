@@ -75,6 +75,7 @@ function features_usage {
   echo "  --enable_rtt:                 enable RTT tracking                                   (default: false)"
   echo "  --enable_udn_mapping:         enable User Defined Network mapping                   (default: false)"
   echo "  --get-subnets:                get subnets information                               (default: false)"
+  echo "  --privileged:                 force eBPF agent privileged mode                      (default: auto)"
   echo "  --sampling:                   value that defines the ratio of packets being sampled (default: 1)"
 }
 
