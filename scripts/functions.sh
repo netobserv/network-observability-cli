@@ -528,6 +528,10 @@ function edit_manifest() {
   "ipsec_enable")
     "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"ENABLE_IPSEC_TRACKING\").value|=\"$2\"" "$manifest"
     ;;
+  "privileged")
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation|=$2" "$manifest"
+    "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].securityContext.privileged|=$2" "$manifest"
+    ;;
   "get_subnets")
     if [[ "$2" == "true" ]]; then
       declare -A subnets
@@ -610,10 +614,6 @@ function edit_manifest() {
     setLastFlowFilter "tcp_flags" "\"$2\"" "$manifest"
     ;;
   "filter_pkt_drops")
-    if [[ "$2" == "true" ]]; then
-      # force enable drops before setting filter
-      edit_manifest "pkt_drop_enable" "$2" "$manifest"
-    fi
     setLastFlowFilter "drops" "$2" "$manifest"
     ;;
   "filter_query")
@@ -752,6 +752,7 @@ function check_args_and_apply() {
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" ]]; then
+          edit_manifest "privileged" "$value"
           edit_manifest "pkt_drop_enable" "$value"
           includeList="$includeList,workload_egress_bytes_total,namespace_drop_packets_total"
         elif [[ "$value" == "false" ]]; then
@@ -803,6 +804,7 @@ function check_args_and_apply() {
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" ]]; then
+          edit_manifest "privileged" "$value"
           edit_manifest "network_events_enable" "$value"
           includeList="$includeList,namespace_network_policy_events_total"
         elif [[ "$value" == "false" ]]; then
@@ -819,8 +821,12 @@ function check_args_and_apply() {
     *enable_udn_mapping) # Enable User Defined Network mapping
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
+          edit_manifest "privileged" "$value"
           edit_manifest "udn_enable" "$value"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_udn_mapping"
         fi
@@ -832,8 +838,11 @@ function check_args_and_apply() {
     *enable_pkt_translation) # Enable Packet translation
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
-        if [[ "$value" == "true" || "$value" == "false" ]]; then
+        if [[ "$value" == "true" ]]; then
           edit_manifest "pkt_xlat_enable" "$value"
+        elif [[ "$value" == "false" ]]; then
+          # nothing to do there
+          echo
         else
           echo "invalid value for --enable_pkt_translation"
         fi
@@ -842,7 +851,7 @@ function check_args_and_apply() {
         exit 1
       fi
       ;;
-     *enable_ipsec) # Enable IPSec Tracking
+    *enable_ipsec) # Enable IPSec Tracking
       if [[ "$command" == "flows" || "$command" == "metrics" ]]; then
         defaultValue "true"
         if [[ "$value" == "true" || "$value" == "false" ]]; then
@@ -857,7 +866,8 @@ function check_args_and_apply() {
       ;;
     *enable_all) # Enable all features
       defaultValue "true"
-      if [[ "$value" == "true" || "$value" == "false" ]]; then
+      if [[ "$value" == "true" ]]; then
+        edit_manifest "privileged" "$value"
         edit_manifest "pkt_drop_enable" "$value"
         edit_manifest "dns_enable" "$value"
         edit_manifest "rtt_enable" "$value"
@@ -865,8 +875,22 @@ function check_args_and_apply() {
         edit_manifest "udn_enable" "$value"
         edit_manifest "pkt_xlat_enable" "$value"
         edit_manifest "ipsec_enable" "$value"
+      elif [[ "$value" == "false" ]]; then
+        # nothing to do there
+        echo
       else
         echo "invalid value for --enable_all"
+      fi
+      ;;
+    *privileged) # Force privileged mode
+      defaultValue "true"
+      if [[ "$value" == "true" ]]; then
+        edit_manifest "privileged" "$value"
+      elif [[ "$value" == "false" ]]; then
+        # nothing to do there
+        echo
+      else
+        echo "invalid value for --privileged"
       fi
       ;;
     *direction) # Configure filter direction
@@ -925,8 +949,13 @@ function check_args_and_apply() {
       ;;
     *drops) # Filter packet drops
       defaultValue "true"
-      if [[ "$value" == "true" || "$value" == "false" ]]; then
+      if [[ "$value" == "true" ]]; then
+        edit_manifest "privileged" "$value"
+        edit_manifest "pkt_drop_enable" "$value"
         edit_manifest "filter_pkt_drops" "$value"
+      elif [[ "$value" == "false" ]]; then
+        # nothing to do there
+        echo
       else
         echo "invalid value for --drops"
       fi
