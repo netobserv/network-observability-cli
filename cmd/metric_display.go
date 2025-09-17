@@ -63,6 +63,7 @@ var (
 )
 
 func createMetricDisplay() {
+	framesPerSecond = 1
 	updateShowMetricCount()
 	updateGraphs(false)
 
