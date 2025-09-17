@@ -13,6 +13,7 @@ import (
 	"github.com/netobserv/network-observability-cli/e2e"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -226,5 +227,100 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		metricValue, err := queryPrometheusMetric(clientset, prometheusQuery)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to query Prometheus for metrics: %v", err))
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
+	})
+
+	g.It("OCP-xxxx: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
+		g.DeferCleanup(func() {
+			cleanup()
+		})
+
+		tests := []struct {
+			desc string
+			cliArgs []string
+			matcher types.GomegaMatcher
+		}{
+			{
+				desc: "Verifying `flows` does not run as privileged",
+				cliArgs: []string{"flows"},
+				matcher: o.BeFalse(),
+			},
+			{
+				desc: "Verifying `flows --privileged=true` runs as privileged",
+				cliArgs: []string{"flows"},
+				matcher: o.BeTrue(),
+			},
+
+			//
+			{
+				desc: "Verifying `flows --drops` runs as privileged",
+				cliArgs: []string{"flows", "--drops"},
+				matcher: o.BeTrue(),
+			},
+			{
+				desc: "Verifying `flows --drops --privileged=false` is overwriten and runs as privileged",
+				cliArgs: []string{"flows", "--drops", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
+
+			{
+				desc: "Verifying `flows --drops --enable_network_events=true` runs as privileged",
+				cliArgs: []string{"flows", "--enable_network_events=true"},
+				matcher: o.BeTrue(),
+			},
+			{
+				desc: "Verifying `flows --drops --enable_network_events=true --privileged=false` is overwriten and runs as privileged",
+				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
+
+			{
+				desc: "Verifying `flows --drops --enable_udn_mapping=true` runs as privileged",
+				cliArgs: []string{"flows", "--enable_udn_mapping=true"},
+				matcher: o.BeTrue(),
+			},
+			{
+				desc: "Verifying `flows --drops --enable_udn_mapping=true --privileged=false` is overwriten and runs as privileged",
+				cliArgs: []string{"flows", "--enable_udn_mapping=true", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
+
+			{
+				desc: "Verifying `flows --drops --enable_all=true` runs as privileged",
+				cliArgs: []string{"flows", "--enable_all=true"},
+				matcher: o.BeTrue(),
+			},
+			{
+				desc: "Verifying `flows --drops --enable_all=true --privileged=false` is overwriten and runs as privileged",
+				cliArgs: []string{"flows", "--enable_all=true", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
+			{
+				desc: "Verifying `flows --drops --enable_all=true --privileged=false` is overwriten and runs as privileged",
+				cliArgs: []string{"flows", "--enable_all=true", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
+
+		}
+
+		for _, t := range tests {
+			g.By(t.desc)
+			// run command async until done
+			out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
+			writeOutput(StartupDate+"-flowOutput", out)
+			o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
+
+			// Wait for CLI to be ready
+			daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
+			o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
+			o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
+
+			// Verify correct privilege setting
+			ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
+			o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
+			containers := ds.Spec.Template.Spec.Containers
+			o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
+			o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
+			cleanup()
+		}
 	})
 })
