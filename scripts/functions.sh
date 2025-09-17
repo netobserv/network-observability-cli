@@ -164,6 +164,79 @@ function clusterIsReady() {
   fi
 }
 
+function checkClusterVersion() {
+  states=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].state}')
+  if [[ -z "${states}" ]]; then
+    echo "Can't check version since cluster is not OpenShift"
+  else 
+    versions=$(${K8S_CLI_BIN} get clusterversion version -o jsonpath='{.status.history[*].version}')
+    version=""
+
+    # get the current version finding *Completed* state
+    if [[ "$(declare -p states)" =~ "declare -a" ]]; then
+      # handle states and versions as arrays
+      if [ "${#states[@]}" -eq "${#versions[@]}" ]; then
+        for i in "${!states[@]}"; do
+          if [[ "${states[$i]}" = "Completed" ]]; then
+              version="${versions[$i]}"
+          fi
+        done
+      fi
+    else
+      # handle states and versions as strings
+      if [ "${states}" = "Completed" ]; then
+          version="${versions}"
+      fi
+    fi
+
+    if [ -z "${version}" ]; then
+      # allow running if no version found since the user may be running an upgrade
+      echo "Warning: can't find current version in the clusterversion history"
+      echo "Is the cluster upgrading?"
+      return 0
+    else 
+      echo "OpenShift version: $version"
+    fi
+
+    returnCode=0
+    result=""
+
+    if [[ "$command" = "packets" ]]; then
+      compare_versions "$version" 4.16.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Packet capture requires OpenShift 4.16 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_network_events"* ]]; then
+      compare_versions "$version" 4.19.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Network events requires OpenShift 4.19 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_udn_mapping"* ]]; then
+      compare_versions "$version" 4.18.0
+      if [ "$result" -eq 0 ]; then
+          echo "- UDN mapping requires OpenShift 4.18 or higher"
+          returnCode=1
+      fi
+    fi
+
+    if [[ "${options[*]}" == *"enable_all"* || "${options[*]}" == *"enable_pkt_drop"* ]]; then
+      compare_versions "$version" 4.14.0
+      if [ "$result" -eq 0 ]; then
+          echo "- Packet drops requires OpenShift 4.14 or higher"
+          returnCode=1
+      fi
+    fi
+
+    return $returnCode
+  fi
+}
+
 function namespaceFound() {
   # ensure namespace doesn't exist, else we should not override content
   if ${K8S_CLI_BIN} get namespace "$namespace" --ignore-not-found=true | grep -q "$namespace"; then
@@ -261,6 +334,11 @@ function setup() {
   if [[ "$outputYAML" == "false" ]]; then
     if ! clusterIsReady; then
       printf 'You must be connected to cluster\n' >&2
+      exit 1
+    fi
+
+    if ! checkClusterVersion; then
+      printf 'Remove not compatible features and try again\n' >&2
       exit 1
     fi
 
@@ -701,6 +779,30 @@ function defaultValue() {
   fi
 }
 
+function waitDaemonset(){
+    echo "Waiting for daemonset pods to be ready..."
+    retries=10
+    while [[ $retries -ge 0 ]];do
+        sleep 5
+        ready=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.numberReady}")
+        required=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.desiredNumberScheduled}")
+        reasons=$($K8S_CLI_BIN get pods -n "$namespace" -o jsonpath='{.items[*].status.containerStatuses[*].state.waiting.reason}')
+        IFS=" " read -r -a reasons <<< "$(echo "${reasons[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')"
+        echo "$ready/$required Ready. Reason(s): ${reasons[*]}"
+        if printf '%s\0' "${reasons[@]}" | grep -Fxqz -- 'CrashLoopBackOff'; then
+          break
+        elif [[ $ready -eq $required ]]; then
+          return
+        fi
+        ((retries--))
+    done
+    echo
+    echo "ERROR: Daemonset pods failed to start:" 
+    ${K8S_CLI_BIN} logs daemonset/netobserv-cli -n "$namespace" --tail=1
+    echo
+    exit 1
+}
+
 # Check if $options are valid
 function check_args_and_apply() {
   # Iterate through the command-line arguments
@@ -1054,7 +1156,7 @@ function check_args_and_apply() {
   yaml="$(cat "$manifest")"
   applyYAML "$yaml"
   if [[ "$outputYAML" == "false" ]]; then
-    ${K8S_CLI_BIN} rollout status daemonset netobserv-cli -n "$namespace" --timeout 60s
+    waitDaemonset
   fi
   rm -rf ${MANIFEST_OUTPUT_PATH}
 }
