@@ -99,6 +99,21 @@ func matrixMock() QueryResponse {
 		}
 	}
 
+	// screw up a timestamp in one of the samples to test robustness
+	if len(samples) > 5 && len(samples[5].Values) > 0 {
+		samples[5].Values[0].Timestamp += 1234
+	}
+
+	// screw up some start values in one of the samples to test robustness
+	if len(samples) > 7 && len(samples[7].Values) > 0 {
+		samples[7].Values = samples[7].Values[showCount-5 : len(samples[7].Values)]
+	}
+
+	// screw up an end value in one of the samples to test robustness
+	if len(samples) > 9 && len(samples[9].Values) > 0 {
+		samples[9].Values = samples[9].Values[0 : len(samples[9].Values)-1]
+	}
+
 	return QueryResponse{
 		Data: QueryResponseData{
 			ResultType: ResultTypeMatrix,

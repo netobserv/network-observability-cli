@@ -9,6 +9,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/navidys/tvxwidgets"
+	pmod "github.com/prometheus/common/model"
 	"github.com/rivo/tview"
 )
 
@@ -33,6 +34,7 @@ var (
 
 	selectedPanels = []string{}
 	graphs         = []Graph{}
+	focussedGraph  = -1
 	colors         = []tcell.Color{
 		tcell.ColorWhite,
 		tcell.ColorPeru,
@@ -45,7 +47,7 @@ var (
 		tcell.ColorAquaMarine,
 		tcell.ColorDarkSeaGreen,
 		tcell.ColorOrange,
-		tcell.ColorBisque,
+		tcell.ColorYellowGreen,
 		tcell.ColorTeal,
 		tcell.ColorPurple,
 		tcell.ColorMintCream,
@@ -54,7 +56,7 @@ var (
 		tcell.ColorSalmon,
 		tcell.ColorMidnightBlue,
 		tcell.ColorDeepSkyBlue,
-		tcell.ColorFloralWhite,
+		tcell.ColorYellow,
 		tcell.ColorMediumSeaGreen,
 		tcell.ColorBlanchedAlmond,
 		tcell.ColorDarkKhaki,
@@ -63,7 +65,6 @@ var (
 )
 
 func createMetricDisplay() {
-	framesPerSecond = 1
 	updateShowMetricCount()
 	updateGraphs(false)
 
@@ -162,6 +163,9 @@ func getGraphs() tview.Primitive {
 	var flex *tview.Flex
 	for index := range graphs {
 		plot := getPlot(toMetricName(graphs[index].Query.PromQL, 0))
+		if focussedGraph == index {
+			plot.SetBorderColor(tcell.ColorBlue)
+		}
 		graphs[index].Plot = plot
 
 		if index%2 == 0 {
@@ -200,7 +204,9 @@ func getLegends(title string, labels []string, legends []map[string]string, data
 		for j, label := range labels {
 			table.SetCell(i+1, j+1, tview.NewTableCell(ellipsizeAndPad(legends[i][label], 50)))
 		}
-		table.SetCell(i+1, len(labels)+1, tview.NewTableCell(ellipsizeAndPad(fmt.Sprintf("%.2f", data[i][len(data[i])-1]), 50)))
+		if len(data) > i && len(data[i])-1 >= 0 {
+			table.SetCell(i+1, len(labels)+1, tview.NewTableCell(ellipsizeAndPad(fmt.Sprintf("%.2f", data[i][len(data[i])-1]), 50)))
+		}
 	}
 
 	legendView.AddItem(table, 0, 1, false)
@@ -306,6 +312,7 @@ func getPlot(title string) *tvxwidgets.Plot {
 
 func updateGraphs(query bool) {
 	graphs = []Graph{}
+	focussedGraph = -1
 
 	if len(selectedPanels) > 0 {
 		for _, p := range selectedPanels {
@@ -344,13 +351,21 @@ func updatePlots() {
 			})
 
 			if len(graphs[index].Labels) > 0 {
-				graphs[index].Plot.SetFocusFunc(func() {
-					mainView.AddItem(getLegends(graphs[index].Query.PromQL, graphs[index].Labels, graphs[index].Legends, graphs[index].Data), len(graphs[index].Legends)+3, 0, false)
-				})
 				graphs[index].Plot.SetBlurFunc(func() {
+					focussedGraph = -1
 					if legendView != nil {
 						mainView.RemoveItem(legendView)
+						getGraphs()
 					}
+				})
+				graphs[index].Plot.SetFocusFunc(func() {
+					focussedGraph = index
+					getGraphs()
+					mainView.AddItem(getLegends(graphs[index].Query.PromQL, graphs[index].Labels, graphs[index].Legends, graphs[index].Data), len(graphs[index].Legends)+3, 0, false)
+				})
+			} else {
+				graphs[index].Plot.SetFocusFunc(func() {
+					getGraphs()
 				})
 			}
 
@@ -371,6 +386,10 @@ func appendMetrics(query *Query, matrix *Matrix, index int) {
 	graphs[index].Query = *query
 
 	// then update data
+	updateData(matrix, index)
+}
+
+func updateData(matrix *Matrix, index int) {
 	if len(*matrix) > 0 {
 		if len(*matrix) > len(colors) {
 			*matrix = (*matrix)[:len(colors)] // avoid color indexing crash
@@ -378,6 +397,9 @@ func appendMetrics(query *Query, matrix *Matrix, index int) {
 		labels := []string{}
 		legends := make([]map[string]string, len(*matrix))
 		data := make([][]float64, len(*matrix))
+		timestamps := []pmod.Time{}
+		maxValuesLen := 0
+
 		for i, s := range *matrix {
 			legends[i] = map[string]string{}
 			for k, v := range s.Metric {
@@ -386,11 +408,41 @@ func appendMetrics(query *Query, matrix *Matrix, index int) {
 				}
 				legends[i][string(k)] = string(v)
 			}
-
-			data[i] = make([]float64, len(s.Values))
-			for j, v := range s.Values {
-				data[i][j] = float64(v.Value)
+			if len(s.Values) > maxValuesLen {
+				maxValuesLen = len(s.Values)
+				for _, v := range s.Values {
+					// keep the timestamps to compare all series on the same basis
+					timestamps = append(timestamps, v.Timestamp)
+				}
 			}
+		}
+
+		if maxValuesLen > 0 {
+			for i, s := range *matrix {
+				start := 0
+				if maxValuesLen-len(s.Values) > 0 {
+					for j, t := range timestamps {
+						// set start index to the closest matching timestamp
+						if t.Equal(s.Values[0].Timestamp) || t.After(s.Values[0].Timestamp) {
+							start = j
+							break
+						}
+					}
+
+					if start == 0 {
+						break // no matching timestamp found, skip this series
+					}
+				}
+
+				data[i] = make([]float64, maxValuesLen)
+				for j, v := range s.Values {
+					if start+j < len(data[i]) {
+						data[i][start+j] = float64(v.Value)
+					}
+				}
+			}
+		} else {
+			graphs[index].Data = [][]float64{}
 		}
 
 		sort.Strings(labels)
