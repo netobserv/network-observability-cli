@@ -229,7 +229,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
 	})
 
-	g.It("OCP-xxxx: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
+	g.It("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 		g.DeferCleanup(func() {
 			cleanup()
 		})
@@ -240,34 +240,34 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			matcher types.GomegaMatcher
 		}{
 			{
-				desc: "Verifying `flows` does not run as privileged",
+				desc: "Verifying `oc netobserv flows` does not run as privileged",
 				cliArgs: []string{"flows"},
 				matcher: o.BeFalse(),
 			},
 			{
-				desc: "Verifying `flows --privileged=true` runs as privileged",
+				desc: "Verifying `oc netobserv flows --privileged=true` runs as privileged",
 				cliArgs: []string{"flows", "--privileged=true"},
 				matcher: o.BeTrue(),
 			},
 
 			{
-				desc: "Verifying `flows --drops` runs as privileged",
+				desc: "Verifying `oc netobserv flows --drops` runs as privileged",
 				cliArgs: []string{"flows", "--drops"},
 				matcher: o.BeTrue(),
 			},
 			{
-				desc: "Verifying `flows --drops --privileged=false` is overwriten and runs as privileged",
+				desc: "Verifying `oc netobserv flows --drops --privileged=false` is overwritten and runs as privileged",
 				cliArgs: []string{"flows", "--drops", "--privileged=false"},
 				matcher: o.BeTrue(),
 			},
 
 			{
-				desc: "Verifying `flows --drops --enable_network_events=true` runs as privileged",
+				desc: "Verifying `oc netobserv flows --drops --enable_network_events=true` runs as privileged",
 				cliArgs: []string{"flows", "--enable_network_events=true"},
 				matcher: o.BeTrue(),
 			},
 			{
-				desc: "Verifying `flows --drops --enable_network_events=true --privileged=false` is overwriten and runs as privileged",
+				desc: "Verifying `oc netobserv flows --drops --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
 				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
 				matcher: o.BeTrue(),
 			},
