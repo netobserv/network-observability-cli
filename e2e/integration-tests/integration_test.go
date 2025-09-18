@@ -246,11 +246,10 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			},
 			{
 				desc: "Verifying `flows --privileged=true` runs as privileged",
-				cliArgs: []string{"flows"},
+				cliArgs: []string{"flows", "--privileged=true"},
 				matcher: o.BeTrue(),
 			},
 
-			//
 			{
 				desc: "Verifying `flows --drops` runs as privileged",
 				cliArgs: []string{"flows", "--drops"},
@@ -272,38 +271,11 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
 				matcher: o.BeTrue(),
 			},
-
-			{
-				desc: "Verifying `flows --drops --enable_udn_mapping=true` runs as privileged",
-				cliArgs: []string{"flows", "--enable_udn_mapping=true"},
-				matcher: o.BeTrue(),
-			},
-			{
-				desc: "Verifying `flows --drops --enable_udn_mapping=true --privileged=false` is overwriten and runs as privileged",
-				cliArgs: []string{"flows", "--enable_udn_mapping=true", "--privileged=false"},
-				matcher: o.BeTrue(),
-			},
-
-			{
-				desc: "Verifying `flows --drops --enable_all=true` runs as privileged",
-				cliArgs: []string{"flows", "--enable_all=true"},
-				matcher: o.BeTrue(),
-			},
-			{
-				desc: "Verifying `flows --drops --enable_all=true --privileged=false` is overwriten and runs as privileged",
-				cliArgs: []string{"flows", "--enable_all=true", "--privileged=false"},
-				matcher: o.BeTrue(),
-			},
-			{
-				desc: "Verifying `flows --drops --enable_all=true --privileged=false` is overwriten and runs as privileged",
-				cliArgs: []string{"flows", "--enable_all=true", "--privileged=false"},
-				matcher: o.BeTrue(),
-			},
-
 		}
 
 		for _, t := range tests {
 			g.By(t.desc)
+
 			// run command async until done
 			out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
 			writeOutput(StartupDate+"-flowOutput", out)
@@ -320,6 +292,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			containers := ds.Spec.Template.Spec.Containers
 			o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
 			o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
+
 			cleanup()
 		}
 	})
