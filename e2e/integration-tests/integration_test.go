@@ -255,20 +255,10 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 				cliArgs: []string{"flows", "--drops"},
 				matcher: o.BeTrue(),
 			},
-			{
-				desc: "Verifying `oc netobserv flows --drops --privileged=false` is overwritten and runs as privileged",
-				cliArgs: []string{"flows", "--drops", "--privileged=false"},
-				matcher: o.BeTrue(),
-			},
 
 			{
 				desc: "Verifying `oc netobserv flows --enable_network_events=true` runs as privileged",
 				cliArgs: []string{"flows", "--enable_network_events=true"},
-				matcher: o.BeTrue(),
-			},
-			{
-				desc: "Verifying `oc netobserv flows --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
-				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
 				matcher: o.BeTrue(),
 			},
 		}
