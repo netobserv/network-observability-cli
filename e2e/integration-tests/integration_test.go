@@ -262,12 +262,12 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			},
 
 			{
-				desc: "Verifying `oc netobserv flows --drops --enable_network_events=true` runs as privileged",
+				desc: "Verifying `oc netobserv flows --enable_network_events=true` runs as privileged",
 				cliArgs: []string{"flows", "--enable_network_events=true"},
 				matcher: o.BeTrue(),
 			},
 			{
-				desc: "Verifying `oc netobserv flows --drops --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
+				desc: "Verifying `oc netobserv flows --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
 				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
 				matcher: o.BeTrue(),
 			},
@@ -292,8 +292,6 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			containers := ds.Spec.Template.Spec.Containers
 			o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
 			o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
-
-			cleanup()
 		}
 	})
 })
