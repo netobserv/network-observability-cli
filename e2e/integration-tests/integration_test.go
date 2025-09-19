@@ -228,11 +228,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to query Prometheus for metrics: %v", err))
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
 	})
-
-	g.It("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
-		g.DeferCleanup(func() {
-			cleanup()
-		})
+	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 
 		tests := []struct {
 			desc string
@@ -261,10 +257,18 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 				cliArgs: []string{"flows", "--enable_network_events=true"},
 				matcher: o.BeTrue(),
 			},
+			{
+				desc: "Verifying `oc netobserv flows --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
+				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
+				matcher: o.BeTrue(),
+			},
 		}
 
 		for _, t := range tests {
-			g.By(t.desc)
+			g.It(t.desc, g.Label("Privileges"), func() {
+			g.DeferCleanup(func() {
+				cleanup()
+			})
 
 			// run command async until done
 			out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
@@ -282,6 +286,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			containers := ds.Spec.Template.Spec.Containers
 			o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
 			o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
+			})
 		}
 	})
 })
