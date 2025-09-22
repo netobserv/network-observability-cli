@@ -76,7 +76,7 @@ function features_usage {
   echo "  --enable_udn_mapping:         enable User Defined Network mapping                   (default: false)"
   echo "  --get-subnets:                get subnets information                               (default: false)"
   echo "  --privileged:                 force eBPF agent privileged mode                      (default: auto)"
-  echo "  --sampling:                   value that defines the ratio of packets being sampled (default: 1)"
+  echo "  --sampling:                   packets sampling interval                             (default: 1)"
 }
 
 # flow and packets collector options

@@ -64,7 +64,7 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 |--enable_rtt|                enable RTT tracking                                   | false
 |--enable_udn_mapping|        enable User Defined Network mapping                   | false
 |--get-subnets|               get subnets information                               | false
-|--sampling|                  value that defines the ratio of packets being sampled | 1
+|--sampling|                  packets sampling interval                             | 1
 |--background|                run in background                                     | false
 |--copy|                      copy the output files locally                         | prompt
 |--log-level|                 components logs                                       | info
@@ -167,7 +167,7 @@ $ oc netobserv metrics [<option>]
 |--enable_rtt|                enable RTT tracking                                   | false
 |--enable_udn_mapping|        enable User Defined Network mapping                   | false
 |--get-subnets|               get subnets information                               | false
-|--sampling|                  value that defines the ratio of packets being sampled | 1
+|--sampling|                  packets sampling interval                             | 1
 |--max-time|                  maximum capture time                                  | 1h
 |--action|                    filter action                                         | Accept
 |--cidr|                      filter CIDR                                           | 0.0.0.0/0
