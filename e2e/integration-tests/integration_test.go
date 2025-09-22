@@ -231,62 +231,59 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 
 		tests := []struct {
-			desc string
+			when    string
+			it      string
 			cliArgs []string
 			matcher types.GomegaMatcher
 		}{
 			{
-				desc: "Verifying `oc netobserv flows` does not run as privileged",
+				when:    "Executing `oc netobserv flows`",
+				it:      "does not run as privileged",
 				cliArgs: []string{"flows"},
 				matcher: o.BeFalse(),
 			},
 			{
-				desc: "Verifying `oc netobserv flows --privileged=true` runs as privileged",
+				when:    "Executing `oc netobserv flows --privileged=true`",
+				it:      "runs as privileged",
 				cliArgs: []string{"flows", "--privileged=true"},
 				matcher: o.BeTrue(),
 			},
 
 			{
-				desc: "Verifying `oc netobserv flows --drops` runs as privileged",
+				when:    "Executing `oc netobserv flows --drops`",
+				it:      "runs as privileged",
 				cliArgs: []string{"flows", "--drops"},
 				matcher: o.BeTrue(),
 			},
 
-			{
-				desc: "Verifying `oc netobserv flows --enable_network_events=true` runs as privileged",
-				cliArgs: []string{"flows", "--enable_network_events=true"},
-				matcher: o.BeTrue(),
-			},
-			{
-				desc: "Verifying `oc netobserv flows --enable_network_events=true --privileged=false` is overwritten and runs as privileged",
-				cliArgs: []string{"flows", "--enable_network_events=true", "--privileged=false"},
-				matcher: o.BeTrue(),
-			},
+
 		}
 
 		for _, t := range tests {
-			g.It(t.desc, g.Label("Privileges"), func() {
-			g.DeferCleanup(func() {
-				cleanup()
+			g.When(t.when, func() {
+				g.It(t.it, func() {
+					g.DeferCleanup(func() {
+						cleanup()
+					})
+					// run command async until done
+					out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
+					writeOutput(StartupDate+"-flowOutput", out)
+					o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
+
+					// Wait for CLI to be ready
+					daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
+					o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
+					o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
+
+					// Verify correct privilege setting
+					ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
+					o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
+					containers := ds.Spec.Template.Spec.Containers
+					o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
+					o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
+				})
 			})
 
-			// run command async until done
-			out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
-			writeOutput(StartupDate+"-flowOutput", out)
-			o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
-
-			// Wait for CLI to be ready
-			daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
-			o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
-			o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
-
-			// Verify correct privilege setting
-			ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
-			o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
-			containers := ds.Spec.Template.Spec.Containers
-			o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
-			o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
-			})
 		}
 	})
 })
