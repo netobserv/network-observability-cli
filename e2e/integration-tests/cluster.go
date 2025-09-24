@@ -12,12 +12,14 @@ import (
 	"strconv"
 	"time"
 
-	routeclient "github.com/openshift/client-go/route/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -102,19 +104,29 @@ func queryPrometheusMetric(clientset *kubernetes.Clientset, query string) (float
 		return 0.0, fmt.Errorf("failed to build config: %w", err)
 	}
 
-	routeClient, err := routeclient.NewForConfig(config)
+	dynclient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		return 0.0, fmt.Errorf("failed to create route client: %w", err)
 	}
 
 	// Get the Prometheus route from openshift-monitoring namespace
-	prometheusRoute, err := routeClient.RouteV1().Routes("openshift-monitoring").Get(context.TODO(), "prometheus-k8s", metav1.GetOptions{})
+	var routeGVR = schema.GroupVersionResource{Group: "route.openshift.io", Version: "v1", Resource: "routes"}
+	unstructuredRoute, err := dynclient.Resource(routeGVR).Namespace("openshift-monitoring").Get(context.TODO(), "prometheus-k8s", metav1.GetOptions{})
 	if err != nil {
 		return 0.0, fmt.Errorf("failed to get prometheus route: %w", err)
 	}
 
+	// Extract host from unstructured
+	host, found, err := unstructured.NestedString(unstructuredRoute.UnstructuredContent(), "spec", "host")
+	if err != nil {
+		return 0, fmt.Errorf("failed to extract host from unstructured route: %w", err)
+	}
+	if !found {
+		return 0, fmt.Errorf("host not found in unstructured route: %w", err)
+	}
+
 	// Construct the Prometheus API URL using the route host
-	prometheusURL := fmt.Sprintf("https://%s/api/v1/query", prometheusRoute.Spec.Host)
+	prometheusURL := fmt.Sprintf("https://%s/api/v1/query", host)
 
 	// Create HTTP client with proper TLS configuration for OpenShift
 	httpClient := &http.Client{
