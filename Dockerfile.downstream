@@ -1,4 +1,5 @@
 ARG BUILDVERSION
+ARG BUILDVERSION_Y
 
 # Make kubectl & oc scripts available for copy
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c0.assembly.stream.el9 as ose-cli
@@ -37,6 +38,7 @@ RUN mkdir -p output
 # Create final image from ubi + built binary and command
 FROM registry.access.redhat.com/ubi9/ubi:9.6-1758184894
 ARG BUILDVERSION
+ARG BUILDVERSION_Y
 
 WORKDIR /
 
@@ -53,7 +55,8 @@ USER 65532:65532
 ENTRYPOINT ["/network-observability-cli"]
 
 LABEL com.redhat.component="network-observability-cli"
-LABEL name="network-observability-cli"
+LABEL name="network-observability/network-observability-cli-rhel9"
+LABEL cpe="cpe:/a:redhat:network_observ_optr:$BUILDVERSION_Y::el9"
 LABEL io.k8s.display-name="Network Observability CLI"
 LABEL io.k8s.description="Network Observability CLI"
 LABEL summary="Network Observability CLI"
