@@ -11,8 +11,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/netobserv/flowlogs-pipeline v1.9.1-community
 	github.com/netobserv/netobserv-ebpf-agent v1.9.1-community
-	github.com/onsi/ginkgo/v2 v2.25.1
-	github.com/onsi/gomega v1.38.0
+	github.com/onsi/ginkgo/v2 v2.25.3
+	github.com/onsi/gomega v1.38.2
 	github.com/openshift/client-go v0.0.0-20231121143148-910ca30a1a9a
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
@@ -22,13 +22,14 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/netsampler/goflow2 v1.3.7 // indirect
 	github.com/openshift/api v0.0.0-20231120222239-b86761094ee3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 )
 
 require (
