@@ -23,9 +23,9 @@ var flowCmd = &cobra.Command{
 }
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
-	captureType = "Flow"
+	capture = Flow
 	go startFlowCollector()
-	createDisplay()
+	createFlowDisplay()
 }
 
 func startFlowCollector() {
@@ -77,7 +77,6 @@ func startFlowCollector() {
 	}()
 
 	log.Debug("Ready ! Waiting for flows...")
-	go hearbeat()
 	for fp := range flowPackets {
 		if !captureStarted {
 			log.Debugf("Received first %d flows", len(flowPackets))
