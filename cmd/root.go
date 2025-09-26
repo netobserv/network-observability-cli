@@ -14,6 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type captureType string
+
+const (
+	Flow   captureType = "Flow"
+	Packet captureType = "Packet"
+	Metric captureType = "Metric"
+)
+
 var (
 	log      = logrus.New()
 	logLevel string
@@ -38,7 +46,7 @@ var (
 		},
 	}
 
-	captureType      = "Flow"
+	capture          = Flow
 	collectorStarted = false
 	captureStarted   = false
 	captureEnded     = false
@@ -99,7 +107,7 @@ func onInit() {
 
 	if useMocks {
 		log.Info("Using mocks...")
-		go MockForever()
+		go mockForever()
 	}
 }
 
@@ -131,11 +139,11 @@ func onLimitReached() bool {
 	shouldExit := false
 	if !captureEnded {
 		captureEnded = true
+		log.Trace("Capture ended")
 		if app != nil && errAdvancedDisplay == nil {
 			app.Stop()
 		}
 		if strings.Contains(options, "background=true") {
-			captureEnded = true
 			out, err := exec.Command("/oc-netobserv", "stop").Output()
 			if err != nil {
 				log.Fatal(err)
@@ -143,7 +151,20 @@ func onLimitReached() bool {
 			fmt.Printf("%s", out)
 			fmt.Print(`Thank you for using...`)
 			printBanner()
-			fmt.Print(`
+
+			if capture == "Metric" {
+				fmt.Print(`
+
+  - Open NetObserv / On Demand dashboard to see generated metrics
+
+	- Once finished, remove everything using 'oc netobserv cleanup'
+
+                                                      See you soon !
+																											
+																											
+		`)
+			} else {
+				fmt.Print(`
 
 	- Download the generated output using 'oc netobserv copy' command
 
@@ -153,6 +174,8 @@ func onLimitReached() bool {
 																											
 																											
 		`)
+			}
+
 		} else {
 			shouldExit = true
 		}

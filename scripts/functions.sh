@@ -152,15 +152,11 @@ function setMetricsPipelineConfig() {
 }
 
 function clusterIsReady() {
-  # use oc whoami as connectivity check by default and fallback to kubectl get all if needed
-  K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} whoami"
-  if [ "${K8S_CLI_BIN}" = "kubectl" ]; then
-    K8S_CLI_CONNECTIVITY="${K8S_CLI_BIN} get all"
-  fi
-  if ${K8S_CLI_CONNECTIVITY} 2>&1 || ${K8S_CLI_BIN} cluster-info | grep -q "Kubernetes control plane"; then
-    return 0
-  else
+  ready=$(${K8S_CLI_BIN} get all 2>&1 | grep -c "Unable to connect")
+  if [[ "${ready}" -gt 0 ]]; then
     return 1
+  else
+    return 0
   fi
 }
 
