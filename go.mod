@@ -5,11 +5,11 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/gdamore/tcell/v2 v2.8.1
+	github.com/gdamore/tcell/v2 v2.9.0
 	github.com/gopacket/gopacket v1.4.0
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/navidys/tvxwidgets v0.11.1
+	github.com/navidys/tvxwidgets v0.12.0
 	github.com/netobserv/flowlogs-pipeline v1.9.1-community
 	github.com/netobserv/netobserv-ebpf-agent v1.9.2-community
 	github.com/onsi/ginkgo/v2 v2.25.3
@@ -65,7 +65,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
+	github.com/rivo/tview v0.42.0
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/kafka-go v0.4.48 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
