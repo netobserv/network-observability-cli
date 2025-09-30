@@ -255,8 +255,6 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 				cliArgs: []string{"flows", "--drops"},
 				matcher: o.BeTrue(),
 			},
-
-
 		}
 
 		for _, t := range tests {
