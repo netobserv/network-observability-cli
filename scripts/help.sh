@@ -57,6 +57,11 @@ function help {
   echo "    --drops                                                   # including drops"
   echo "    --include_list=node,namespace                             # for all metrics matching 'node' or 'namespace' keywords"
   echo
+  echo "  Capture metrics in background"
+  echo "    netobserv metrics --background \                          # Capture metrics using background mode"
+  echo "    --max-time=24h                                            # for a maximum of 24 hours"
+  echo "  Then open the URL provided by the command to visualize the netobserv-cli dashboard anytime during or after the run."
+  echo
 }
 
 # display version
@@ -90,6 +95,8 @@ function flowsAndPackets_collector_usage {
 
 # fmetrics collector options
 function metrics_collector_usage {
+  echo "  --background:                 run in background                                     (default: false)"
+  echo "  --log-level:                  components logs                                       (default: info)"
   echo "  --max-time:                   maximum capture time                                  (default: 1h)"
 }
 

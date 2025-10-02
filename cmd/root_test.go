@@ -94,23 +94,6 @@ func setup(t *testing.T) {
 	assert.Equal(t, nil, err)
 }
 
-func getTableRows() []string {
-	arr := []string{}
-	if len(tableData.cols) == 0 || len(tableData.flows) == 0 {
-		return arr
-	}
-
-	for i := range len(tableData.flows) + 1 {
-		str := ""
-		for j := range tableData.cols {
-			str += tableData.GetCell(i, j).Text
-		}
-		arr = append(arr, str)
-	}
-
-	return arr
-}
-
 func resetTime() {
 	// set timezone to Paris time for all tests
 	loc, err := time.LoadLocation("Europe/Paris")
