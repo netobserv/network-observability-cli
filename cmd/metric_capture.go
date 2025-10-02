@@ -31,8 +31,14 @@ var (
 
 func runMetricCapture(c *cobra.Command, _ []string) {
 	capture = Metric
-	go startMetricCollector(c.Context())
-	createMetricDisplay()
+
+	updateGraphs(false) // initial update of graphs to have something to display
+	if isBackground {
+		startMetricCollector(c.Context())
+	} else {
+		go startMetricCollector(c.Context())
+		createMetricDisplay()
+	}
 }
 
 func startMetricCollector(ctx context.Context) {
@@ -80,15 +86,26 @@ func startMetricCollector(ctx context.Context) {
 
 func queryGraphs(ctx context.Context, client api.Client) {
 	for index := range graphs {
-		go queryGraph(ctx, client, index)
+		if isBackground {
+			queryGraph(ctx, client, index) // keep logical order for background mode
+		} else {
+			go queryGraph(ctx, client, index)
+		}
 	}
 }
 
 func queryGraph(ctx context.Context, client api.Client, index int) {
 	query, result := queryProm(ctx, client, graphs[index].Query.PromQL)
-	if errAdvancedDisplay != nil {
+	if app == nil || errAdvancedDisplay != nil {
 		// simply print metrics into logs
-		log.Printf("%v\n", result)
+		log.Print(query.PromQL)
+		if result == nil || len(*result) == 0 {
+			log.Print("  No result")
+		} else {
+			for _, stream := range *result {
+				log.Printf("  %s", stream.String())
+			}
+		}
 	} else {
 		appendMetrics(query, result, index)
 	}

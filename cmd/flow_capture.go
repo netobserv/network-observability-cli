@@ -24,8 +24,14 @@ var flowCmd = &cobra.Command{
 
 func runFlowCapture(_ *cobra.Command, _ []string) {
 	capture = Flow
-	go startFlowCollector()
-	createFlowDisplay()
+	showCount = defaultFlowShowCount
+	if isBackground {
+		go backgroundHearbeat() // show table periodically in background
+		startFlowCollector()
+	} else {
+		go startFlowCollector()
+		createFlowDisplay()
+	}
 }
 
 func startFlowCollector() {
