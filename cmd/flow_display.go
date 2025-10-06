@@ -56,7 +56,6 @@ var (
 
 func createFlowDisplay() {
 	focus = "inputField"
-	showCount = defaultFlowShowCount
 	app = tview.NewApplication().
 		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			//nolint:exhaustive
@@ -460,33 +459,28 @@ func AppendFlow(genericMap config.GenericMap) {
 		return
 	}
 
-	if errAdvancedDisplay != nil {
-		// simply print flow into logs
-		log.Printf("%v\n", genericMap)
-	} else {
-		// lock since we are updating lastFlows concurrently
-		mutex.Lock()
+	// lock since we are updating lastFlows concurrently
+	mutex.Lock()
 
-		// add new flow to the array
-		genericMap["Index"] = flowIndex
-		flowIndex++
-		lastFlows = append(lastFlows, genericMap)
+	// add new flow to the array
+	genericMap["Index"] = flowIndex
+	flowIndex++
+	lastFlows = append(lastFlows, genericMap)
 
-		// sort flows according to time
-		sort.Slice(lastFlows, func(i, j int) bool {
-			if capture == Flow {
-				return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
-			}
-			return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
-		})
-
-		// limit flows kept in memory
-		if len(lastFlows) > keepCount {
-			lastFlows = lastFlows[len(lastFlows)-keepCount:]
+	// sort flows according to time
+	sort.Slice(lastFlows, func(i, j int) bool {
+		if capture == Flow {
+			return toFloat64(lastFlows[i], "TimeFlowEndMs") < toFloat64(lastFlows[j], "TimeFlowEndMs")
 		}
+		return toFloat64(lastFlows[i], "Time") < toFloat64(lastFlows[j], "Time")
+	})
 
-		mutex.Unlock()
+	// limit flows kept in memory
+	if len(lastFlows) > keepCount {
+		lastFlows = lastFlows[len(lastFlows)-keepCount:]
 	}
+
+	mutex.Unlock()
 }
 
 func updateDisplayEnrichmentTexts() {
@@ -597,6 +591,23 @@ func getFlows() []config.GenericMap {
 		flows = flows[len(flows)-showCount:]
 	}
 	return flows
+}
+
+func getTableRows() []string {
+	arr := []string{}
+	if len(tableData.cols) == 0 || len(tableData.flows) == 0 {
+		return arr
+	}
+
+	for i := range len(tableData.flows) + 1 {
+		str := ""
+		for j := range tableData.cols {
+			str += tableData.GetCell(i, j).Text
+		}
+		arr = append(arr, str)
+	}
+
+	return arr
 }
 
 func updateTableAndSuggestions() {

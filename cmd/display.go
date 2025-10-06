@@ -179,6 +179,25 @@ func hearbeat() {
 	}
 }
 
+func backgroundHearbeat() {
+	for {
+		if captureEnded {
+			return
+		}
+
+		if capture != Metric {
+			updateTableAndSuggestions()
+			// simply print flow into logs
+			rows := getTableRows()
+			for _, row := range rows {
+				log.Println(row)
+			}
+		}
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func pause(pause bool) {
 	paused = pause
 	playPauseButton.SetLabel(getPlayPauseText())

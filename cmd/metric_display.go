@@ -66,7 +66,6 @@ var (
 
 func createMetricDisplay() {
 	updateShowMetricCount()
-	updateGraphs(false)
 
 	app = tview.NewApplication().
 		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
