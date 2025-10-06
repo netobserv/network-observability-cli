@@ -52,6 +52,7 @@ var (
 	captureEnded     = false
 	stopReceived     = false
 	useMocks         = false
+	isBackground     = false
 )
 
 // Execute executes the root command.
@@ -102,7 +103,10 @@ func onInit() {
 	printBanner()
 
 	log.Infof("Log level: %s\nOption(s): %s", logLevel, options)
-
+	if strings.Contains(options, "background") && !strings.Contains(options, "background=false") {
+		isBackground = true
+		log.Infof("Running in background mode")
+	}
 	showKernelVersion()
 
 	if useMocks {
@@ -143,7 +147,7 @@ func onLimitReached() bool {
 		if app != nil && errAdvancedDisplay == nil {
 			app.Stop()
 		}
-		if strings.Contains(options, "background=true") {
+		if isBackground {
 			out, err := exec.Command("/oc-netobserv", "stop").Output()
 			if err != nil {
 				log.Fatal(err)

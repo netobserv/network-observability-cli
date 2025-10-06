@@ -35,8 +35,13 @@ var (
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
 	capture = Packet
-	go startPacketCollector()
-	createFlowDisplay()
+	if isBackground {
+		go backgroundHearbeat() // show table periodically in background
+		startPacketCollector()
+	} else {
+		go startPacketCollector()
+		createFlowDisplay()
+	}
 }
 
 //nolint:cyclop
