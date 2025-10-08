@@ -10,6 +10,7 @@ import (
 // UtilModeGauge represents utilisation mode gauge permitive.
 type UtilModeGauge struct {
 	*tview.Box
+
 	// pc percentage value
 	pc float64
 	// warn percentage value
@@ -59,7 +60,7 @@ func (g *UtilModeGauge) SetLabelColor(color tcell.Color) {
 }
 
 // Focus is called when this primitive receives focus.
-func (g *UtilModeGauge) Focus(delegate func(p tview.Primitive)) { //nolint:revive
+func (g *UtilModeGauge) Focus(delegate func(p tview.Primitive)) {
 }
 
 // HasFocus returns whether or not this primitive has focus.
@@ -91,8 +92,8 @@ func (g *UtilModeGauge) GetValue() float64 {
 
 // Draw draws this primitive onto the screen.
 func (g *UtilModeGauge) Draw(screen tcell.Screen) {
-	g.Box.DrawForSubclass(screen, g)
-	x, y, width, height := g.Box.GetInnerRect()
+	g.DrawForSubclass(screen, g)
+	x, y, width, height := g.GetInnerRect()
 	labelPCWidth := 7
 	labelWidth := len(g.label)
 	barWidth := width - labelPCWidth - labelWidth
@@ -138,6 +139,11 @@ func (g *UtilModeGauge) SetCritPercentage(percentage float64) {
 	}
 }
 
+// SetEmptyColor sets empty gauge color.
+func (g *UtilModeGauge) SetEmptyColor(color tcell.Color) {
+	g.emptyColor = color
+}
+
 func (g *UtilModeGauge) getBarColor(percentage float64) tcell.Color {
 	if percentage < g.warnPc {
 		return g.okColor
@@ -146,9 +152,4 @@ func (g *UtilModeGauge) getBarColor(percentage float64) tcell.Color {
 	}
 
 	return g.critColor
-}
-
-// SetEmptyColor sets empty gauge color.
-func (g *UtilModeGauge) SetEmptyColor(color tcell.Color) {
-	g.emptyColor = color
 }
