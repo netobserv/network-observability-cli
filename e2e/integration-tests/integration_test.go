@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strings"
-	"time"
+	"regexp"
+	"strconv"
 
 	"github.com/netobserv/network-observability-cli/e2e"
 	g "github.com/onsi/ginkgo/v2"
@@ -23,18 +23,17 @@ import (
 var (
 	cliNS = "netobserv-cli"
 
-	clientset    *kubernetes.Clientset
-	StartupDate  = time.Now().Format("20060102-150405")
-	lastFileName string
-	ilog         = logrus.WithField("component", "integration_test")
+	clientset  *kubernetes.Clientset
+	filePrefix string
+	ilog       = logrus.WithField("component", "integration_test")
+	re         *regexp.Regexp
 )
 
 func writeOutput(filename string, out string) {
 	ilog.Debugf("Writing %s...", filename)
 
-	// keep last filename written to be able to name the associated cleanup accordingly
-	lastFileName = filename
 	err := os.WriteFile(path.Join(os.Getenv("ARTIFACT_DIR"), filename), []byte(out), 0666)
+	ilog.Info(fmt.Sprintf("Wrote file to path %s", path.Join(os.Getenv("ARTIFACT_DIR"), filename)))
 	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error writing command output %v", err))
 }
 
@@ -44,13 +43,19 @@ func cleanup() {
 	// run cli to cleanup namespace
 	cliArgs := []string{"cleanup"}
 	out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-	writeOutput(strings.Replace(lastFileName, "Output", "cleanupOutput", 1), out)
+	writeOutput(filePrefix+"-cleanupOutput", out)
 	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error during cleanup %v", err))
 
-	// ensure namespace is fully removed before next lunch to avoid error
+	// ensure namespace is fully removed before next test to avoid error
 	deleted, err := isNamespace(clientset, cliNS, false)
+	// KNOWN ISSUE: Sometimes code lands here where NS isn't deleted at the end
 	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Can't check if namespace was deleted %v", err))
 	o.Expect(deleted).To(o.BeTrue())
+
+	// rename dir flow with filename prefix
+	itlog.Debugf("Removing %s", outputDir)
+	err = os.RemoveAll(outputDir)
+	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Couldn't remove %s: %v", outputDir, err))
 
 	ilog.Debug("Cleaned up !")
 }
@@ -63,6 +68,10 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clientset = c
 	})
+	g.BeforeEach(func(ctx g.SpecContext) {
+		re = regexp.MustCompile(`OCP-\d+`)
+		filePrefix = re.FindString(ctx.SpecReport().LeafNodeText)
+	})
 
 	g.It("OCP-73458: Verify all CLI pods are deployed", g.Label("Sanity"), func() {
 		g.DeferCleanup(func() {
@@ -71,7 +80,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 
 		cliArgs := []string{"flows", "--copy=false"}
 		out, err := e2e.StartCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-flowOutput", out)
+		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
 
 		nodes, err := getClusterNodes(clientset, &metav1.ListOptions{})
@@ -94,7 +103,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		nsfilter := "openshift-monitoring"
 		cliArgs := []string{"flows", fmt.Sprintf("--query=SrcK8S_Namespace=~\"%s\"", nsfilter), "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-flowQueryOutput", out)
+		writeOutput(filePrefix+"-flowQueryOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -133,7 +142,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// capture upto 500KB with sampling=1
 		cliArgs := []string{"flows", "--sampling=1", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-flowSamplingOutput", out)
+		writeOutput(filePrefix+"-flowSamplingOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -171,7 +180,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// capture upto 500KB with exclude_interfaces=genev_sys_6081
 		cliArgs := []string{"flows", "--exclude_interfaces=genev_sys_6081", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-flowInterfacesOutput", out)
+		writeOutput(filePrefix+"-flowInterfacesOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -208,7 +217,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// Run metrics command
 		cliArgs := []string{"metrics", "--background"}
 		out, err := e2e.StartCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-metricsOutput", out)
+		writeOutput(filePrefix+"-metricsOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
 
 		// Wait for CLI to be ready
@@ -239,33 +248,33 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			{
 				when:    "Executing `oc netobserv flows`",
 				it:      "does not run as privileged",
-				cliArgs: []string{"flows"},
+				cliArgs: []string{"flows", "--copy=false"},
 				matcher: o.BeFalse(),
 			},
 			{
 				when:    "Executing `oc netobserv flows --privileged=true`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--privileged=true"},
+				cliArgs: []string{"flows", "--privileged=true", "--copy=false"},
 				matcher: o.BeTrue(),
 			},
 
 			{
 				when:    "Executing `oc netobserv flows --drops`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--drops"},
+				cliArgs: []string{"flows", "--drops", "--copy=false"},
 				matcher: o.BeTrue(),
 			},
 		}
-
-		for _, t := range tests {
+		for i, t := range tests {
 			g.When(t.when, func() {
-				g.It(t.it, func() {
+				g.It(t.it, func(ctx g.SpecContext) {
+					filePrefix = re.FindString(ctx.SpecReport().FullText()) + "-" + strconv.Itoa(i)
 					g.DeferCleanup(func() {
 						cleanup()
 					})
 					// run command async until done
 					out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
-					writeOutput(StartupDate+"-flowOutput", out)
+					writeOutput(filePrefix+"-flowOutput", out)
 					o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
 
 					// Wait for CLI to be ready

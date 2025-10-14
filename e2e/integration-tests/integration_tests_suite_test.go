@@ -31,11 +31,22 @@ var _ = g.BeforeSuite(func() {
 	}
 
 	// Set ARTIFACT_DIR env var to output directory if not set
-	if artifactDir := os.Getenv("ARTIFACT_DIR"); artifactDir == "" {
-		os.Setenv("ARTIFACT_DIR", "output")
+	artifactDir := os.Getenv("ARTIFACT_DIR")
+	if artifactDir == "" {
+		artifactDir = "output"
+		os.Setenv("ARTIFACT_DIR", artifactDir)
 	}
-	err := os.MkdirAll(os.Getenv("ARTIFACT_DIR"), 0700)
-	o.Expect(err).NotTo(o.HaveOccurred())
+
+	// Check if directory exists and delete it
+	if _, err := os.Stat(artifactDir); err == nil {
+		itlog.Debugf("Artifact directory already exists, removing: %s", artifactDir)
+		err = os.RemoveAll(artifactDir)
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to remove existing artifact directory")
+	}
+
+	itlog.Debugf("Creating artifact directory: %s", artifactDir)
+	err := os.MkdirAll(artifactDir, 0755)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create artifact directory")
 
 	cmd := exec.Command("which", "oc-netobserv")
 	out, err := cmd.Output()

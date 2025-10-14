@@ -19,6 +19,7 @@ import (
 const (
 	PollInterval = 5 * time.Second
 	PollTimeout  = 10 * time.Minute
+	outputDir    = "./output/flow"
 )
 
 var (
@@ -36,7 +37,7 @@ func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bo
 		} else if errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, err
+		return false, nil
 	})
 	if err != nil {
 		return false, err
@@ -65,6 +66,10 @@ func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cli
 	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
 		cliDaemonset, err := getDaemonSet(clientset, daemonsetName, cliNS)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				clog.Info("daemonset not found")
+				return false, nil
+			}
 			return false, err
 		}
 		return cliDaemonset.Status.DesiredNumberScheduled == cliDaemonset.Status.NumberReady, nil
@@ -110,8 +115,8 @@ func isCLIDone(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
 func getFlowsJSONFile() (string, error) {
 	// var files []fs.DirEntry
 	var files []string
-	outputDir := "./output/flow/"
 	dirFS := os.DirFS(outputDir)
+
 	files, err := fs.Glob(dirFS, "*.json")
 	if err != nil {
 		return "", err
