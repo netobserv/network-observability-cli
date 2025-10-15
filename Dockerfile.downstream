@@ -36,7 +36,7 @@ RUN USER=netobserv VERSION="$BUILDVERSION" IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IM
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
-FROM registry.access.redhat.com/ubi9/ubi:9.6-1758184894
+FROM registry.access.redhat.com/ubi9/ubi:9.6-1760340943
 ARG BUILDVERSION
 ARG BUILDVERSION_Y
 
