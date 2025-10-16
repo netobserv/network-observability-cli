@@ -159,7 +159,7 @@ func queryPrometheusMetric(clientset *kubernetes.Clientset, query string) (float
 
 	var finalResult float64
 	// Poll for 5 minutes at 20-second intervals
-	err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 5*time.Minute, false, func(ctx context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 5*time.Minute, false, func(_ context.Context) (done bool, err error) {
 		// Execute the request
 		resp, err := httpClient.Do(req)
 		if err != nil {
