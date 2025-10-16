@@ -39,7 +39,7 @@ func getNewClient() (*kubernetes.Clientset, error) {
 }
 
 func getClusterNodes(clientset *kubernetes.Clientset, options *metav1.ListOptions) ([]string, error) {
-	nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), *options)
+	nodes, err := clientset.CoreV1().Nodes().List(context.Background(), *options)
 	var allNodes []string
 	if err != nil {
 		return allNodes, err
@@ -50,8 +50,8 @@ func getClusterNodes(clientset *kubernetes.Clientset, options *metav1.ListOption
 	return allNodes, nil
 }
 
-func getDaemonSet(clientset *kubernetes.Clientset, daemonset string, ns string) (*appsv1.DaemonSet, error) {
-	ds, err := clientset.AppsV1().DaemonSets(ns).Get(context.TODO(), daemonset, metav1.GetOptions{})
+func getDaemonSet(ctx context.Context, clientset *kubernetes.Clientset, daemonset string, ns string) (*appsv1.DaemonSet, error) {
+	ds, err := clientset.AppsV1().DaemonSets(ns).Get(ctx, daemonset, metav1.GetOptions{})
 
 	if err != nil {
 		return nil, err
@@ -60,16 +60,16 @@ func getDaemonSet(clientset *kubernetes.Clientset, daemonset string, ns string) 
 	return ds, nil
 }
 
-func getNamespace(clientset *kubernetes.Clientset, name string) (*corev1.Namespace, error) {
-	namespace, err := clientset.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+func getNamespace(ctx context.Context, clientset *kubernetes.Clientset, name string) (*corev1.Namespace, error) {
+	namespace, err := clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return namespace, nil
 }
 
-func getNamespacePods(clientset *kubernetes.Clientset, namespace string, options *metav1.ListOptions) ([]string, error) {
-	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), *options)
+func getNamespacePods(ctx context.Context, clientset *kubernetes.Clientset, namespace string, options *metav1.ListOptions) ([]string, error) {
+	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, *options)
 	var allPods []string
 	if err != nil {
 		return allPods, err
@@ -80,8 +80,8 @@ func getNamespacePods(clientset *kubernetes.Clientset, namespace string, options
 	return allPods, nil
 }
 
-func getConfigMap(clientset *kubernetes.Clientset, name string, namespace string) (*corev1.ConfigMap, error) {
-	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+func getConfigMap(ctx context.Context, clientset *kubernetes.Clientset, name string, namespace string) (*corev1.ConfigMap, error) {
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func queryPrometheusMetric(clientset *kubernetes.Clientset, query string) (float
 
 	// Get the Prometheus route from openshift-monitoring namespace
 	var routeGVR = schema.GroupVersionResource{Group: "route.openshift.io", Version: "v1", Resource: "routes"}
-	unstructuredRoute, err := dynclient.Resource(routeGVR).Namespace("openshift-monitoring").Get(context.TODO(), "prometheus-k8s", metav1.GetOptions{})
+	unstructuredRoute, err := dynclient.Resource(routeGVR).Namespace("openshift-monitoring").Get(context.Background(), "prometheus-k8s", metav1.GetOptions{})
 	if err != nil {
 		return 0.0, fmt.Errorf("failed to get prometheus route: %w", err)
 	}
@@ -159,7 +159,7 @@ func queryPrometheusMetric(clientset *kubernetes.Clientset, query string) (float
 
 	var finalResult float64
 	// Poll for 5 minutes at 20-second intervals
-	err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 5*time.Minute, false, func(context.Context) (done bool, err error) {
+	err = wait.PollUntilContextTimeout(context.Background(), 20*time.Second, 5*time.Minute, false, func(ctx context.Context) (done bool, err error) {
 		// Execute the request
 		resp, err := httpClient.Do(req)
 		if err != nil {
@@ -235,7 +235,7 @@ func createServiceAccountToken(clientset *kubernetes.Clientset, serviceAccountNa
 	}
 
 	token, err := clientset.CoreV1().ServiceAccounts(namespace).CreateToken(
-		context.TODO(),
+		context.Background(),
 		serviceAccountName,
 		tokenRequest,
 		metav1.CreateOptions{},

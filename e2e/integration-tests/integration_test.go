@@ -3,12 +3,13 @@
 package integrationtests
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"regexp"
-	"strconv"
+	"strings"
 
 	"github.com/netobserv/network-observability-cli/e2e"
 	g "github.com/onsi/ginkgo/v2"
@@ -40,6 +41,11 @@ func writeOutput(filename string, out string) {
 func cleanup() {
 	ilog.Info("Cleaning up...")
 
+	// rename dir flow with filename prefix
+	itlog.Debugf("Removing %s", outputDir)
+	err := os.RemoveAll(outputDir)
+	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Couldn't remove %s: %v", outputDir, err))
+
 	// run cli to cleanup namespace
 	cliArgs := []string{"cleanup"}
 	out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
@@ -47,15 +53,8 @@ func cleanup() {
 	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error during cleanup %v", err))
 
 	// ensure namespace is fully removed before next test to avoid error
-	deleted, err := isNamespace(clientset, cliNS, false)
-	// KNOWN ISSUE: Sometimes code lands here where NS isn't deleted at the end
-	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Can't check if namespace was deleted %v", err))
-	o.Expect(deleted).To(o.BeTrue())
-
-	// rename dir flow with filename prefix
-	itlog.Debugf("Removing %s", outputDir)
-	err = os.RemoveAll(outputDir)
-	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Couldn't remove %s: %v", outputDir, err))
+	_, err = isNamespace(clientset, cliNS, false)
+	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Namespace wasn't deleted %v", err))
 
 	ilog.Debug("Cleaned up !")
 }
@@ -70,7 +69,12 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 	})
 	g.BeforeEach(func(ctx g.SpecContext) {
 		re = regexp.MustCompile(`OCP-\d+`)
-		filePrefix = re.FindString(ctx.SpecReport().LeafNodeText)
+		var filePrefixestring []string
+		filePrefixestring = append(filePrefixestring, re.FindString(ctx.SpecReport().FullText()))
+		if ctx.SpecReport().Labels() != nil {
+			filePrefixestring = append(filePrefixestring, ctx.SpecReport().Labels()[0])
+		}
+		filePrefix = strings.Join(filePrefixestring, "-")
 	})
 
 	g.It("OCP-73458: Verify all CLI pods are deployed", g.Label("Sanity"), func() {
@@ -78,7 +82,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			cleanup()
 		})
 
-		cliArgs := []string{"flows", "--copy=false"}
+		cliArgs := []string{"flows", "--copy=false", "--max-time=1m"}
 		out, err := e2e.StartCommand(ilog, ocNetObservBinPath, cliArgs...)
 		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
@@ -87,7 +91,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		_, err = isCLIRuning(clientset, cliNS)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("CLI didn't come ready %v", err))
-		allPods, err := getNamespacePods(clientset, cliNS, &metav1.ListOptions{})
+		allPods, err := getNamespacePods(context.Background(), clientset, cliNS, &metav1.ListOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// agent pods + collector pods
 		totalExpectedPods := len(nodes) + 1
@@ -103,7 +107,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		nsfilter := "openshift-monitoring"
 		cliArgs := []string{"flows", fmt.Sprintf("--query=SrcK8S_Namespace=~\"%s\"", nsfilter), "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(filePrefix+"-flowQueryOutput", out)
+		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -135,6 +139,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 	})
 
 	g.It("OCP-82597: Verify sampling value of 1 is applied in captured flows", g.Label("Sampling"), func() {
+
 		g.DeferCleanup(func() {
 			cleanup()
 		})
@@ -142,7 +147,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// capture upto 500KB with sampling=1
 		cliArgs := []string{"flows", "--sampling=1", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(filePrefix+"-flowSamplingOutput", out)
+		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -180,7 +185,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// capture upto 500KB with exclude_interfaces=genev_sys_6081
 		cliArgs := []string{"flows", "--exclude_interfaces=genev_sys_6081", "--copy=true", "--max-bytes=500000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(filePrefix+"-flowInterfacesOutput", out)
+		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -217,7 +222,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// Run metrics command
 		cliArgs := []string{"metrics", "--background"}
 		out, err := e2e.StartCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(filePrefix+"-metricsOutput", out)
+		writeOutput(filePrefix+"-flowOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
 
 		// Wait for CLI to be ready
@@ -226,7 +231,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
 
 		// Check that dashboard configmap is created
-		dashboardCM, err := getConfigMap(clientset, "netobserv-cli", "openshift-config-managed")
+		dashboardCM, err := getConfigMap(context.Background(), clientset, "netobserv-cli", "openshift-config-managed")
 		o.Expect(err).NotTo(o.HaveOccurred(), "Dashboard configmap should be created in openshift-config-managed namespace")
 		o.Expect(dashboardCM.Name).To(o.Equal("netobserv-cli"), "Dashboard configmap should be named netobserv-cli")
 
@@ -248,27 +253,26 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			{
 				when:    "Executing `oc netobserv flows`",
 				it:      "does not run as privileged",
-				cliArgs: []string{"flows", "--copy=false"},
+				cliArgs: []string{"flows", "--copy=false", "--max-time=1m"},
 				matcher: o.BeFalse(),
 			},
 			{
 				when:    "Executing `oc netobserv flows --privileged=true`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--privileged=true", "--copy=false"},
+				cliArgs: []string{"flows", "--privileged=true", "--copy=false", "--max-time=1m"},
 				matcher: o.BeTrue(),
 			},
 
 			{
 				when:    "Executing `oc netobserv flows --drops`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--drops", "--copy=false"},
+				cliArgs: []string{"flows", "--drops", "--copy=false", "--max-time=1m"},
 				matcher: o.BeTrue(),
 			},
 		}
-		for i, t := range tests {
+		for _, t := range tests {
 			g.When(t.when, func() {
-				g.It(t.it, func(ctx g.SpecContext) {
-					filePrefix = re.FindString(ctx.SpecReport().FullText()) + "-" + strconv.Itoa(i)
+				g.It(t.it, func() {
 					g.DeferCleanup(func() {
 						cleanup()
 					})
@@ -283,7 +287,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 					o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
 
 					// Verify correct privilege setting
-					ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
+					ds, err := getDaemonSet(context.Background(), clientset, "netobserv-cli", cliNS)
 					o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
 					containers := ds.Spec.Template.Spec.Containers
 					o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")

@@ -6,6 +6,7 @@ import (
 	"context"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,8 +28,8 @@ var (
 )
 
 func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		namespace, err := getNamespace(clientset, cliNS)
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		namespace, err := getNamespace(ctx, clientset, cliNS)
 		if exists {
 			if err != nil {
 				return false, err
@@ -46,8 +47,8 @@ func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bo
 }
 
 func isCollector(clientset *kubernetes.Clientset, cliNS string, ready bool) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		collectorPod, err := getNamespacePods(clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		collectorPod, err := getNamespacePods(ctx, clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
 		if err != nil {
 			return false, err
 		}
@@ -63,11 +64,11 @@ func isCollector(clientset *kubernetes.Clientset, cliNS string, ready bool) (boo
 }
 
 func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cliNS string) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		cliDaemonset, err := getDaemonSet(clientset, daemonsetName, cliNS)
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		cliDaemonset, err := getDaemonSet(ctx, clientset, daemonsetName, cliNS)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				clog.Info("daemonset not found")
+				clog.Infof("daemonset not found %v", err)
 				return false, nil
 			}
 			return false, err
@@ -124,7 +125,7 @@ func getFlowsJSONFile() (string, error) {
 	// this could be problematic if two tests are running in parallel with --copy=true
 	var mostRecentFile fs.FileInfo
 	for _, file := range files {
-		fileInfo, err := os.Stat(outputDir + file)
+		fileInfo, err := os.Stat(filepath.Join(outputDir, file))
 		if err != nil {
 			return "", nil
 		}
@@ -132,5 +133,9 @@ func getFlowsJSONFile() (string, error) {
 			mostRecentFile = fileInfo
 		}
 	}
-	return outputDir + mostRecentFile.Name(), nil
+	absPath, err := filepath.Abs(filepath.Join(outputDir, mostRecentFile.Name()))
+	if err != nil {
+		return "", err
+	}
+	return absPath, nil
 }

@@ -442,6 +442,9 @@ function deleteNamespace() {
 }
 
 function cleanup() {
+  # Trap SIGHUP to prevent premature termination when PTY closes
+  trap '' HUP
+
   if [[ "$runBackground" == "true" || "$skipCleanup" == "true" || "$outputYAML" == "true" ]]; then
     return
   fi

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	StartCommandWait  = 30 * time.Second
+	StartCommandWait  = 15 * time.Second
 	RunCommandTimeout = 60 * time.Second
 )
 
@@ -32,39 +33,56 @@ func StartCommand(log *logrus.Entry, commandName string, arg ...string) (string,
 	outPipe, _ := cmd.StdoutPipe()
 	errPipe, _ := cmd.StderrPipe()
 
-	var sb strings.Builder
+	var sbOut strings.Builder
+	var sbErr strings.Builder
+
 	go func(_ io.ReadCloser) {
 		reader := bufio.NewReader(errPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbErr.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(errPipe)
 
 	go func(_ io.ReadCloser) {
 		reader := bufio.NewReader(outPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbOut.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(outPipe)
 
 	// start async
 	go func() {
 		log.Debug("Starting async ...")
-		_, err := pty.Start(cmd)
+		ptmx, err := pty.Start(cmd)
 		if err != nil {
 			log.Errorf("Start returned error: %v", err)
+			return
 		}
+		// Note: PTY is intentionally NOT closed here as command continues running
+		// Keep the PTY file descriptor alive to prevent SIGHUP
+		_ = ptmx // Keep reference to prevent premature PTY closure
 	}()
 
 	log.Debugf("Waiting %v ...", StartCommandWait)
 	time.Sleep(StartCommandWait)
 
 	log.Debug("Returning result while command still running")
-	return sb.String(), nil
+	// Combine stderr first (errors more visible), then stdout
+	return sbErr.String() + sbOut.String(), nil
 }
 
 // run command with tty support and wait for stop
@@ -77,31 +95,48 @@ func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, e
 	outPipe, _ := cmd.StdoutPipe()
 	errPipe, _ := cmd.StderrPipe()
 
-	var sb strings.Builder
+	var sbOut strings.Builder
+	var sbErr strings.Builder
+	var wg sync.WaitGroup
+
+	wg.Add(2)
 	go func(_ io.ReadCloser) {
+		defer wg.Done()
 		reader := bufio.NewReader(errPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbErr.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(errPipe)
 
 	go func(_ io.ReadCloser) {
+		defer wg.Done()
 		reader := bufio.NewReader(outPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbOut.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(outPipe)
 
 	log.Debug("Starting ...")
-	_, err := pty.Start(cmd)
+	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		log.Errorf("Start returned error: %v", err)
 		return "", err
 	}
+	defer ptmx.Close() // Ensure PTY is closed after command finishes
 
 	log.Debug("Waiting ...")
 	err = cmd.Wait()
@@ -109,12 +144,16 @@ func RunCommand(log *logrus.Entry, commandName string, arg ...string) (string, e
 		log.Errorf("Wait returned error: %v", err)
 	}
 
+	log.Debug("Waiting for output goroutines to finish...")
+	wg.Wait()
+
 	// TODO: find why this returns -1. That may be related to pty implementation
 	/*if cmd.ProcessState.ExitCode() != 0 {
-		return sb.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
+		return sbErr.String() + sbOut.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
 	}*/
 
-	return sb.String(), nil
+	// Combine stderr first (errors more visible), then stdout
+	return sbErr.String() + sbOut.String(), nil
 }
 
 // run command with tty support and terminate it after timeout
@@ -137,22 +176,38 @@ func RunCommandAndTerminate(log *logrus.Entry, commandName string, arg ...string
 	})
 	defer timer.Stop()
 
-	var sb strings.Builder
+	var sbOut strings.Builder
+	var sbErr strings.Builder
+	var wg sync.WaitGroup
+
+	wg.Add(2)
 	go func(_ io.ReadCloser) {
+		defer wg.Done()
 		reader := bufio.NewReader(errPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbErr.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(errPipe)
 
 	go func(_ io.ReadCloser) {
+		defer wg.Done()
 		reader := bufio.NewReader(outPipe)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			sb.WriteString(line)
-			line, err = reader.ReadString('\n')
+		for {
+			line, err := reader.ReadString('\n')
+			// Write line even if there's an error, as long as we got data
+			if len(line) > 0 {
+				sbOut.WriteString(line)
+			}
+			if err != nil {
+				break
+			}
 		}
 	}(outPipe)
 
@@ -178,10 +233,14 @@ func RunCommandAndTerminate(log *logrus.Entry, commandName string, arg ...string
 		log.Errorf("Wait returned error: %v", err)
 	}
 
+	log.Debug("Waiting for output goroutines to finish...")
+	wg.Wait()
+
 	// TODO: find why this returns -1. That may be related to pty implementation
 	/*if cmd.ProcessState.ExitCode() != 0 {
-		return sb.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
+		return sbErr.String() + sbOut.String(), fmt.Errorf("Cmd returned code %d", cmd.ProcessState.ExitCode())
 	}*/
 
-	return sb.String(), nil
+	// Combine stderr first (errors more visible), then stdout
+	return sbErr.String() + sbOut.String(), nil
 }
