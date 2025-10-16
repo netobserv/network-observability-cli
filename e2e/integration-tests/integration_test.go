@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/netobserv/network-observability-cli/e2e"
@@ -270,9 +271,10 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 				matcher: o.BeTrue(),
 			},
 		}
-		for _, t := range tests {
+		for i, t := range tests {
 			g.When(t.when, func() {
 				g.It(t.it, func() {
+					filePrefix = filePrefix + "-" + strconv.Itoa(i)
 					g.DeferCleanup(func() {
 						cleanup()
 					})
