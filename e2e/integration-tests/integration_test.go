@@ -254,20 +254,20 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 			{
 				when:    "Executing `oc netobserv flows`",
 				it:      "does not run as privileged",
-				cliArgs: []string{"flows", "--copy=false", "--max-time=1m"},
+				cliArgs: []string{"flows", "--background", "--max-time=1m"},
 				matcher: o.BeFalse(),
 			},
 			{
 				when:    "Executing `oc netobserv flows --privileged=true`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--privileged=true", "--copy=false", "--max-time=1m"},
+				cliArgs: []string{"flows", "--privileged=true", "--background", "--max-time=1m"},
 				matcher: o.BeTrue(),
 			},
 
 			{
 				when:    "Executing `oc netobserv flows --drops`",
 				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--drops", "--copy=false", "--max-time=1m"},
+				cliArgs: []string{"flows", "--drops", "--background", "--max-time=1m"},
 				matcher: o.BeTrue(),
 			},
 		}
@@ -284,9 +284,8 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 					o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
 
 					// Wait for CLI to be ready
-					daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
-					o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
-					o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
+					cliRunning, err := isCLIRuning(clientset, cliNS)
+					o.Expect(cliRunning).To(o.BeTrue(), fmt.Sprintf("CLI didn't come ready %v", err))
 
 					// Verify correct privilege setting
 					ds, err := getDaemonSet(context.Background(), clientset, "netobserv-cli", cliNS)
