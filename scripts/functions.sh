@@ -781,8 +781,8 @@ function defaultValue() {
 function waitDaemonset(){
     echo "Waiting for daemonset pods to be ready..."
     # Increase timeout for CI environments where image pulls can be slow
-    # 30 retries × 10 seconds = 5 minutes total
-    retries=30
+    # 60 retries × 10 seconds = 10 minutes total
+    retries=60
     while [[ $retries -ge 0 ]];do
         sleep 10
         ready=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.numberReady}")
