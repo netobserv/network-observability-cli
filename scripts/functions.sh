@@ -779,6 +779,12 @@ function defaultValue() {
 }
 
 function waitDaemonset(){
+    # In E2E test mode, skip waiting here as Go tests handle it via isDaemonsetReady()
+    if [[ "$isE2E" = true ]]; then
+      echo "E2E mode: Skipping daemonset wait (handled by test framework)"
+      return 0
+    fi
+
     echo "Waiting for daemonset pods to be ready..."
     # Increase timeout for CI environments where image pulls can be slow
     # 60 retries × 10 seconds = 10 minutes total
