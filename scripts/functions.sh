@@ -442,6 +442,9 @@ function deleteNamespace() {
 }
 
 function cleanup() {
+  # Trap SIGHUP to prevent premature termination when PTY closes
+  trap '' HUP
+
   if [[ "$runBackground" == "true" || "$skipCleanup" == "true" || "$outputYAML" == "true" ]]; then
     return
   fi
@@ -776,10 +779,18 @@ function defaultValue() {
 }
 
 function waitDaemonset(){
+    # In E2E test mode, skip waiting here as Go tests handle it via isDaemonsetReady()
+    if [[ "$isE2E" = true ]]; then
+      echo "E2E mode: Skipping daemonset wait (handled by test framework)"
+      return 0
+    fi
+
     echo "Waiting for daemonset pods to be ready..."
-    retries=10
+    # Increase timeout for CI environments where image pulls can be slow
+    # 60 retries × 10 seconds = 10 minutes total
+    retries=60
     while [[ $retries -ge 0 ]];do
-        sleep 5
+        sleep 10
         ready=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.numberReady}")
         required=$($K8S_CLI_BIN -n "$namespace" get daemonset netobserv-cli -o jsonpath="{.status.desiredNumberScheduled}")
         reasons=$($K8S_CLI_BIN get pods -n "$namespace" -o jsonpath='{.items[*].status.containerStatuses[*].state.waiting.reason}')
@@ -793,8 +804,20 @@ function waitDaemonset(){
         ((retries--))
     done
     echo
-    echo "ERROR: Daemonset pods failed to start:" 
-    ${K8S_CLI_BIN} logs daemonset/netobserv-cli -n "$namespace" --tail=1
+    echo "ERROR: Daemonset pods failed to start within timeout"
+    echo "Collecting diagnostic information..."
+    echo
+    echo "=== Pod Status ==="
+    ${K8S_CLI_BIN} get pods -n "$namespace" -o wide
+    echo
+    echo "=== Pod Events ==="
+    ${K8S_CLI_BIN} get events -n "$namespace" --sort-by='.lastTimestamp' | tail -20
+    echo
+    echo "=== Pod Descriptions ==="
+    ${K8S_CLI_BIN} describe pods -n "$namespace" | grep -A 10 "Events:"
+    echo
+    echo "=== Daemonset Logs (if available) ==="
+    ${K8S_CLI_BIN} logs daemonset/netobserv-cli -n "$namespace" --tail=50 2>&1 || echo "No logs available yet"
     echo
     exit 1
 }
