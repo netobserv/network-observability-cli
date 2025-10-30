@@ -17,6 +17,7 @@ const (
 		"DnsFlags":34176,
 		"DnsFlagsResponseCode":"NoError",
 		"DnsId":31319,
+		"DnsName":"example.com",
 		"DnsLatencyMs":1,
 		"Dscp":0,
 		"DstAddr":"10.129.0.26",
