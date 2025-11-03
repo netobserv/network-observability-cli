@@ -73,7 +73,24 @@ func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cli
 			}
 			return false, err
 		}
-		return cliDaemonset.Status.DesiredNumberScheduled == cliDaemonset.Status.NumberReady, nil
+
+		desired := cliDaemonset.Status.DesiredNumberScheduled
+		ready := cliDaemonset.Status.NumberReady
+		current := cliDaemonset.Status.CurrentNumberScheduled
+
+		clog.Debugf("daemonset %s status: DesiredNumberScheduled=%d, CurrentNumberScheduled=%d, NumberReady=%d",
+			daemonsetName, desired, current, ready)
+
+		// Ensure daemonset has scheduled pods before checking readiness
+		// This prevents race condition where both DesiredNumberScheduled and NumberReady are 0
+		if desired == 0 {
+			clog.Debugf("daemonset %s has not scheduled any pods yet (DesiredNumberScheduled=0)", daemonsetName)
+			return false, nil
+		}
+
+		// Check both that all desired pods are scheduled AND ready
+		// This ensures pods actually exist before we return true
+		return desired == current && current == ready, nil
 	})
 	if err != nil {
 		return false, err
@@ -92,13 +109,13 @@ func isCLIRuning(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	clog.Debugf("Daemonset ready: %v", daemonsetReady)
+	clog.Infof("Daemonset ready: %v", daemonsetReady)
 
 	collectorReady, err := isCollector(clientset, cliNS, true)
 	if err != nil {
 		return false, err
 	}
-	clog.Debugf("Collector ready: %v", collectorReady)
+	clog.Infof("Collector ready: %v", collectorReady)
 
 	return namespaceCreated && daemonsetReady && collectorReady, nil
 }
