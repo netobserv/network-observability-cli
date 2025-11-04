@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	StartCommandWait  = 10 * time.Second
+	StartCommandWait  = 20 * time.Second
 	RunCommandTimeout = 60 * time.Second
 )
 
