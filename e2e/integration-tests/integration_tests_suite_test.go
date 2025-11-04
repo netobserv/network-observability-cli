@@ -45,6 +45,8 @@ var _ = g.BeforeSuite(func() {
 		itlog.Debugf("Creating artifact directory: %s", artifactDir)
 		err := os.MkdirAll(artifactDir, 0755)
 		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create artifact directory")
+		os.Setenv("NETOBSERV_AGENT_IMAGE", "quay.io/netobserv/netobserv-ebpf-agent:main")
+		os.Setenv("NETOBSERV_COLLECTOR_IMAGE", "quay.io/netobserv/network-observability-cli:main")
 	}
 
 	cmd := exec.Command("which", "oc-netobserv")
