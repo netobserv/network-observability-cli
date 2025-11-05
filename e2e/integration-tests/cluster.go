@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -76,28 +75,9 @@ func getNamespacePods(ctx context.Context, clientset *kubernetes.Clientset, name
 		return allPods, err
 	}
 	for i := range pods.Items {
-		pod := &pods.Items[i]
-		allPods = append(allPods, pod.Name)
-		// Log pod state for debugging
-		logrus.WithFields(logrus.Fields{
-			"pod":       pod.Name,
-			"phase":     pod.Status.Phase,
-			"ready":     isPodReady(pod),
-			"namespace": namespace,
-		}).Debugf("Found pod in namespace")
+		allPods = append(allPods, pods.Items[i].Name)
 	}
-	logrus.Infof("getNamespacePods: found %d pods in namespace %s (options: %+v)", len(allPods), namespace, options)
 	return allPods, nil
-}
-
-// isPodReady checks if a pod is in Ready condition
-func isPodReady(pod *corev1.Pod) bool {
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady {
-			return condition.Status == corev1.ConditionTrue
-		}
-	}
-	return false
 }
 
 func getConfigMap(ctx context.Context, clientset *kubernetes.Clientset, name string, namespace string) (*corev1.ConfigMap, error) {

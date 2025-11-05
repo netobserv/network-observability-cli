@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	// Keep StartCommandWait at least 20 seconds
+	// to avoid pty to get closed early and ultimately killing process
 	StartCommandWait  = 20 * time.Second
 	RunCommandTimeout = 60 * time.Second
 )
