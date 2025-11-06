@@ -13,33 +13,6 @@ import (
 	"github.com/gopacket/gopacket/pcapgo"
 )
 
-// pcap_helper.go provides utilities for reading and filtering packets from pcapng files
-// in integration tests. It supports filtering by port, protocol, IP address, and packet length.
-//
-// Example usage:
-//
-//	// Read all packets from a file
-//	packets, err := ReadPcapngFile("./output/pcap/capture.pcapng")
-//	if err != nil {
-//		return err
-//	}
-//
-//	// Filter packets by port 58
-//	port := uint16(58)
-//	filter := &PacketFilter{Port: &port}
-//	filteredPackets, err := ReadPcapngFileWithFilter("./output/pcap/capture.pcapng", filter)
-//
-//	// Count packets matching a specific protocol
-//	tcpFilter := &PacketFilter{Protocol: "TCP"}
-//	count, err := CountPackets("./output/pcap/capture.pcapng", tcpFilter)
-//
-//	// Check if any packets exist on port 58
-//	hasPort58, err := HasPacketsOnPort("./output/pcap/capture.pcapng", 58)
-//
-//	// Get protocol distribution
-//	distribution := GetProtocolDistribution(packets)
-//	// Returns map[string]int, e.g., {"TCP": 10, "UDP": 5, "ICMPv6": 2}
-
 // PacketInfo holds information about a captured packet
 type PacketInfo struct {
 	Timestamp   int64
@@ -110,15 +83,6 @@ func ReadPcapngFileWithFilter(filepath string, filter *PacketFilter) ([]PacketIn
 	}
 
 	return packets, nil
-}
-
-// CountPackets counts packets in a pcapng file matching the filter
-func CountPackets(filepath string, filter *PacketFilter) (int, error) {
-	packets, err := ReadPcapngFileWithFilter(filepath, filter)
-	if err != nil {
-		return 0, err
-	}
-	return len(packets), nil
 }
 
 // extractPacketInfo extracts information from a packet
@@ -259,62 +223,4 @@ func FilterPacketsByPort(packets []PacketInfo, port uint16) []PacketInfo {
 		}
 	}
 	return filtered
-}
-
-// FilterPacketsByProtocol filters packets by protocol
-func FilterPacketsByProtocol(packets []PacketInfo, protocol string) []PacketInfo {
-	var filtered []PacketInfo
-	for _, p := range packets {
-		if strings.EqualFold(p.Protocol, protocol) {
-			filtered = append(filtered, p)
-		}
-	}
-	return filtered
-}
-
-// GetPacketCount returns the total number of packets in a file
-func GetPacketCount(filepath string) (int, error) {
-	packets, err := ReadPcapngFile(filepath)
-	if err != nil {
-		return 0, err
-	}
-	return len(packets), nil
-}
-
-// GetProtocolDistribution returns a map of protocol -> count
-func GetProtocolDistribution(packets []PacketInfo) map[string]int {
-	distribution := make(map[string]int)
-	for _, p := range packets {
-		distribution[p.Protocol]++
-	}
-	return distribution
-}
-
-// HasPacketsOnPort checks if there are any packets using the specified port
-func HasPacketsOnPort(filepath string, port uint16) (bool, error) {
-	filter := &PacketFilter{Port: &port}
-	count, err := CountPackets(filepath, filter)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-// GetUniqueIPs returns a list of unique IP addresses in the capture
-func GetUniqueIPs(packets []PacketInfo) []string {
-	ipMap := make(map[string]bool)
-	for _, p := range packets {
-		if p.SrcIP != "" {
-			ipMap[p.SrcIP] = true
-		}
-		if p.DstIP != "" {
-			ipMap[p.DstIP] = true
-		}
-	}
-
-	ips := make([]string, 0, len(ipMap))
-	for ip := range ipMap {
-		ips = append(ips, ip)
-	}
-	return ips
 }
