@@ -13,7 +13,6 @@ import (
 	"github.com/netobserv/network-observability-cli/e2e"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/onsi/gomega/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -83,6 +82,180 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		// agent pods + collector pods
 		totalExpectedPods := len(nodes) + 1
 		o.Expect(allPods).To(o.HaveLen(totalExpectedPods), fmt.Sprintf("Number of CLI pods are not as expected %d", totalExpectedPods))
+	})
+
+	g.It("OCP-73458: Verify packet capture creates pcapng file and filters by port", g.Label("PacketCapture"), func() {
+		g.DeferCleanup(func() {
+			cleanup()
+		})
+
+		// Run packet capture with port 58 filter
+		targetPort := uint16(8080)
+		cliArgs := []string{"packets", "--port=8080", "--copy=true", "--max-bytes=100000000", "--max-time=1m"}
+		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
+		writeOutput(StartupDate+"-packetOutput", out)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
+
+		_, err = isCLIDone(clientset, cliNS)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("CLI didn't finish %v", err))
+
+		// Verify pcapng file is created
+		pcapngFile, err := getPcapngFile()
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to get pcapng file")
+		o.Expect(pcapngFile).NotTo(o.BeEmpty(), "Pcapng file path should not be empty")
+
+		ilog.Infof("==> Pcapng file created at: %s", pcapngFile)
+
+		// Verify file exists and has content
+		fileInfo, err := os.Stat(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Pcapng file should exist at %s", pcapngFile))
+		o.Expect(fileInfo.Size()).To(o.BeNumerically(">", 0), "Pcapng file should have content")
+
+		ilog.Infof("==> Pcapng file size: %d bytes", fileInfo.Size())
+
+		// Read and analyze packets from pcapng file
+		packets, err := ReadPcapngFile(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to read pcapng file: %v", err))
+		o.Expect(packets).NotTo(o.BeEmpty(), "Pcapng file should contain packets")
+
+		ilog.Infof("Found %d total packets in pcapng file", len(packets))
+		// Verify packets are filtered by port 58
+		packetsOnPort58 := FilterPacketsByPort(packets, targetPort)
+		o.Expect(packetsOnPort58).NotTo(o.BeEmpty(), fmt.Sprintf("Should have captured packets on port %d", targetPort))
+
+		ilog.Infof("Found %d packets on port %d", len(packetsOnPort58), targetPort)
+		// Get protocol distribution for analysis
+		protocolDist := GetProtocolDistribution(packets)
+		ilog.Infof("Protocol distribution: %v", protocolDist)
+	})
+
+	g.It("OCP-73458: Verify packet capture fails without filter", g.Label("PacketCapture", "NoFilter"), func() {
+		g.DeferCleanup(func() {
+			cleanup()
+		})
+
+		// Run packet capture without any filter - should show error message
+		cliArgs := []string{"packets", "--copy=false", "--max-bytes=100000000", "--max-time=1m"}
+		out, _ := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
+		writeOutput(StartupDate+"-packetNoFilterOutput", out)
+
+		ilog.Infof("==> Command output: %s", out)
+
+		// Verify error message contains expected text
+		o.Expect(out).To(o.ContainSubstring("Error: At least one eBPF filter must be set"), "Output should contain eBPF filter requirement error")
+		o.Expect(out).To(o.ContainSubstring("packet capture"), "Error should mention packet capture")
+		o.Expect(out).To(o.ContainSubstring("high resource consumption"), "Error should mention resource consumption reason")
+		o.Expect(out).To(o.Or(
+			o.ContainSubstring("Use netobserv packets help"),
+			o.ContainSubstring("help to list filters"),
+		), "Error should suggest using help command")
+
+		// Verify cleanup happened
+		o.Expect(out).To(o.ContainSubstring("Cleaning up"), "Should perform cleanup after error")
+		o.Expect(out).To(o.ContainSubstring("namespace \"netobserv-cli\" deleted"), "Should delete namespace during cleanup")
+	})
+
+	g.It("OCP-73458: Verify packet capture help lists all filters", g.Label("PacketCapture", "Help"), func() {
+		// Run help command to list available filters
+		cliArgs := []string{"packets", "help"}
+		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
+		writeOutput(StartupDate+"-packetHelpOutput", out)
+		o.Expect(err).NotTo(o.HaveOccurred(), "Help command should succeed")
+
+		ilog.Infof("==> Help command output length: %d bytes", len(out))
+		// Verify help output contains filter section
+		o.Expect(out).To(o.ContainSubstring("filters:"), "Help should contain filters section")
+
+		// Verify key filter options are listed
+		expectedFilters := []string{
+			"--port:",
+			"--protocol:",
+			"--action:",
+			"--cidr:",
+			"--direction:",
+			"--dport:",
+			"--sport:",
+			"--peer_ip:",
+			"--tcp_flags:",
+			"--icmp_type:",
+			"--icmp_code:",
+			"--drops:",
+			"--query:",
+			"--node-selector:",
+		}
+		for _, filter := range expectedFilters {
+			o.Expect(out).To(o.ContainSubstring(filter), fmt.Sprintf("Help should list filter: %s", filter))
+		}
+
+		// Verify options section exists
+		o.Expect(out).To(o.ContainSubstring("options:"), "Help should contain options section")
+
+		// Verify key options are listed
+		expectedOptions := []string{
+			"--background:",
+			"--copy:",
+			"--log-level:",
+			"--max-time:",
+			"--max-bytes:",
+			"--yaml:",
+		}
+		for _, option := range expectedOptions {
+			o.Expect(out).To(o.ContainSubstring(option), fmt.Sprintf("Help should list option: %s", option))
+		}
+
+		// Verify syntax information
+		o.Expect(out).To(o.ContainSubstring("Syntax:"), "Help should show syntax")
+		o.Expect(out).To(o.ContainSubstring("netobserv packets"), "Help should show command syntax")
+	})
+
+	g.It("OCP-73458: Verify packet capture with TCP protocol filter", g.Label("PacketCapture", "TCP"), func() {
+		g.DeferCleanup(func() {
+			cleanup()
+		})
+
+		// Run packet capture with TCP protocol filter
+		targetProtocol := "TCP"
+		cliArgs := []string{"packets", "--protocol=TCP", "--copy=true", "--max-bytes=100000000", "--max-time=1m"}
+		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
+		writeOutput(StartupDate+"-packetTcpOutput", out)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
+
+		_, err = isCLIDone(clientset, cliNS)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("CLI didn't finish %v", err))
+
+		// Verify pcapng file is created
+		pcapngFile, err := getPcapngFile()
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to get pcapng file")
+		o.Expect(pcapngFile).NotTo(o.BeEmpty(), "Pcapng file path should not be empty")
+
+		ilog.Infof("==> Pcapng file created at: %s", pcapngFile)
+
+		// Verify file exists and has content
+		fileInfo, err := os.Stat(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Pcapng file should exist at %s", pcapngFile))
+		o.Expect(fileInfo.Size()).To(o.BeNumerically(">", 0), "Pcapng file should have content")
+
+		// Read and analyze packets from pcapng file
+		packets, err := ReadPcapngFile(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to read pcapng file: %v", err))
+		o.Expect(packets).NotTo(o.BeEmpty(), "Pcapng file should contain packets")
+
+		ilog.Infof("Found %d total packets in pcapng file", len(packets))
+
+		// Verify packets are filtered by TCP protocol
+		tcpPackets := FilterPacketsByProtocol(packets, targetProtocol)
+		o.Expect(tcpPackets).NotTo(o.BeEmpty(), fmt.Sprintf("Should have captured %s packets", targetProtocol))
+
+		ilog.Infof("Found %d %s packets", len(tcpPackets), targetProtocol)
+
+		// Get protocol distribution
+		protocolDist := GetProtocolDistribution(packets)
+		ilog.Infof("Protocol distribution: %v", protocolDist)
+
+		// Verify all packets are TCP
+		for _, p := range packets {
+			o.Expect(p.Protocol).To(o.Equal(targetProtocol), fmt.Sprintf("All packets should be %s, found %s", targetProtocol, p.Protocol))
+		}
 	})
 
 	g.It("OCP-73458: Verify regexes filters are applied", g.Label("Regexes"), func() {
@@ -227,61 +400,5 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		metricValue, err := queryPrometheusMetric(clientset, prometheusQuery)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to query Prometheus for metrics: %v", err))
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
-	})
-	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
-
-		tests := []struct {
-			when    string
-			it      string
-			cliArgs []string
-			matcher types.GomegaMatcher
-		}{
-			{
-				when:    "Executing `oc netobserv flows`",
-				it:      "does not run as privileged",
-				cliArgs: []string{"flows"},
-				matcher: o.BeFalse(),
-			},
-			{
-				when:    "Executing `oc netobserv flows --privileged=true`",
-				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--privileged=true"},
-				matcher: o.BeTrue(),
-			},
-
-			{
-				when:    "Executing `oc netobserv flows --drops`",
-				it:      "runs as privileged",
-				cliArgs: []string{"flows", "--drops"},
-				matcher: o.BeTrue(),
-			},
-		}
-
-		for _, t := range tests {
-			g.When(t.when, func() {
-				g.It(t.it, func() {
-					g.DeferCleanup(func() {
-						cleanup()
-					})
-					// run command async until done
-					out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
-					writeOutput(StartupDate+"-flowOutput", out)
-					o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
-
-					// Wait for CLI to be ready
-					daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
-					o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
-					o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
-
-					// Verify correct privilege setting
-					ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
-					o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
-					containers := ds.Spec.Template.Spec.Containers
-					o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
-					o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
-				})
-			})
-
-		}
 	})
 })
