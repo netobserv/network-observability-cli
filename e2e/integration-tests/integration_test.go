@@ -13,6 +13,7 @@ import (
 	"github.com/netobserv/network-observability-cli/e2e"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -297,7 +298,62 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		}
 		o.Expect(found).To(o.BeTrue(), fmt.Sprintf("Didn't found any flow matching SrcK8S_Namespace=~%s", nsfilter))
 	})
+	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 
+		tests := []struct {
+			when    string
+			it      string
+			cliArgs []string
+			matcher types.GomegaMatcher
+		}{
+			{
+				when:    "Executing `oc netobserv flows`",
+				it:      "does not run as privileged",
+				cliArgs: []string{"flows"},
+				matcher: o.BeFalse(),
+			},
+			{
+				when:    "Executing `oc netobserv flows --privileged=true`",
+				it:      "runs as privileged",
+				cliArgs: []string{"flows", "--privileged=true"},
+				matcher: o.BeTrue(),
+			},
+
+			{
+				when:    "Executing `oc netobserv flows --drops`",
+				it:      "runs as privileged",
+				cliArgs: []string{"flows", "--drops"},
+				matcher: o.BeTrue(),
+			},
+		}
+
+		for _, t := range tests {
+			g.When(t.when, func() {
+				g.It(t.it, func() {
+					g.DeferCleanup(func() {
+						cleanup()
+					})
+					// run command async until done
+					out, err := e2e.StartCommand(ilog, ocNetObservBinPath, t.cliArgs...)
+					writeOutput(StartupDate+"-flowOutput", out)
+					o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error starting command %v", err))
+
+					// Wait for CLI to be ready
+					daemonsetReady, err := isDaemonsetReady(clientset, "netobserv-cli", cliNS)
+					o.Expect(err).NotTo(o.HaveOccurred(), "agent daemonset didn't come ready")
+					o.Expect(daemonsetReady).To(o.BeTrue(), "agent daemonset didn't come ready")
+
+					// Verify correct privilege setting
+					ds, err := getDaemonSet(clientset, "netobserv-cli", cliNS)
+					o.Expect(err).NotTo(o.HaveOccurred(), "DeamonSet should be created in CLI namespace")
+					containers := ds.Spec.Template.Spec.Containers
+					o.Expect(len(containers)).To(o.Equal(1), "The number of containers specified in the template is != 1")
+					o.Expect(containers[0].SecurityContext.Privileged).To(o.HaveValue(t.matcher), "Priviledged is not set to true")
+				})
+			})
+
+		}
+	})
 	g.It("OCP-82597: Verify sampling value of 1 is applied in captured flows", g.Label("Sampling"), func() {
 		g.DeferCleanup(func() {
 			cleanup()
