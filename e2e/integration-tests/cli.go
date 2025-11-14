@@ -6,6 +6,7 @@ import (
 	"context"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,6 +20,7 @@ import (
 const (
 	PollInterval = 5 * time.Second
 	PollTimeout  = 10 * time.Minute
+	outputDir    = "./output/flow"
 )
 
 var (
@@ -26,8 +28,8 @@ var (
 )
 
 func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		namespace, err := getNamespace(clientset, cliNS)
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		namespace, err := getNamespace(ctx, clientset, cliNS)
 		if exists {
 			if err != nil {
 				return false, err
@@ -36,7 +38,7 @@ func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bo
 		} else if errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, err
+		return false, nil
 	})
 	if err != nil {
 		return false, err
@@ -45,8 +47,8 @@ func isNamespace(clientset *kubernetes.Clientset, cliNS string, exists bool) (bo
 }
 
 func isCollector(clientset *kubernetes.Clientset, cliNS string, ready bool) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		collectorPod, err := getNamespacePods(clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		collectorPod, err := getNamespacePods(ctx, clientset, cliNS, &metav1.ListOptions{FieldSelector: "status.phase=Running", LabelSelector: "run=collector"})
 		if err != nil {
 			return false, err
 		}
@@ -62,12 +64,33 @@ func isCollector(clientset *kubernetes.Clientset, cliNS string, ready bool) (boo
 }
 
 func isDaemonsetReady(clientset *kubernetes.Clientset, daemonsetName string, cliNS string) (bool, error) {
-	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(context.Context) (done bool, err error) {
-		cliDaemonset, err := getDaemonSet(clientset, daemonsetName, cliNS)
+	err := wait.PollUntilContextTimeout(context.Background(), PollInterval, PollTimeout, true, func(ctx context.Context) (done bool, err error) {
+		cliDaemonset, err := getDaemonSet(ctx, clientset, daemonsetName, cliNS)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				clog.Infof("daemonset not found %v", err)
+				return false, nil
+			}
 			return false, err
 		}
-		return cliDaemonset.Status.DesiredNumberScheduled == cliDaemonset.Status.NumberReady, nil
+
+		desired := cliDaemonset.Status.DesiredNumberScheduled
+		ready := cliDaemonset.Status.NumberReady
+		current := cliDaemonset.Status.CurrentNumberScheduled
+
+		clog.Debugf("daemonset %s status: DesiredNumberScheduled=%d, CurrentNumberScheduled=%d, NumberReady=%d",
+			daemonsetName, desired, current, ready)
+
+		// Ensure daemonset has scheduled pods before checking readiness
+		// This prevents race condition where both DesiredNumberScheduled and NumberReady are 0
+		if desired == 0 {
+			clog.Debugf("daemonset %s has not scheduled any pods yet (DesiredNumberScheduled=0)", daemonsetName)
+			return false, nil
+		}
+
+		// Check both that all desired pods are scheduled AND ready
+		// This ensures pods actually exist before we return true
+		return desired == current && current == ready, nil
 	})
 	if err != nil {
 		return false, err
@@ -86,13 +109,13 @@ func isCLIRuning(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	clog.Debugf("Daemonset ready: %v", daemonsetReady)
+	clog.Infof("Daemonset ready: %v", daemonsetReady)
 
 	collectorReady, err := isCollector(clientset, cliNS, true)
 	if err != nil {
 		return false, err
 	}
-	clog.Debugf("Collector ready: %v", collectorReady)
+	clog.Infof("Collector ready: %v", collectorReady)
 
 	return namespaceCreated && daemonsetReady && collectorReady, nil
 }
@@ -110,8 +133,8 @@ func isCLIDone(clientset *kubernetes.Clientset, cliNS string) (bool, error) {
 func getFlowsJSONFile() (string, error) {
 	// var files []fs.DirEntry
 	var files []string
-	outputDir := "./output/flow/"
 	dirFS := os.DirFS(outputDir)
+
 	files, err := fs.Glob(dirFS, "*.json")
 	if err != nil {
 		return "", err
@@ -119,7 +142,7 @@ func getFlowsJSONFile() (string, error) {
 	// this could be problematic if two tests are running in parallel with --copy=true
 	var mostRecentFile fs.FileInfo
 	for _, file := range files {
-		fileInfo, err := os.Stat(outputDir + file)
+		fileInfo, err := os.Stat(filepath.Join(outputDir, file))
 		if err != nil {
 			return "", nil
 		}
@@ -127,5 +150,9 @@ func getFlowsJSONFile() (string, error) {
 			mostRecentFile = fileInfo
 		}
 	}
-	return outputDir + mostRecentFile.Name(), nil
+	absPath, err := filepath.Abs(filepath.Join(outputDir, mostRecentFile.Name()))
+	if err != nil {
+		return "", err
+	}
+	return absPath, nil
 }

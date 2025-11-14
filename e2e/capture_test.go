@@ -51,7 +51,7 @@ func TestFlowCapture(t *testing.T) {
 			})
 			defer timer.Stop()
 
-			output, err := RunCommand(clog, "commands/oc-netobserv", "flows", "--log-level=trace")
+			output, err := RunCommandAndTerminate(clog, "commands/oc-netobserv", "flows", "--log-level=trace")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
@@ -124,7 +124,7 @@ func TestPacketCapture(t *testing.T) {
 			})
 			defer timer.Stop()
 
-			output, err := RunCommand(clog, "commands/oc-netobserv", "packets", "--log-level=trace", "--protocol=TCP", "--port=6443")
+			output, err := RunCommandAndTerminate(clog, "commands/oc-netobserv", "packets", "--log-level=trace", "--protocol=TCP", "--port=6443")
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
