@@ -246,7 +246,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
 
   ${K8S_CLI_BIN} wait \
     --timeout 60s \
-    -n $namespace \
+    -n "$namespace" \
     --for=condition=Ready pod/collector || exit 1
 
   captureStarted=true
