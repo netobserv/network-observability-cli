@@ -108,7 +108,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		targetPort := uint16(8080)
 		cliArgs := []string{"packets", "--port=8080", "--copy=true", "--max-bytes=100000000", "--max-time=1m"}
 		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
-		writeOutput(StartupDate+"-packetOutput", out)
+		writeOutput(filePrefix+"-packetOutput", out)
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
 
 		_, err = isCLIDone(clientset, cliNS)
@@ -283,7 +283,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to query Prometheus for metrics: %v", err))
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
 	})
-	
+
 	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 
 		tests := []struct {
