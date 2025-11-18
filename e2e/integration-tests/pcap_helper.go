@@ -3,6 +3,7 @@
 package integrationtests
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -65,17 +66,17 @@ func ReadPcapngFileWithFilter(filepath string, filter *PacketFilter) ([]PacketIn
 	for {
 		data, ci, opts, err := ngReader.ReadPacketDataWithOptions()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return nil, fmt.Errorf("error reading packet data: %w", err)
 		}
 
 		packet := gopacket.NewPacket(data, layers.LayerTypeEthernet, gopacket.Default)
-		packetInfo := extractPacketInfo(packet, ci, opts)
+		packetInfo := extractPacketInfo(packet, ci, &opts)
 
 		// Apply filter if provided
-		if filter != nil && !matchesFilter(packetInfo, filter) {
+		if filter != nil && !matchesFilter(&packetInfo, filter) {
 			continue
 		}
 
@@ -86,7 +87,7 @@ func ReadPcapngFileWithFilter(filepath string, filter *PacketFilter) ([]PacketIn
 }
 
 // extractPacketInfo extracts information from a packet
-func extractPacketInfo(packet gopacket.Packet, ci gopacket.CaptureInfo, opts pcapgo.NgPacketOptions) PacketInfo {
+func extractPacketInfo(packet gopacket.Packet, ci gopacket.CaptureInfo, opts *pcapgo.NgPacketOptions) PacketInfo {
 	info := PacketInfo{
 		Timestamp:   ci.Timestamp.Unix(),
 		Length:      ci.Length,
@@ -168,7 +169,7 @@ func extractK8sMetadata(info *PacketInfo) {
 }
 
 // matchesFilter checks if a packet matches the filter criteria
-func matchesFilter(info PacketInfo, filter *PacketFilter) bool {
+func matchesFilter(info *PacketInfo, filter *PacketFilter) bool {
 	// Filter by port (either source or destination)
 	if filter.Port != nil {
 		if info.SrcPort != *filter.Port && info.DstPort != *filter.Port {
