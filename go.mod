@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/gdamore/tcell/v2 v2.9.0
-	github.com/gopacket/gopacket v1.4.0
+	github.com/gopacket/gopacket v1.5.0
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/navidys/tvxwidgets v0.11.1
