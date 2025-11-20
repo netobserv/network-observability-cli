@@ -99,6 +99,47 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(allPods).To(o.HaveLen(totalExpectedPods), fmt.Sprintf("Number of CLI pods are not as expected %d", totalExpectedPods))
 	})
 
+	g.It("OCP-73458: Verify packet capture creates pcapng file and filters by port", g.Label("PacketCapture"), func() {
+		g.DeferCleanup(func() {
+			cleanup()
+		})
+
+		// Run packet capture with port 8080 filter
+		targetPort := uint16(8080)
+		cliArgs := []string{"packets", "--port=8080", "--copy=true", "--max-bytes=100000000", "--max-time=1m"}
+		out, err := e2e.RunCommand(ilog, ocNetObservBinPath, cliArgs...)
+		writeOutput(filePrefix+"-packetOutput", out)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Error running command %v", err))
+
+		_, err = isCLIDone(clientset, cliNS)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("CLI didn't finish %v", err))
+
+		// Verify pcapng file is created
+		pcapngFile, err := getPcapngFile()
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to get pcapng file")
+		o.Expect(pcapngFile).NotTo(o.BeEmpty(), "Pcapng file path should not be empty")
+
+		ilog.Infof("==> Pcapng file created at: %s", pcapngFile)
+
+		// Verify file exists and has content
+		fileInfo, err := os.Stat(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Pcapng file should exist at %s", pcapngFile))
+		o.Expect(fileInfo.Size()).To(o.BeNumerically(">", 0), "Pcapng file should have content")
+
+		ilog.Infof("==> Pcapng file size: %d bytes", fileInfo.Size())
+
+		// Read and analyze packets from pcapng file
+		packets, err := ReadPcapngFile(pcapngFile)
+		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to read pcapng file: %v", err))
+		o.Expect(packets).NotTo(o.BeEmpty(), "Pcapng file should contain packets")
+
+		ilog.Infof("Found %d total packets in pcapng file", len(packets))
+		// Verify packets are filtered by port 8080
+		filteredPackets := FilterPacketsByPort(packets, targetPort)
+		o.Expect(filteredPackets).NotTo(o.BeEmpty(), fmt.Sprintf("Should have captured packets on port %d", targetPort))
+
+		ilog.Infof("Found %d packets on port %d", len(filteredPackets), targetPort)
+	})
 	g.It("OCP-73458: Verify regexes filters are applied", g.Label("Regexes"), func() {
 		g.DeferCleanup(func() {
 			cleanup()
@@ -138,7 +179,6 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		}
 		o.Expect(found).To(o.BeTrue(), fmt.Sprintf("Didn't found any flow matching SrcK8S_Namespace=~%s", nsfilter))
 	})
-
 	g.It("OCP-82597: Verify sampling value of 1 is applied in captured flows", g.Label("Sampling"), func() {
 
 		g.DeferCleanup(func() {
@@ -243,6 +283,7 @@ var _ = g.Describe("NetObserv CLI e2e integration test suite", g.Ordered, func()
 		o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to query Prometheus for metrics: %v", err))
 		o.Expect(metricValue).To(o.BeNumerically(">=", 0), fmt.Sprintf("Prometheus should return a valid metric value, but got %v", metricValue))
 	})
+
 	g.Describe("OCP-84801: Verify CLI runs under correct privileges", g.Label("Privileges"), func() {
 
 		tests := []struct {

@@ -156,3 +156,26 @@ func getFlowsJSONFile() (string, error) {
 	}
 	return absPath, nil
 }
+
+// get latest .pcapng file
+func getPcapngFile() (string, error) {
+	var files []string
+	outputDir := "./output/pcap/"
+	dirFS := os.DirFS(outputDir)
+	files, err := fs.Glob(dirFS, "*.pcapng")
+	if err != nil {
+		return "", err
+	}
+	// this could be problematic if two tests are running in parallel with --copy=true
+	var mostRecentFile fs.FileInfo
+	for _, file := range files {
+		fileInfo, err := os.Stat(outputDir + file)
+		if err != nil {
+			return "", nil
+		}
+		if mostRecentFile == nil || fileInfo.ModTime().After(mostRecentFile.ModTime()) {
+			mostRecentFile = fileInfo
+		}
+	}
+	return outputDir + mostRecentFile.Name(), nil
+}
