@@ -51,7 +51,7 @@ manifest=""
 
 OUTPUT_PATH="./output"
 YAML_OUTPUT_FILE="capture.yml"
-MANIFEST_OUTPUT_PATH="tmp"
+MANIFEST_OUTPUT_PATH=$(mktemp -d)
 FLOWS_MANIFEST_FILE="flow-capture.yml"
 PACKETS_MANIFEST_FILE="packet-capture.yml"
 METRICS_MANIFEST_FILE="metric-capture.yml"
@@ -248,7 +248,7 @@ function getSubnets() {
   # get cluster-config-v1 Configmap to retreive machine networks
   installConfig=$(${K8S_CLI_BIN} get configmap cluster-config-v1 -n kube-system -o custom-columns=":data.install-config")
   yaml="${MANIFEST_OUTPUT_PATH}/${CLUSTER_CONFIG}"
-  echo "$installConfig" >${yaml}
+  echo "$installConfig" >"${yaml}"
 
   machines=$("$YQ_BIN" e -oj '.networking.machineNetwork[] | select(has("cidr")).cidr' "$yaml")
   if [ "${#machines}" -gt 0 ]; then
@@ -258,7 +258,7 @@ function getSubnets() {
   # get OCP cluster Network to retreive pod / services / external networks
   networkConfig=$(${K8S_CLI_BIN} get network cluster -o yaml)
   yaml="${MANIFEST_OUTPUT_PATH}/${NETWORK_CONFIG}"
-  echo "$networkConfig" >${yaml}
+  echo "$networkConfig" >"${yaml}"
 
   pods=$("$YQ_BIN" e -oj '.spec.clusterNetwork[] | select(has("cidr")).cidr' "$yaml")
   if [ "${#pods}" -gt 0 ]; then
@@ -354,16 +354,12 @@ function setup() {
   echo "creating service account"
   applyYAML "$saYAML"
 
-  if [[ ! -d ${MANIFEST_OUTPUT_PATH} ]]; then
-    mkdir -p ${MANIFEST_OUTPUT_PATH} >/dev/null
-  fi
-
   if [ "$command" = "flows" ]; then
     echo "creating collector service"
     applyYAML "$collectorServiceYAML"
     echo "creating flow-capture agents"
     manifest="${MANIFEST_OUTPUT_PATH}/${FLOWS_MANIFEST_FILE}"
-    echo "${flowAgentYAML}" >${manifest}
+    echo "${flowAgentYAML}" >"${manifest}"
     setCollectorPipelineConfig "$manifest"
     check_args_and_apply
   elif [ "$command" = "packets" ]; then
@@ -371,7 +367,7 @@ function setup() {
     applyYAML "$collectorServiceYAML"
     echo "creating packet-capture agents"
     manifest="${MANIFEST_OUTPUT_PATH}/${PACKETS_MANIFEST_FILE}"
-    echo "${packetAgentYAML}" >${manifest}
+    echo "${packetAgentYAML}" >"${manifest}"
     setCollectorPipelineConfig "$manifest"
     check_args_and_apply
   elif [ "$command" = "metrics" ]; then
@@ -379,7 +375,7 @@ function setup() {
     applyYAML "$smYAML"
     echo "creating metric-capture agents:"
     manifest="${MANIFEST_OUTPUT_PATH}/${METRICS_MANIFEST_FILE}"
-    echo "${metricAgentYAML}" >${manifest}
+    echo "${metricAgentYAML}" >"${manifest}"
     setMetricsPipelineConfig "$manifest"
     check_args_and_apply
   fi
@@ -442,6 +438,7 @@ function deleteNamespace() {
 }
 
 function cleanup() {
+  rm -rf "$MANIFEST_OUTPUT_PATH"
   if [[ "$runBackground" == "true" || "$skipCleanup" == "true" || "$outputYAML" == "true" ]]; then
     return
   fi
@@ -487,7 +484,7 @@ function copyFLPConfig() {
   jsonContent=$("$YQ_BIN" e '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$1")
   # json temp file location is set as soon as this function is called
   json="${MANIFEST_OUTPUT_PATH}/${CONFIG_JSON_TEMP}"
-  echo "$jsonContent" >${json}
+  echo "$jsonContent" >"${json}"
 }
 
 # get network enrich stage
@@ -495,7 +492,7 @@ function getNetworkEnrichStage() {
   enrichIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"enrich\") | path | .[-1]" "$json")
   enrichContent=$("$YQ_BIN" e -oj ".parameters[$enrichIndex]" "$json")
   enrichJson="${MANIFEST_OUTPUT_PATH}/enrich.json"
-  echo "$enrichContent" >${enrichJson}
+  echo "$enrichContent" >"${enrichJson}"
 }
 
 function overrideNetworkEnrichStage() {
@@ -508,7 +505,7 @@ function getPromStage() {
   promIndex=$("$YQ_BIN" e -oj ".parameters[] | select(.name==\"prometheus\") | path | .[-1]" "$json")
   promContent=$("$YQ_BIN" e -oj ".parameters[$promIndex]" "$json")
   promJson="${MANIFEST_OUTPUT_PATH}/prom.json"
-  echo "$promContent" >${promJson}
+  echo "$promContent" >"${promJson}"
 }
 
 function overridePromStage() {
@@ -1154,5 +1151,5 @@ function check_args_and_apply() {
   if [[ "$outputYAML" == "false" ]]; then
     waitDaemonset
   fi
-  rm -rf ${MANIFEST_OUTPUT_PATH}
+  rm -rf "${MANIFEST_OUTPUT_PATH}"
 }
