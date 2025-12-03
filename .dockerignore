@@ -1,0 +1,54 @@
+# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
+
+# Build artifacts
+**/bin/
+**/build/
+*.tar
+*.tgz
+
+# Test files and directories
+**/e2e/
+**/e2e-logs/
+**/*_test.go
+cover*.out
+test.out
+
+# Documentation
+**/docs/
+**/img/
+CONTRIBUTING.md
+*.md
+!README.md
+
+# User output directory
+**/output/
+
+# Local config files
+kubeconfig
+
+# Test artifacts
+cli-e2e-img.tar
+
+# CI/CD and development files
+**/.git/
+.gitignore
+.gitattributes
+OWNERS
+renovate.json
+
+# Dockerfiles (not needed in build context)
+Dockerfile*
+!Dockerfile
+
+# IDE and editor files
+**/.vscode/
+**/.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+
