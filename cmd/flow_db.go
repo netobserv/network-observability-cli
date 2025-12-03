@@ -59,6 +59,7 @@ func createFlowsDBTable(db *sql.DB) error {
 		"PktDropBytes" INTEGER,
 		"PktDropPackets" INTEGER,
 		"DnsId" INTEGER,
+		"DnsName" TEXT,
 		"DnsFlagsResponseCode" TEXT,
 		"DnsLatencyMs" TIMESTAMP,
 		"TimeFlowRTTNs" TIMESTAMP
@@ -99,13 +100,13 @@ func insertFlowToDB(db *sql.DB, buf []byte) error {
 	switch {
 	case flow["PktDropPackets"] != 0 && flow["DnsId"] != 0:
 		flowSQL =
-			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, PktDropLatestDropCause, PktDropBytes, PktDropPackets, DnsId, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, PktDropLatestDropCause, PktDropBytes, PktDropPackets, DnsId, DnsName, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	case flow["PktDropPackets"] != 0:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, PktDropLatestDropCause, PktDropBytes, PktDropPackets, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	case flow["DnsId"] != 0:
 		flowSQL =
-			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, DnsId, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, DnsId, DnsName, DnsFlagsResponseCode, DnsLatencyMs, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	default:
 		flowSQL =
 			`INSERT INTO flow(DnsErrno, Dscp, DstAddr, DstPort, Interface, Proto, SrcAddr, SrcPort, Bytes, Packets, TimeFlowRttNs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -123,7 +124,7 @@ func insertFlowToDB(db *sql.DB, buf []byte) error {
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
 			flow["PktDropLatestDropCause"], flow["PktDropBytes"], flow["PktDropPackets"],
-			flow["DnsId"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
+			flow["DnsId"], flow["DnsName"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
 			flow["TimeFlowRttNs"])
 	case flow["PktDropLatestDropCause"] != 0:
 		_, err = statement.Exec(
@@ -135,7 +136,7 @@ func insertFlowToDB(db *sql.DB, buf []byte) error {
 		_, err = statement.Exec(
 			flow["DNSErrno"], flow["Dscp"], flow["DstAddr"], flow["DstPort"], flow["Interface"],
 			flow["Proto"], flow["SrcAddr"], flow["SrcPort"], flow["Bytes"], flow["Packets"],
-			flow["DnsId"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
+			flow["DnsId"], flow["DnsName"], flow["DnsFlagsResponseCode"], flow["DnsLatencyMs"],
 			flow["TimeFlowRttNs"])
 	default:
 		_, err = statement.Exec(
