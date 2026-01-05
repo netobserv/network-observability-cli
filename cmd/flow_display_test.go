@@ -114,8 +114,8 @@ func TestFlowDisplayAdvancedDisplay(t *testing.T) {
 	// set display without enrichment
 	rows := getRows(allOptions, []string{pktDropFeature, dnsFeature, rttFeature, networkEventsDisplay}, noOptions, []string{})
 	assert.Equal(t, 2, len(rows))
-	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Drop BytesDrop…     Drop State     Drop Cause     Drop Flags     DNS Id    DNS…      DNS RCode DNS Error Flow RTT  Network Events      ", rows[0])
-	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         32B       1         TCP_INVALID…   SKB_DROP…      16             31319     1ms       NoError   0         10µs      Allowed by default… ", rows[1])
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs Drop BytesDrop…     Drop State     Drop Cause     Drop Flags     DNS Id    DNS Name            DNS…      DNS RCode DNS Error Flow RTT  Network Events      ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         32B       1         TCP_INVALID…   SKB_DROP…      16             31319     example.com         1ms       NoError   0         10µs      Allowed by default… ", rows[1])
 
 	// set display to standard
 	rows = getRows(standardDisplay, []string{}, noOptions, []string{})
@@ -135,8 +135,8 @@ func TestFlowDisplayAdvancedDisplay(t *testing.T) {
 	rows = getRows("DNS", []string{dnsFeature}, noOptions, []string{})
 
 	assert.Equal(t, 2, len(rows))
-	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs DNS Id    DNS…      DNS RCode DNS Error ", rows[0])
-	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         31319     1ms       NoError   0         ", rows[1])
+	assert.Equal(t, "End Time            Src IP         Src Port       Dst IP         Dst Port       Interfaces     Interface Dirs DNS Id    DNS Name            DNS…      DNS RCode DNS Error ", rows[0])
+	assert.Equal(t, "17:25:28.703000     10.128.0.29    1234           10.129.0.26    5678           f18b970c2ce8fddEgress         31319     example.com         1ms       NoError   0         ", rows[1])
 
 	// set display to RTT
 	rows = getRows("RTT", []string{rttFeature}, noOptions, []string{})
