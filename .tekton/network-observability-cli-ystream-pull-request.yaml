@@ -18,6 +18,10 @@ metadata:
         "main.go".pathChanged() ||
         "Makefile".pathChanged() ||
         "cmd/***".pathChanged() ||
+        "commands/***".pathChanged() ||
+        "res/***".pathChanged() ||
+        "scripts/***".pathChanged() ||
+        ".mk/***".pathChanged() ||
         "LICENSE".pathChanged()
       )
   creationTimestamp: null
