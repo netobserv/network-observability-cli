@@ -35,8 +35,8 @@ RUN USER=netobserv VERSION="$BUILDVERSION" IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IM
 # Prepare output dir
 RUN mkdir -p output
 
-# Create final image from ubi + built binary and command
-FROM registry.access.redhat.com/ubi9/ubi:9.7-1764794285
+# Create final image from ubi-minimal + built binary and command
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1768783948
 ARG BUILDVERSION
 ARG BUILDVERSION_Y
 
@@ -46,7 +46,6 @@ COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 COPY LICENSE /licenses/
 COPY README.downstream ./README
-
 COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
 COPY --from=ose-cli /usr/bin/oc /usr/bin/oc
 
