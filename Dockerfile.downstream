@@ -35,8 +35,8 @@ RUN USER=netobserv VERSION="$BUILDVERSION" IMAGE="$IMAGE" AGENT_IMAGE="$AGENT_IM
 # Prepare output dir
 RUN mkdir -p output
 
-# Create final image from ubi + built binary and command
-FROM registry.access.redhat.com/ubi9/ubi:9.7-1764794285
+# Create final image from ubi-minimal + built binary and command
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1768783948
 ARG BUILDVERSION
 ARG BUILDVERSION_Y
 
@@ -47,8 +47,18 @@ COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 COPY LICENSE /licenses/
 COPY README.downstream ./README
 
+# Copy runtime dependencies from ose-cli (which is based on full RHEL)
+# - kubectl & oc: required for CLI operations
+# - bash: required for oc-netobserv script execution (#!/usr/bin/env bash)
+# - uname: used to display kernel version (cmd/root.go:131)
 COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
 COPY --from=ose-cli /usr/bin/oc /usr/bin/oc
+COPY --from=ose-cli /usr/bin/bash /usr/bin/bash
+COPY --from=ose-cli /usr/bin/uname /usr/bin/uname
+
+# Copy bash dependencies (shared libraries)
+COPY --from=ose-cli /usr/lib64/libtinfo.so.6 /usr/lib64/
+COPY --from=ose-cli /usr/lib64/libreadline.so.8 /usr/lib64/
 
 USER 65532:65532
 
