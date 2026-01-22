@@ -46,19 +46,8 @@ COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 COPY LICENSE /licenses/
 COPY README.downstream ./README
-
-# Copy runtime dependencies from ose-cli (which is based on full RHEL)
-# - kubectl & oc: required for CLI operations
-# - bash: required for oc-netobserv script execution (#!/usr/bin/env bash)
-# - uname: used to display kernel version (cmd/root.go:131)
 COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
 COPY --from=ose-cli /usr/bin/oc /usr/bin/oc
-COPY --from=ose-cli /usr/bin/bash /usr/bin/bash
-COPY --from=ose-cli /usr/bin/uname /usr/bin/uname
-
-# Copy bash dependencies (shared libraries)
-COPY --from=ose-cli /usr/lib64/libtinfo.so.6 /usr/lib64/
-COPY --from=ose-cli /usr/lib64/libreadline.so.8 /usr/lib64/
 
 USER 65532:65532
 
