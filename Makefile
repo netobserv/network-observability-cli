@@ -51,7 +51,7 @@ ifneq ($(CLEAN_BUILD),)
 	LDFLAGS ?= -X 'main.buildVersion=${VERSION}-${BUILD_SHA}' -X 'main.buildDate=${BUILD_DATE}'
 endif
 
-GOLANGCI_LINT_VERSION = v2.2.1
+GOLANGCI_LINT_VERSION = v2.8.0
 BASH_VERSION = v4.2.0
 YQ_VERSION = v4.45.1
 
