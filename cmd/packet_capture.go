@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -55,14 +54,7 @@ func startPacketCollector() {
 			":", "") // get rid of offensive colons
 	}
 
-	err := os.MkdirAll("./output/pcap/", 0700)
-	if err != nil {
-		log.Error("Create directory failed", err)
-		return
-	}
-	log.Debug("Created pcap folder")
-
-	f, err := os.Create("./output/pcap/" + filename + ".pcapng")
+	f, err := createOutputFile("pcap", filename+".pcapng")
 	if err != nil {
 		log.Fatal(err)
 	}

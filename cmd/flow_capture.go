@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"os"
 	"strings"
 	"time"
 
@@ -44,21 +43,13 @@ func startFlowCollector() {
 			":", "") // get rid of offensive colons
 	}
 
-	var f *os.File
-	err := os.MkdirAll("./output/flow/", 0700)
+	// Create a text file to receive json chunks; the file will be fixed and renamed as json later, when pulled in shell.
+	f, err := createOutputFile("flow", filename+".txt")
 	if err != nil {
-		log.Errorf("Create directory failed: %v", err.Error())
-		log.Fatal(err)
-	}
-	log.Debug("Created flow folder")
-
-	f, err = os.Create("./output/flow/" + filename + ".txt")
-	if err != nil {
-		log.Errorf("Create file %s failed: %v", filename, err.Error())
-		log.Fatal(err)
+		log.Fatalf("Creating output file failed: %v", err)
 	}
 	defer f.Close()
-	log.Debug("Created flow logs txt file")
+	log.Debugf("Created flow logs txt file: %s", f.Name())
 
 	// Initialize sqlite DB
 	db := initFlowDB(filename)
