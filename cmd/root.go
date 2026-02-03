@@ -187,3 +187,17 @@ func onLimitReached() bool {
 
 	return shouldExit
 }
+
+// Create output file, preventing path traversal
+func createOutputFile(kind, filename string) (*os.File, error) {
+	base := "./output/" + kind + "/"
+	if err := os.MkdirAll(base, 0700); err != nil {
+		return nil, err
+	}
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	return root.Create(filename)
+}
