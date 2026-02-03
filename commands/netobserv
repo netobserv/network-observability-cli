@@ -202,18 +202,30 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
 
   # prepare commands & args
   runCommand="sleep infinity"
-  execCommand="/network-observability-cli get-$command${optionStr:+" --options \\\"${optionStr}\\\""} --loglevel $logLevel --maxtime $maxTime --namespace $namespace"
-  if [[ "$command" == "flows" || "$command" == "packets" ]]; then
-    execCommand="$execCommand --maxbytes $maxBytes"
-  else 
-    copy="false"
-  fi
-  
   if [[ "$runBackground" == "true" || "$outputYAML" == "true" ]]; then
+    # For background mode: wrap in bash -c with proper escaping for pod command
+    execCommand="/network-observability-cli get-$command${optionStr:+" --options \\\"${optionStr}\\\""} --loglevel $logLevel --maxtime $maxTime --namespace $namespace"
+    if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+      execCommand="$execCommand --maxbytes $maxBytes"
+    fi
     runCommand="bash -c \"$execCommand && $runCommand\""
     execCommand=""
+  else
+    # For foreground mode: will be used in kubectl exec
+    # Build as array to avoid quoting issues
+    execCommandBase="/network-observability-cli get-$command"
+    execCommandArgs="--loglevel $logLevel --maxtime $maxTime --namespace $namespace"
+    if [[ "$command" == "flows" || "$command" == "packets" ]]; then
+      execCommandArgs="$execCommandArgs --maxbytes $maxBytes"
+    fi
+    if [ -n "$optionStr" ]; then
+      # Store options for later use
+      execOptions="$optionStr"
+    else
+      execOptions=""
+    fi
   fi
-
+  
   # override extra configs
   overrides="'{\"spec\":{\"serviceAccount\": \"netobserv-cli\"}}'"
 
@@ -258,13 +270,15 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
 
   captureStarted=true
 
-  if [ -n "${execCommand}" ]; then
+  if [[ "$runBackground" != "true" && "$outputYAML" != "true" ]]; then
     echo "Executing collector command... "
-    cmd="${K8S_CLI_BIN} exec -i --tty \
-      -n $namespace \
-      collector \
-      -- $execCommand"
-    eval "$cmd"
+    if [ -n "$execOptions" ]; then
+      ${K8S_CLI_BIN} exec -i --tty -n "$namespace" collector -- \
+        $execCommandBase --options "$execOptions" $execCommandArgs
+    else
+      ${K8S_CLI_BIN} exec -i --tty -n "$namespace" collector -- \
+        $execCommandBase $execCommandArgs
+    fi
   elif [[ "$command" == "flows" || "$command" == "packets" ]]; then
     echo "Background capture started. Use:"
     echo " - '${K8S_CLI_BIN} netobserv follow' to see the capture progress"
