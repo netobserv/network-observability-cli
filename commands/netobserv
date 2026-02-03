@@ -189,13 +189,20 @@ trap onExit EXIT
 setup
 
 if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics" ]]; then
-  # convert options to string
-  optionStr="${options//--/}"
-  optionStr="${optionStr// /|}"
+  # convert options array to pipe-separated string
+  optionStr=""
+  for opt in "${options[@]}"; do
+    opt="${opt#--}"  # remove leading --
+    if [ -n "$optionStr" ]; then
+      optionStr="$optionStr|$opt"
+    else
+      optionStr="$opt"
+    fi
+  done
 
   # prepare commands & args
   runCommand="sleep infinity"
-  execCommand="/network-observability-cli get-$command${optionStr:+" --options" "${optionStr}"} --loglevel $logLevel --maxtime $maxTime"
+  execCommand="/network-observability-cli get-$command${optionStr:+" --options \\\"${optionStr}\\\""} --loglevel $logLevel --maxtime $maxTime"
   if [[ "$command" == "flows" || "$command" == "packets" ]]; then
     execCommand="$execCommand --maxbytes $maxBytes"
   else 
