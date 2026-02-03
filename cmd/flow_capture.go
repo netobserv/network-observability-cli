@@ -117,7 +117,7 @@ func startFlowCollector() {
 		// terminate capture if max time reached
 		now := currentTime()
 		duration := now.Sub(startupTime)
-		if int(duration) > int(maxTime) {
+		if duration > maxTime {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
 				return

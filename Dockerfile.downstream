@@ -10,6 +10,7 @@ ARG AGENT_IMAGE=registry.redhat.io/network-observability/network-observability-e
 WORKDIR /opt/app-root
 
 COPY cmd cmd
+COPY internal internal
 COPY main.go main.go
 COPY go.mod go.mod
 COPY go.sum go.sum

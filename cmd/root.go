@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/netobserv/network-observability-cli/internal/pkg/kubernetes"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -148,11 +150,10 @@ func onLimitReached() bool {
 			app.Stop()
 		}
 		if isBackground {
-			out, err := exec.Command("/oc-netobserv", "stop").Output()
+			err := kubernetes.DeleteDaemonSet(context.Background())
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
 			}
-			fmt.Printf("%s", out)
 			fmt.Print(`Thank you for using...`)
 			printBanner()
 
