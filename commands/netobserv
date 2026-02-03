@@ -202,7 +202,7 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
 
   # prepare commands & args
   runCommand="sleep infinity"
-  execCommand="/network-observability-cli get-$command${optionStr:+" --options \\\"${optionStr}\\\""} --loglevel $logLevel --maxtime $maxTime"
+  execCommand="/network-observability-cli get-$command${optionStr:+" --options \\\"${optionStr}\\\""} --loglevel $logLevel --maxtime $maxTime --namespace $namespace"
   if [[ "$command" == "flows" || "$command" == "packets" ]]; then
     execCommand="$execCommand --maxbytes $maxBytes"
   else 
