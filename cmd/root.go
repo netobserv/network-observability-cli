@@ -25,13 +25,14 @@ const (
 )
 
 var (
-	log      = logrus.New()
-	logLevel string
-	port     int
-	filename string
-	options  string
-	maxTime  time.Duration
-	maxBytes int64
+	log       = logrus.New()
+	logLevel  string
+	port      int
+	filename  string
+	namespace string
+	options   string
+	maxTime   time.Duration
+	maxBytes  int64
 
 	currentTime = time.Now
 	startupTime = currentTime()
@@ -71,6 +72,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&options, "options", "", "", "Options(s)")
 	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
 	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
+	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "netobserv-cli", "Namespace where agent pods are running")
 	rootCmd.PersistentFlags().BoolVarP(&useMocks, "mock", "", false, "Use mock")
 
 	c := make(chan os.Signal, 1)
@@ -150,7 +152,7 @@ func onLimitReached() bool {
 			app.Stop()
 		}
 		if isBackground {
-			err := kubernetes.DeleteDaemonSet(context.Background())
+			err := kubernetes.DeleteDaemonSet(context.Background(), namespace)
 			if err != nil {
 				log.Error(err)
 			}

@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func DeleteDaemonSet(ctx context.Context) error {
+func DeleteDaemonSet(ctx context.Context, namespace string) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return fmt.Errorf("cannot get Kubernetes InClusterConfig: %w", err)
@@ -20,5 +20,5 @@ func DeleteDaemonSet(ctx context.Context) error {
 		return fmt.Errorf("cannot create Kubernetes client from InClusterConfig: %w", err)
 	}
 
-	return clientset.AppsV1().DaemonSets("netobserv-cli").Delete(ctx, "netobserv-cli", v1.DeleteOptions{})
+	return clientset.AppsV1().DaemonSets(namespace).Delete(ctx, "netobserv-cli", v1.DeleteOptions{})
 }
