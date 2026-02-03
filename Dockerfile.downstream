@@ -1,9 +1,6 @@
 ARG BUILDVERSION
 ARG BUILDVERSION_Y
 
-# Make kubectl & oc scripts available for copy
-FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.18.0-202502040032.p0.ga50d4c0.assembly.stream.el9 as ose-cli
-
 # Build the manager binary
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.25 as builder
 ARG BUILDVERSION
@@ -46,8 +43,6 @@ COPY --from=builder /opt/app-root/build .
 COPY --from=builder --chown=65532:65532 /opt/app-root/output /output
 COPY LICENSE /licenses/
 COPY README.downstream ./README
-COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
-COPY --from=ose-cli /usr/bin/oc /usr/bin/oc
 
 USER 65532:65532
 
