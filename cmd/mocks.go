@@ -59,7 +59,7 @@ func mockForever() {
 		time.Sleep(1 * time.Second)
 	}
 
-	cc, err := grpc.ConnectClient("127.0.0.1", port)
+	cc, err := grpc.ConnectClient("127.0.0.1", port, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
