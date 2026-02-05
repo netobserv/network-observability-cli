@@ -273,11 +273,9 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
   if [[ "$runBackground" != "true" && "$outputYAML" != "true" ]]; then
     echo "Executing collector command... "
     if [ -n "$execOptions" ]; then
-      ${K8S_CLI_BIN} exec -i --tty -n "$namespace" collector -- \
-        $execCommandBase --options "$execOptions" $execCommandArgs
+      eval "${K8S_CLI_BIN} exec -i --tty -n $namespace collector -- $execCommandBase --options \"$execOptions\" $execCommandArgs"
     else
-      ${K8S_CLI_BIN} exec -i --tty -n "$namespace" collector -- \
-        $execCommandBase $execCommandArgs
+      eval "${K8S_CLI_BIN} exec -i --tty -n $namespace collector -- $execCommandBase $execCommandArgs"
     fi
   elif [[ "$command" == "flows" || "$command" == "packets" ]]; then
     echo "Background capture started. Use:"
