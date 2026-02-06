@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	// need to import the sqlite3 driver
@@ -13,16 +12,15 @@ import (
 
 func initFlowDB(filename string) *sql.DB {
 	// SQLite is a file based database.
-	flowsDB := "./output/flow/" + filename + ".db"
-
 	log.Println("Creating database...")
-	file, err := os.Create(flowsDB) // Create SQLite file
+	f, err := createOutputFile("flow", filename+".db")
 	if err != nil {
-		log.Errorf("Failed to create flows db file: %v", err.Error())
-		log.Fatal(err)
+		log.Fatalf("Creating output db file failed: %v", err)
 	}
-	file.Close()
-	log.Println("flows.db created")
+	flowsDB := f.Name()
+	f.Close()
+
+	log.Println("flows db created")
 	// Open SQLite database
 	db, err := sql.Open("sqlite3", flowsDB)
 	if err != nil {

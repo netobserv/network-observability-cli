@@ -386,7 +386,7 @@ function follow() {
 }
 
 function copyOutput() {
-  echo "Copying collector output files..."
+  echo "Copying collector files to ${OUTPUT_PATH}..."
   if [[ ! -d ${OUTPUT_PATH} ]]; then
     mkdir -p ${OUTPUT_PATH} >/dev/null
   fi
@@ -1108,7 +1108,7 @@ function check_args_and_apply() {
         logLevel=$value
         filter=${filter/$key=$logLevel/}
       else
-        echo "invalid value for --action"
+        echo "invalid value for --log-level"
       fi
       ;;
     *max-time) # Max time
