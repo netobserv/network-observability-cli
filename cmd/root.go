@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/netobserv/network-observability-cli/internal/pkg/kubernetes"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -23,13 +25,14 @@ const (
 )
 
 var (
-	log      = logrus.New()
-	logLevel string
-	port     int
-	filename string
-	options  string
-	maxTime  time.Duration
-	maxBytes int64
+	log       = logrus.New()
+	logLevel  string
+	port      int
+	filename  string
+	namespace string
+	options   string
+	maxTime   time.Duration
+	maxBytes  int64
 
 	currentTime = time.Now
 	startupTime = currentTime()
@@ -69,6 +72,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&options, "options", "", "", "Options(s)")
 	rootCmd.PersistentFlags().DurationVarP(&maxTime, "maxtime", "", 5*time.Minute, "Maximum capture time")
 	rootCmd.PersistentFlags().Int64VarP(&maxBytes, "maxbytes", "", 50000000, "Maximum capture bytes")
+	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "netobserv-cli", "Namespace where agent pods are running")
 	rootCmd.PersistentFlags().BoolVarP(&useMocks, "mock", "", false, "Use mock")
 
 	c := make(chan os.Signal, 1)
@@ -148,11 +152,10 @@ func onLimitReached() bool {
 			app.Stop()
 		}
 		if isBackground {
-			out, err := exec.Command("/oc-netobserv", "stop").Output()
+			err := kubernetes.DeleteDaemonSet(context.Background(), namespace)
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
 			}
-			fmt.Printf("%s", out)
 			fmt.Print(`Thank you for using...`)
 			printBanner()
 
@@ -186,4 +189,18 @@ func onLimitReached() bool {
 	}
 
 	return shouldExit
+}
+
+// Create output file, preventing path traversal
+func createOutputFile(kind, filename string) (*os.File, error) {
+	base := "./output/" + kind + "/"
+	if err := os.MkdirAll(base, 0700); err != nil {
+		return nil, err
+	}
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	return root.Create(filename)
 }
