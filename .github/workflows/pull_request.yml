@@ -32,3 +32,18 @@ jobs:
         flags: unittests
         fail_ci_if_error: false
         verbose: true
+
+  test-multiarch-image-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: install make
+        run: sudo apt-get install make
+      - name: set up go 1.x
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.25'
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: build and push manifest with images
+        run: |
+          MULTIARCH_TARGETS="arm64" IMAGE_ORG=${{ env.WF_ORG }} VERSION=${{ env.WF_VERSION }} CLEAN_BUILD=1 make image-build
