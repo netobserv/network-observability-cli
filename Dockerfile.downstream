@@ -38,6 +38,9 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1770267347
 ARG BUILDVERSION
 ARG BUILDVERSION_Y
 
+RUN microdnf install -y tar && \
+    microdnf clean all
+
 WORKDIR /
 
 COPY --from=builder /opt/app-root/build .
