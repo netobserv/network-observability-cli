@@ -33,7 +33,11 @@ RUN USER=netobserv VERSION=main make oc-commands
 RUN mkdir -p output
 
 # Create final image from ubi + built binary and command
-FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi:9.7-1769417801
+FROM --platform=linux/$TARGETARCH registry.access.redhat.com/ubi9/ubi-minimal:9.7-1769056855
+
+RUN microdnf install -y tar && \
+    microdnf clean all
+
 WORKDIR /
 
 COPY --from=builder /opt/app-root/build .

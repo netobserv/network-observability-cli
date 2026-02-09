@@ -1,0 +1,10 @@
+contentOrigin:
+  repofiles:
+  - ubi.repo
+packages:
+  - tar
+arches:
+  - aarch64
+  - x86_64
+  - ppc64le
+  - s390x
