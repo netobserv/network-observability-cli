@@ -26,10 +26,10 @@ metadata:
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: netobserv-ystream
-    appstudio.openshift.io/component: network-observability-cli-ystream
+    appstudio.openshift.io/application: netobserv-zstream
+    appstudio.openshift.io/component: network-observability-cli-zstream
     pipelines.appstudio.openshift.io/type: build
-  name: network-observability-cli-ystream-on-pull-request
+  name: network-observability-cli-zstream-on-pull-request
   namespace: ocp-network-observab-tenant
 spec:
   params:
@@ -38,7 +38,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/ocp-network-observab-tenant/network-observability-cli-ystream:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/ocp-network-observab-tenant/network-observability-cli-zstream:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: build-args-file
@@ -51,5 +51,5 @@ spec:
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-network-observability-cli-ystream
+    serviceAccountName: build-pipeline-network-observability-cli-zstream
 status: {}
