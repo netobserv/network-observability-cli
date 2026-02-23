@@ -36,7 +36,7 @@ Then, run it as a `kubectl` plugin, such as:
 ```bash
 kubectl netobserv --version
 # output example: 
-# Netobserv CLI version v0.0.8
+# NetObserv CLI version v0.0.8
 ```
 
 You can get detailed help using these commands:
