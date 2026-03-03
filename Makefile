@@ -242,6 +242,14 @@ else
 	DOCKER_BUILDKIT=1 $(OCI_BIN) manifest push ${IMAGE} docker://${IMAGE};
 endif
 
+.PHONY: tar-image
+tar-image: MULTIARCH_TARGETS=amd64
+tar-image: image-build ## Build single arch (amd64) and save as a tar
+	$(OCI_BIN) tag $(IMAGE)-amd64 $(IMAGE)
+	mkdir -p ./out
+	$(OCI_BIN) save -o out/image.tar $(IMAGE)
+	echo $(IMAGE) > ./out/name
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
