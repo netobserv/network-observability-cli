@@ -25,7 +25,7 @@ func TestHelpCommand(t *testing.T) {
 
 		assert.NotEmpty(t, output)
 		// ensure help display overall description
-		assert.Contains(t, output, "Netobserv allows you to capture flows, packets and metrics from your cluster.")
+		assert.Contains(t, output, "NetObserv allows you to capture flows, packets and metrics from your cluster.")
 		assert.Contains(t, output, "Find more information at: https://github.com/netobserv/network-observability-cli/")
 		// ensure help to display main commands
 		assert.Contains(t, output, "main commands:")
@@ -65,6 +65,6 @@ func TestVersionCommand(t *testing.T) {
 
 		assert.NotEmpty(t, output)
 		// ensure version display test
-		assert.Contains(t, output, "Netobserv CLI version test")
+		assert.Contains(t, output, "NetObserv CLI version test")
 	})
 }
