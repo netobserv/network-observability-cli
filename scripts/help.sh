@@ -6,67 +6,69 @@ includeList="namespace_flows_total,node_ingress_bytes_total,node_egress_bytes_to
 # display main help
 function help {
   echo
-  echo "Netobserv allows you to capture flows, packets and metrics from your cluster."
+  echo "NetObserv allows you to capture flows, packets and metrics from your cluster."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
   echo "Syntax: netobserv [flows|packets|metrics|follow|stop|copy|cleanup|version] [options]"
   echo
-  echo "main commands:"
+  echo "Main commands:"
   echo "  flows      Capture flows information in JSON format using collector pod."
   echo "  metrics    Capture metrics information in Prometheus using a ServiceMonitor (OCP cluster only)."
   echo "  packets    Capture packets information in pcap format using collector pod."
   echo
-  echo "extra commands:"
+  echo "Extra commands:"
   echo "  cleanup    Remove netobserv components and configurations."
   echo "  copy       Copy collector generated files locally."
   echo "  follow     Follow collector logs when running in background."
   echo "  stop       Stop collection by removing agent daemonset."
   echo "  version    Print software version."
   echo
-  echo "basic examples:"
-  echo "  netobserv flows --drops                                     # Capture dropped flows on all nodes"
-  echo "  netobserv flows --query='SrcK8S_Namespace=~\"app-.*\"'        # Capture flows from any namespace starting by app-"
-  echo "  netobserv packets --port=8080                               # Capture packets on port 8080"
-  echo "  netobserv metrics --enable_all                              # Capture default cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features informations"
+  echo "Flow capture examples:"
+  flows_examples
   echo
-  echo "advanced examples:"
-  echo "  Capture flows in background and copy output locally"
-  echo "    netobserv flows --background \                            # Capture flows using background mode"
-  echo "    --max-time=15m \                                          # for a maximum of 15 minutes"
-  echo "    --protocol=TCP --port=8080 \                              # either on TCP 8080"
-  echo "    or --protocol=UDP                                         # or UDP"
-  echo "    netobserv follow                                          # Display the progression of the background capture"
-  echo "    netobserv stop                                            # Stop the background capture by deleting eBPF agents"
-  echo "    netobserv copy                                            # Copy the background capture output data"
-  echo "    netobserv cleanup                                         # Cleanup netobserv CLI by removing the remaining collector pod"
+  echo "Packet capture examples:"
+  packets_examples
   echo
-  echo "  Capture flows from a specific pod"
-  echo "    netobserv flows                                           # Capture flows"
-  echo "    --node-selector=kubernetes.io/hostname:my-node            # on node matching label 'kubernetes.io/hostname=my-node'"
-  echo "    --query='SrcK8S_Name=~\".*my-pod.*\"                        # from any pod name containing 'my-pod'"
-  echo "             or DstK8S_Name=~\".*my-pod.*\"'                    # or to any pod name containing 'my-pod'"
+  echo "Metrics capture examples:"
+  metrics_examples
   echo
-  echo "  Capture packets on specific nodes and port"
-  echo "    netobserv packets                                         # Capture packets"
-  echo "    --node-selector=netobserv:true \                          # on nodes labelled with 'netobserv=true'"
-  echo "    --port=80 \                                               # on port 80 only"
-  echo "    --max-bytes=100000000                                     # for a maximum of 100MB"
-  echo
-  echo "  Capture node and namespace drop metrics"
-  echo "    netobserv metrics \                                       # Capture metrics"
-  echo "    --drops                                                   # including drops"
-  echo "    --include_list=node,namespace                             # for all metrics matching 'node' or 'namespace' keywords"
-  echo
-  echo "  Capture metrics in background"
-  echo "    netobserv metrics --background \                          # Capture metrics using background mode"
-  echo "    --max-time=24h                                            # for a maximum of 24 hours"
-  echo "  Then open the URL provided by the command to visualize the netobserv-cli dashboard anytime during or after the run."
+}
+
+# flows examples
+function flows_examples {
+  echo "  Capture dropped flows on all nodes:"
+  echo "    netobserv flows --drops"
+  echo "  Capture flows in the background, for maximum 15 minutes, TCP on 8080 or UDP, and copy output locally:"
+  echo "    netobserv flows --background --max-time=15m --protocol=TCP --port=8080 or --protocol=UDP"
+  echo "  Capture flows from any namespace starting with 'app-': (for --query doc, see also: https://github.com/netobserv/flowlogs-pipeline/blob/main/docs/filtering.md)"
+  echo "    netobserv flows --query='SrcK8S_Namespace=~\"app-.*\"'"
+  echo "  Capture flows from/to a specific pod pattern on a specific node:"
+  echo "    netobserv flows --node-selector=kubernetes.io/hostname:my-node --query='SrcK8S_Name=~\".*my-pod.*\" or DstK8S_Name=~\".*my-pod.*\"'"
+}
+
+# packets examples
+function packets_examples {
+  echo "  Capture packets on port 8080:"
+  echo "    netobserv packets --port=8080"
+  echo "  Capture packets on specific nodes (labeled with 'netobserv=true') and port, for a maximum of 100MB:"
+  echo "    netobserv packets --node-selector=netobserv:true --port=80 --max-bytes=100000000"
+}
+
+# metrics examples
+function metrics_examples {
+  echo "  Capture default cluster metrics including packet drop, dns, rtt, network events packet translation and UDN mapping features:"
+  echo "    netobserv metrics --enable_all"
+  echo "  Capture node and namespace drop metrics, based on keywords include list:"
+  echo "    netobserv metrics --drops --include_list=node,namespace"
+  echo "  Capture metrics in the background for 1 day:"
+  echo "    netobserv metrics --background --max-time=24h"
+  echo "    Then open the URL provided by the command to visualize the netobserv-cli dashboard anytime during or after the run."
   echo
 }
 
 # display version
 function version {
-  echo "Netobserv CLI version $1"
+  echo "NetObserv CLI version $1"
 }
 
 # agent / flp features
@@ -143,62 +145,72 @@ function metrics_options {
 
 function flows_usage {
   echo
-  echo "Netobserv allows you to capture flows from your cluster."
+  echo "NetObserv allows you to capture flows from your cluster."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
   echo "Syntax: netobserv flows [options]"
   echo
-  echo "features:"
+  echo "Features:"
   features_usage
   echo
-  echo "filters:"
+  echo "Filters:"
   filters_usage
   flowsAndMetrics_filters_usage
   echo
-  echo "options:"
+  echo "Options:"
   flowsAndPackets_collector_usage
   script_usage
+  echo
+  echo "Examples:"
+  flows_examples
 }
 
 function packets_usage {
   echo
-  echo "Netobserv allows you to capture packets from your cluster."
+  echo "NetObserv allows you to capture packets from your cluster."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
   echo "Syntax: netobserv packets [options]"
   echo
-  echo "filters:"
+  echo "Filters:"
   filters_usage
   echo
-  echo "options:"
+  echo "Options:"
   flowsAndPackets_collector_usage
   script_usage
+  echo
+  echo "Examples:"
+  packets_examples
 }
 
 function metrics_usage {
   echo
-  echo "Netobserv allows you to capture metrics on your OCP cluster."
+  echo "NetObserv allows you to capture metrics on your OCP cluster."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
   echo "Syntax: netobserv metrics [options]"
   echo
-  echo "features:"
+  echo "Features:"
   features_usage
   echo
-  echo "filters:"
+  echo "Filters:"
   filters_usage
   flowsAndMetrics_filters_usage
-  echo "options:"
+  echo
+  echo "Options:"
   metrics_collector_usage
   script_usage
   metrics_options
+  echo
+  echo "Examples:"
+  metrics_examples
   echo
   echo "More information, with full list of available metrics: https://github.com/netobserv/network-observability-operator/blob/main/docs/Metrics.md"
 }
 
 function follow_usage {
   echo
-  echo "Netobserv allows you to capture flows and packets asyncronously using the --background option."
+  echo "NetObserv allows you to capture flows and packets asyncronously using the --background option."
   echo "While the capture is running in background, you can connect to the collector pod to see the progression using the follow command."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
@@ -208,7 +220,7 @@ function follow_usage {
 
 function stop_usage {
   echo
-  echo "Netobserv allows you stop the collection and keep collector or dashboard for post analysis."
+  echo "NetObserv allows you stop the collection and keep collector or dashboard for post analysis."
   echo "While the capture is running, use the stop command to remove the eBPF agents."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
@@ -218,7 +230,7 @@ function stop_usage {
 
 function copy_usage {
   echo
-  echo "Netobserv allows you copy locally the captured flows or packets from the collector pod."
+  echo "NetObserv allows you copy locally the captured flows or packets from the collector pod."
   echo "While the collector is running, use the copy command to copy the output file(s)."
   echo "To avoid modifications during the copy, it's recommended to stop the capture"
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
@@ -229,7 +241,7 @@ function copy_usage {
 
 function cleanup_usage {
   echo
-  echo "Netobserv may require manual cleanup in some cases such as after a background run or in case of failure."
+  echo "NetObserv may require manual cleanup in some cases such as after a background run or in case of failure."
   echo "Use the cleanup command to remove all the netobserv CLI components."
   echo "Find more information at: https://github.com/netobserv/network-observability-cli/"
   echo
