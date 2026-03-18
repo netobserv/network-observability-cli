@@ -3,15 +3,15 @@ module github.com/netobserv/network-observability-cli
 go 1.25.0
 
 require (
-	github.com/gdamore/tcell/v2 v2.13.7
+	github.com/gdamore/tcell/v2 v2.13.8
 	github.com/gopacket/gopacket v1.5.0
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.33
-	github.com/navidys/tvxwidgets v0.11.1
+	github.com/navidys/tvxwidgets v0.13.0
 	github.com/netobserv/flowlogs-pipeline v1.11.0-community
 	github.com/netobserv/netobserv-ebpf-agent v1.10.1-community
-	github.com/onsi/ginkgo/v2 v2.27.3
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/ginkgo/v2 v2.27.5
+	github.com/onsi/gomega v1.39.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -61,7 +61,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/rivo/tview v0.0.0-20250501113434-0c592cd31026
+	github.com/rivo/tview v0.42.0
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/kafka-go v0.4.50 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
