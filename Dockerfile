@@ -2,7 +2,7 @@
 ARG TARGETARCH=amd64
 
 # Build the manager binary
-FROM docker.io/library/golang:1.25 as builder
+FROM docker.io/library/golang:1.25 AS builder
 
 ARG TARGETARCH
 ARG LDFLAGS
