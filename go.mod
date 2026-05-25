@@ -3,7 +3,7 @@ module github.com/netobserv/network-observability-cli
 go 1.25.7
 
 require (
-	github.com/gdamore/tcell/v2 v2.13.9
+	github.com/gdamore/tcell/v2 v2.13.10
 	github.com/gopacket/gopacket v1.5.0
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.44
