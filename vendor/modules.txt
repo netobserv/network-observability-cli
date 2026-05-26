@@ -200,8 +200,8 @@ github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap
 github.com/netobserv/flowlogs-pipeline/pkg/utils
-# github.com/netobserv/netobserv-ebpf-agent v1.11.3-community.0.20260505134559-24f8cbea14ad
-## explicit; go 1.25.0
+# github.com/netobserv/netobserv-ebpf-agent v1.11.4-community
+## explicit; go 1.25.7
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils
 # github.com/onsi/ginkgo/v2 v2.28.1
 ## explicit; go 1.24.0
@@ -360,7 +360,7 @@ golang.org/x/oauth2/internal
 # golang.org/x/sync v0.20.0
 ## explicit; go 1.25.0
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.43.0
+# golang.org/x/sys v0.44.0
 ## explicit; go 1.25.0
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
