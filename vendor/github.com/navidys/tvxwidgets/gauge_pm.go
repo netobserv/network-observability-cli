@@ -10,6 +10,7 @@ import (
 // PercentageModeGauge represents percentage mode gauge permitive.
 type PercentageModeGauge struct {
 	*tview.Box
+
 	// maxValue value
 	maxValue int
 	// value is current value
@@ -31,13 +32,13 @@ func NewPercentageModeGauge() *PercentageModeGauge {
 
 // Draw draws this primitive onto the screen.
 func (g *PercentageModeGauge) Draw(screen tcell.Screen) {
-	g.Box.DrawForSubclass(screen, g)
+	g.DrawForSubclass(screen, g)
 
 	if g.maxValue == 0 {
 		return
 	}
 
-	x, y, width, height := g.Box.GetInnerRect()
+	x, y, width, height := g.GetInnerRect()
 	pcWidth := 3
 	pc := g.value * gaugeMaxPc / g.maxValue
 	pcString := fmt.Sprintf("%d%%", pc)
@@ -71,7 +72,7 @@ func (g *PercentageModeGauge) Draw(screen tcell.Screen) {
 }
 
 // Focus is called when this primitive receives focus.
-func (g *PercentageModeGauge) Focus(delegate func(p tview.Primitive)) { //nolint:revive
+func (g *PercentageModeGauge) Focus(delegate func(p tview.Primitive)) {
 }
 
 // HasFocus returns whether or not this primitive has focus.

@@ -16,7 +16,6 @@ import (
 type Marker uint
 
 const (
-	// plot marker.
 	PlotMarkerBraille Marker = iota
 	PlotMarkerDot
 )
@@ -54,6 +53,7 @@ type brailleCell struct {
 // Plot represents a plot primitive used for different charts.
 type Plot struct {
 	*tview.Box
+
 	data [][]float64
 	// maxVal is the maximum y-axis (vertical) value found in any of the lines in the data set.
 	maxVal float64
@@ -73,6 +73,7 @@ type Plot struct {
 	yAxisAutoScaleMin  bool
 	yAxisAutoScaleMax  bool
 	brailleCellMap     map[image.Point]brailleCell
+	xAxisTickCols      map[int]struct{} // screen columns where X axis tick triangles are drawn
 	mu                 sync.Mutex
 }
 
@@ -100,7 +101,8 @@ func NewPlot() *Plot {
 
 // Draw draws this primitive onto the screen.
 func (plot *Plot) Draw(screen tcell.Screen) {
-	plot.Box.DrawForSubclass(screen, plot)
+	plot.DrawForSubclass(screen, plot)
+	plot.drawAxesToScreen(screen)
 
 	switch plot.marker {
 	case PlotMarkerDot:
@@ -108,8 +110,6 @@ func (plot *Plot) Draw(screen tcell.Screen) {
 	case PlotMarkerBraille:
 		plot.drawBrailleMarkerToScreen(screen)
 	}
-
-	plot.drawAxesToScreen(screen)
 }
 
 // SetRect sets rect for this primitive.
@@ -194,14 +194,17 @@ func (plot *Plot) SetData(data [][]float64) {
 	}
 }
 
+// SetMaxVal sets plot maximum value.
 func (plot *Plot) SetMaxVal(maxVal float64) {
 	plot.maxVal = maxVal
 }
 
+// SetMinVal sets plot minimum value.
 func (plot *Plot) SetMinVal(minVal float64) {
 	plot.minVal = minVal
 }
 
+// SetYRange sets plot Y range.
 func (plot *Plot) SetYRange(minVal float64, maxVal float64) {
 	plot.minVal = minVal
 	plot.maxVal = maxVal
@@ -212,14 +215,9 @@ func (plot *Plot) SetDotMarkerRune(r rune) {
 	plot.dotMarkerRune = r
 }
 
-// Figure out the text width necessary to display the largest data value.
-func (plot *Plot) getYAxisLabelsWidth() int {
-	return len(fmt.Sprintf("%.2f", plot.maxVal))
-}
-
 // GetPlotRect returns the rect for the inner part of the plot, ie not including axes.
 func (plot *Plot) GetPlotRect() (int, int, int, int) {
-	x, y, width, height := plot.Box.GetInnerRect()
+	x, y, width, height := plot.GetInnerRect()
 	plotYAxisLabelsWidth := plot.getYAxisLabelsWidth()
 
 	if plot.drawAxes {
@@ -229,9 +227,15 @@ func (plot *Plot) GetPlotRect() (int, int, int, int) {
 	} else {
 		x++
 		width--
+		height--
 	}
 
 	return x, y, width, height
+}
+
+// Figure out the text width necessary to display the largest data value.
+func (plot *Plot) getYAxisLabelsWidth() int {
+	return len(fmt.Sprintf("%.2f", plot.maxVal))
 }
 
 func (plot *Plot) getData() [][]float64 {
@@ -247,7 +251,9 @@ func (plot *Plot) drawAxesToScreen(screen tcell.Screen) {
 		return
 	}
 
-	x, y, width, height := plot.Box.GetInnerRect()
+	plot.xAxisTickCols = make(map[int]struct{})
+
+	x, y, width, height := plot.GetInnerRect()
 	plotYAxisLabelsWidth := plot.getYAxisLabelsWidth()
 
 	axesStyle := tcell.StyleDefault.Background(plot.GetBackgroundColor()).Foreground(plot.axesColor)
@@ -312,14 +318,22 @@ func (plot *Plot) drawXAxisLabelsToScreen(
 	// Note: not all of these labels will be printed, as they would
 	// overlap with each other
 	for i, label := range labelMap {
-		expectedLabelWidth := len(label)
-		if i == 0 {
-			expectedLabelWidth += plotXAxisLabelsGap / 2 //nolint:mnd
-		} else {
-			expectedLabelWidth += plotXAxisLabelsGap
+		var expectedLabelWidth int
+
+		var currentLabelStart int
+
+		switch i {
+		case 0:
+			// First label anchors at the data point column with no centering.
+			currentLabelStart = 0
+		case maxDataPoints - 1:
+			expectedLabelWidth = len(label) + plotXAxisLabelsGap/2 //nolint:mnd
+			currentLabelStart = i - expectedLabelWidth/2           //nolint:mnd
+		default:
+			expectedLabelWidth = len(label) + plotXAxisLabelsGap
+			currentLabelStart = i - expectedLabelWidth/2 //nolint:mnd
 		}
 
-		currentLabelStart := i - int(math.Round(float64(expectedLabelWidth)/2)) //nolint:mnd
 		labelStartMap[i] = currentLabelStart
 	}
 
@@ -336,12 +350,19 @@ func (plot *Plot) drawXAxisLabelsToScreen(
 		}
 
 		rawLabel := labelMap[i]
-		labelWithGap := rawLabel
 
-		if i == 0 {
-			labelWithGap += strings.Repeat(gapRune, plotXAxisLabelsGap/2) //nolint:mnd
-		} else {
-			labelWithGap = strings.Repeat(gapRune, plotXAxisLabelsGap/2) + labelWithGap + strings.Repeat(gapRune, plotXAxisLabelsGap/2) //nolint:lll,mnd
+		var labelWithGap string
+
+		switch i {
+		case 0:
+			// First label: no leading gap, trailing gap only.
+			labelWithGap = rawLabel + strings.Repeat(gapRune, plotXAxisLabelsGap/2) //nolint:mnd
+		case maxDataPoints - 1:
+			// Last label: leading gap only, no trailing gap so it doesn't overflow the right edge.
+			labelWithGap = strings.Repeat(gapRune, plotXAxisLabelsGap/2) + rawLabel //nolint:mnd
+		default:
+			half := strings.Repeat(gapRune, plotXAxisLabelsGap/2) //nolint:mnd
+			labelWithGap = half + rawLabel + half
 		}
 
 		expectedLabelWidth := len(labelWithGap)
@@ -353,6 +374,13 @@ func (plot *Plot) drawXAxisLabelsToScreen(
 				// if we omit the last gap, it fits, so we draw that before stopping
 				labelWithoutGap := labelWithGap[:len(labelWithGap)-1]
 				plot.printXAxisLabel(screen, labelWithoutGap, initialOffset+labelStart, y+height-plotXAxisLabelsHeight)
+				tview.Print(screen,
+					string('\u25BE'),
+					initialOffset+i,
+					y+height-plotXAxisLabelsHeight-1,
+					1, tview.AlignLeft,
+					plot.axesColor)
+				plot.xAxisTickCols[initialOffset+i] = struct{}{}
 			}
 
 			break
@@ -360,6 +388,15 @@ func (plot *Plot) drawXAxisLabelsToScreen(
 
 		lastUsedLabelEnd = labelStart + expectedLabelWidth
 		plot.printXAxisLabel(screen, labelWithGap, initialOffset+labelStart, y+height-plotXAxisLabelsHeight)
+
+		// Draw a small solid downward triangle on the axis line at the exact data point column.
+		tview.Print(screen,
+			string('\u25BE'),
+			initialOffset+i,
+			y+height-plotXAxisLabelsHeight-1,
+			1, tview.AlignLeft,
+			plot.axesColor)
+		plot.xAxisTickCols[initialOffset+i] = struct{}{}
 	}
 }
 
@@ -394,6 +431,17 @@ func (plot *Plot) drawYAxisLabelsToScreen(screen tcell.Screen, plotYAxisLabelsWi
 			y+height-(i*(plotYAxisLabelsGap+1))-2, //nolint:mnd
 			plotYAxisLabelsWidth,
 			tview.AlignLeft, plot.axesLabelColor)
+
+		// Draw a tick mark on the Y axis at this label's row (skip i=0 where the
+		// corner rune already anchors the bottom). The tick joins with the vertical
+		// axis line via semigraphics to produce '┤'.
+		if i > 0 {
+			tview.PrintJoinedSemigraphics(screen,
+				x+plotYAxisLabelsWidth,
+				y+height-(i*(plotYAxisLabelsGap+1))-2, //nolint:mnd
+				tview.BoxDrawingsLightVerticalAndLeft,
+				tcell.StyleDefault.Background(plot.GetBackgroundColor()).Foreground(plot.axesColor))
+		}
 	}
 }
 
@@ -401,7 +449,6 @@ func (plot *Plot) drawYAxisLabelsToScreen(screen tcell.Screen, plotYAxisLabelsWi
 func (plot *Plot) drawDotMarkerToScreen(screen tcell.Screen) {
 	x, y, width, height := plot.GetPlotRect()
 	chartData := plot.getData()
-	verticalOffset := -plot.minVal
 
 	switch plot.ptype {
 	case PlotTypeLineChart:
@@ -414,13 +461,13 @@ func (plot *Plot) drawDotMarkerToScreen(screen tcell.Screen) {
 					continue
 				}
 
-				lheight := int(((val + verticalOffset) / plot.maxVal) * float64(height-1))
+				lheight := calcDataPointHeight(val, plot.maxVal, plot.minVal, height)
 				if lheight > height {
 					continue
 				}
 
-				if (x+(j*plotHorizontalScale) < x+width) && (y+height-1-lheight < y+height) {
-					tview.PrintJoinedSemigraphics(screen, x+(j*plotHorizontalScale), y+height-1-lheight, plot.dotMarkerRune, style)
+				if (x+(j*plotHorizontalScale) < x+width) && (y+height-lheight <= y+height) {
+					tview.PrintJoinedSemigraphics(screen, x+(j*plotHorizontalScale), y+height-lheight, plot.dotMarkerRune, style)
 				}
 			}
 		}
@@ -434,13 +481,13 @@ func (plot *Plot) drawDotMarkerToScreen(screen tcell.Screen) {
 					continue
 				}
 
-				lheight := int(((val + verticalOffset) / plot.maxVal) * float64(height-1))
+				lheight := calcDataPointHeight(val, plot.maxVal, plot.minVal, height)
 				if lheight > height {
 					continue
 				}
 
-				if (x+(j*plotHorizontalScale) < x+width) && (y+height-1-lheight < y+height) {
-					tview.PrintJoinedSemigraphics(screen, x+(j*plotHorizontalScale), y+height-1-lheight, plot.dotMarkerRune, style)
+				if (x+(j*plotHorizontalScale) < x+width) && (y+height-lheight <= y+height) {
+					tview.PrintJoinedSemigraphics(screen, x+(j*plotHorizontalScale), y+height-lheight, plot.dotMarkerRune, style)
 				}
 			}
 		}
@@ -453,15 +500,27 @@ func (plot *Plot) drawBrailleMarkerToScreen(screen tcell.Screen) {
 	plot.calcBrailleLines()
 
 	// print to screen
+	axisRow := y + height // screen row of the X axis line
 	for point, cell := range plot.getBrailleCells() {
+		// Don't overwrite X axis tick triangles with braille characters.
+		if point.Y == axisRow {
+			if _, isTick := plot.xAxisTickCols[point.X]; isTick {
+				continue
+			}
+		}
+
 		style := tcell.StyleDefault.Background(plot.GetBackgroundColor()).Foreground(cell.color)
-		if point.X < x+width && point.Y < y+height {
+		if point.X < x+width && point.Y <= y+height {
 			tview.PrintJoinedSemigraphics(screen, point.X, point.Y, cell.cRune, style)
 		}
 	}
 }
 
 func calcDataPointHeight(val, maxVal, minVal float64, height int) int {
+	if maxVal == minVal {
+		return 0
+	}
+
 	return int(((val - minVal) / (maxVal - minVal)) * float64(height-1))
 }
 
@@ -528,7 +587,7 @@ func (plot *Plot) calcBrailleLines() {
 func calcBraillePoint(x, j, y, maxY, height int) image.Point {
 	return image.Pt(
 		(x+(j*plotHorizontalScale))*2, //nolint:mnd
-		(y+maxY-height-1)*4,           //nolint:mnd
+		(y+maxY-height)*4,             //nolint:mnd
 	)
 }
 

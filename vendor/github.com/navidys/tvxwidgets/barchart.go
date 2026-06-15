@@ -23,6 +23,7 @@ type BarChartItem struct {
 // BarChart represents bar chart primitive.
 type BarChart struct {
 	*tview.Box
+
 	// bar items
 	bars []BarChartItem
 	// maximum value of bars
@@ -61,10 +62,10 @@ func (c *BarChart) HasFocus() bool {
 }
 
 // Draw draws this primitive onto the screen.
-func (c *BarChart) Draw(screen tcell.Screen) { //nolint:funlen,cyclop
-	c.Box.DrawForSubclass(screen, c)
+func (c *BarChart) Draw(screen tcell.Screen) { //nolint:funlen
+	c.DrawForSubclass(screen, c)
 
-	x, y, width, height := c.Box.GetInnerRect()
+	x, y, width, height := c.GetInnerRect()
 
 	maxValY := y + 1
 	xAxisStartY := y + height - 2 //nolint:mnd
@@ -77,11 +78,13 @@ func (c *BarChart) Draw(screen tcell.Screen) { //nolint:funlen,cyclop
 	// set max value if not set
 	c.initMaxValue()
 	maxValueSr := strconv.Itoa(c.maxVal)
-	maxValLenght := len(maxValueSr) + 1
+	// maxValLenght := len(maxValueSr) + 1
+	//
+	// if maxValLenght < barChartYAxisLabelWidth {
+	//   maxValLenght = barChartYAxisLabelWidth
+	// }
 
-	if maxValLenght < barChartYAxisLabelWidth {
-		maxValLenght = barChartYAxisLabelWidth
-	}
+	maxValLenght := max(len(maxValueSr)+1, barChartYAxisLabelWidth)
 
 	axesStyle := tcell.StyleDefault.Background(c.GetBackgroundColor()).Foreground(c.axesColor)
 	axesLabelStyle := tcell.StyleDefault.Background(c.GetBackgroundColor()).Foreground(c.axesLabelColor)
@@ -144,10 +147,12 @@ func (c *BarChart) Draw(screen tcell.Screen) { //nolint:funlen,cyclop
 		}
 
 		// calculate next startX for next bar
-		rWidth := len(r)
-		if rWidth < c.barWidth {
-			rWidth = c.barWidth
-		}
+		// rWidth := len(r)
+		// if rWidth < c.barWidth {
+		// 	 rWidth = c.barWidth
+		// }
+
+		rWidth := max(len(r), c.barWidth)
 
 		startX = startX + c.barGap + rWidth
 	}

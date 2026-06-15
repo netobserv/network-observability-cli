@@ -62,7 +62,7 @@ func getColorName(color tcell.Color) string {
 // getMessageWidth returns width size for dialogs based on messages.
 func getMessageWidth(message string) int {
 	var messageWidth int
-	for _, msg := range strings.Split(message, "\n") {
+	for msg := range strings.SplitSeq(message, "\n") {
 		if len(msg) > messageWidth {
 			messageWidth = len(msg)
 		}
@@ -166,11 +166,12 @@ func absInt(x int) int {
 }
 
 func drawLine(screen tcell.Screen, startX int, startY int, length int, mode drawLineMode, style tcell.Style) {
-	if mode == horizontalLine {
+	switch mode {
+	case horizontalLine:
 		for i := range length {
 			tview.PrintJoinedSemigraphics(screen, startX+i, startY, tview.BoxDrawingsLightTripleDashHorizontal, style)
 		}
-	} else if mode == verticalLine {
+	case verticalLine:
 		for i := range length {
 			tview.PrintJoinedSemigraphics(screen, startX, startY+i, tview.BoxDrawingsLightTripleDashVertical, style)
 		}
