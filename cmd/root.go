@@ -107,7 +107,7 @@ func onInit() {
 	printBanner()
 
 	log.Infof("Log level: %s\nOption(s): %s", logLevel, options)
-	if strings.Contains(options, "background") && !strings.Contains(options, "background=false") {
+	if optionEnabled("background") {
 		isBackground = true
 		log.Infof("Running in background mode")
 	}
@@ -189,6 +189,15 @@ func onLimitReached() bool {
 	}
 
 	return shouldExit
+}
+
+// optionEnabled reports whether a named CLI option is set in the pipe-separated --options string.
+// The shell passes flags as --name or name=true.
+func optionEnabled(name string) bool {
+	if strings.Contains(options, name+"=false") {
+		return false
+	}
+	return strings.Contains(options, name+"=true") || strings.Contains(options, name)
 }
 
 // Create output file, preventing path traversal
