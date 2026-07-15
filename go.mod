@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/navidys/tvxwidgets v0.14.0
 	github.com/netobserv/flowlogs-pipeline v1.11.5-community
-	github.com/netobserv/netobserv-ebpf-agent v1.11.4-community.0.20260526070517-19644c4749ad
+	github.com/netobserv/netobserv-ebpf-agent v1.11.5-community
 	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.42.0
 	github.com/sirupsen/logrus v1.9.4

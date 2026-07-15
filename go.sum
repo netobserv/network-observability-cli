@@ -158,8 +158,8 @@ github.com/navidys/tvxwidgets v0.14.0 h1:8UDKTDbbQeWwmOBcsTzKTrUYv7BpGYphpib7zWt
 github.com/navidys/tvxwidgets v0.14.0/go.mod h1:yILrJRJqf399gw7JyUM7UdT+e9PMMDXpk+CuIoqvEj8=
 github.com/netobserv/flowlogs-pipeline v1.11.5-community h1:g056UVio6qFNzOzxD98k3YxBHZWUEr+tn3MxTog/f0A=
 github.com/netobserv/flowlogs-pipeline v1.11.5-community/go.mod h1:RNGkTvF3w+epkBmtbKqj+M4h6f9VNwVkTB2Smy2OvCc=
-github.com/netobserv/netobserv-ebpf-agent v1.11.4-community.0.20260526070517-19644c4749ad h1:qbR74Y1TeWbB5QheSfp6NSEbGykUXWh19Zl0U0vPMw4=
-github.com/netobserv/netobserv-ebpf-agent v1.11.4-community.0.20260526070517-19644c4749ad/go.mod h1:GBL7BtD7RvpxiSz1wQN6SC44yOa/YkcD3GUcdWD9Vfc=
+github.com/netobserv/netobserv-ebpf-agent v1.11.5-community h1:0wefOgcoDjaDhP8WJG4tKIQ2TjxkgVn1j2DFVBfkxcI=
+github.com/netobserv/netobserv-ebpf-agent v1.11.5-community/go.mod h1:NXh7mtzpv7mLu6H7q+hKCfM8ETVjYu8EgxFX2RLoFQg=
 github.com/onsi/ginkgo/v2 v2.31.0 h1:GtuJos5DFUV9EerYJo8RhYxosYNGvOdDE5haKq6Grfs=
 github.com/onsi/ginkgo/v2 v2.31.0/go.mod h1:+aXOY+vzZ5mu2iI2HpTZUPmM//oQfsNFX6gU9kNcA44=
 github.com/onsi/gomega v1.42.0 h1:CJby8u36xb7v34W78F8WKvqTQP7PCMIPB78IVDB73l4=
