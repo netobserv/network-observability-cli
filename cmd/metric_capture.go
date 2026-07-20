@@ -35,10 +35,16 @@ func runMetricCapture(c *cobra.Command, _ []string) {
 	updateGraphs(false) // initial update of graphs to have something to display
 	if isBackground {
 		startMetricCollector(c.Context())
-	} else {
-		go startMetricCollector(c.Context())
-		createMetricDisplay()
+		return
 	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		startMetricCollector(c.Context())
+	}()
+	createMetricDisplay()
+	requestCollectorStop()
+	<-done
 }
 
 func startMetricCollector(ctx context.Context) {

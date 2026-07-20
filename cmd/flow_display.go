@@ -55,6 +55,9 @@ var (
 )
 
 func createFlowDisplay() {
+	restoreLogs := redirectLogsAwayFromTTY()
+	defer restoreLogs()
+
 	focus = "inputField"
 	app = tview.NewApplication().
 		SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -62,6 +65,7 @@ func createFlowDisplay() {
 			switch event.Key() {
 			case tcell.KeyCtrlC:
 				log.Info("Ctrl-C pressed, exiting program.")
+				requestCollectorStop()
 				if app != nil {
 					app.Stop()
 				}

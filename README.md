@@ -122,6 +122,95 @@ sqlite> SELECT DnsLatencyMs, DnsFlagsResponseCode, DnsId, DstAddr, DstPort, Inte
 or `dbeaver`:
 ![dbeaver](./img/dbeaver.png)
 
+### Local output formats
+
+By default, flow capture writes **JSON + SQLite** under `output/flow/` (`--format=json,sqlite`). Parquet is **not** written unless you include `parquet` in `--format`.
+
+`--format` is a **non-exclusive** list (comma-separated and/or repeatable):
+
+| Flag | Writes |
+|------|--------|
+| _(omitted)_ / `--format=json,sqlite` | JSON + SQLite (default) |
+| `--format=parquet` | Parquet only |
+| `--format=json,parquet` | JSON + Parquet |
+| `--format=json,sqlite,parquet` | all three |
+| `--format=json --format=parquet` | same as `json,parquet` |
+
+Invalid tokens fail with a clear error. Hive-partitioned Parquet (schema v1, metadata `netobserv.parquet.version = 1`) lands at:
+
+```text
+./output/flow/<CAPTURE_DATE_TIME>/cluster_id=cli/year=YYYY/month=MM/day=DD/hour=HH/part-cli-….parquet
+```
+
+**Important:** the collector runs **inside a cluster pod** (`kubectl run` / `oc run`), not as your host binary. Host `./output/flow/` stays empty until files are copied from the pod (same `--copy` prompt as other formats; use `--copy=true` / `--copy=false` to skip the prompt). You must run a **collector image that includes parquet support** (rebuild/push your own tag — `quay.io/netobserv/network-observability-cli:main` will not have unreleased changes):
+
+```bash
+IMAGE_ORG=<you> VERSION=dev make image-build
+# push/manifest as needed, then:
+NETOBSERV_COLLECTOR_IMAGE=quay.io/<you>/network-observability-cli:dev \
+  kubectl netobserv flows --format=parquet
+```
+
+During capture, `Capture size` tracks inbound flow bytes in memory for the TUI. Parquet parts are flushed every ~2s and again on exit.
+
+```bash
+# Default: JSON + SQLite only (no parquet)
+kubectl netobserv flows
+
+# Parquet only:
+kubectl netobserv flows --format=parquet
+
+# JSON + Parquet, plus optional S3 export:
+kubectl netobserv flows --format=json,parquet \
+  --s3-endpoint=https://s3.example.com \
+  --s3-bucket=<bucket> \
+  --s3-account=<account>
+```
+
+Example with DuckDB:
+
+```bash
+duckdb -c "SELECT SrcK8S_Namespace, sum(Bytes) FROM read_parquet('output/flow/**/*.parquet') GROUP BY 1 ORDER BY 2 DESC LIMIT 20;"
+```
+
+### S3 Parquet export (optional)
+
+In addition to local sinks under `output/flow/`, you can opt in to export the same enriched flows as **Hive-partitioned Parquet** to any S3-compatible store. This uses the embedded agent FLP `encode.s3` stage (`format: parquet`), matching the NetObserv operator / console layout:
+
+```text
+s3://<bucket>/<prefix>/cluster_id=<account>/year=YYYY/month=MM/day=DD/hour=HH/part-….parquet
+```
+
+**Credentials:** do not pass secret keys as CLI flags (shell history / `ps`). Prefer environment variables, or a credentials file / Kubernetes Secret.
+
+```bash
+export NETOBSERV_S3_ACCESS_KEY=<access-key>
+export NETOBSERV_S3_SECRET_KEY=<secret-key>
+
+kubectl netobserv flows \
+  --s3-endpoint=https://s3.example.com \
+  --s3-bucket=<bucket> \
+  --s3-account=<account> \
+  --s3-prefix=netobserv
+
+# Or AWS-style env names:
+# export AWS_ACCESS_KEY_ID=<access-key> AWS_SECRET_ACCESS_KEY=<secret-key>
+
+# Or a credentials file (YAML/JSON with accessKeyId/secretAccessKey, or AWS shared credentials):
+# kubectl netobserv flows --s3-endpoint=... --s3-bucket=... --s3-credentials-file=./s3-creds.yaml
+
+# Or a Secret already in the CLI namespace (keys: accessKeyId, secretAccessKey):
+# kubectl netobserv flows --s3-endpoint=... --s3-bucket=... --s3-secret=netobserv-s3-creds
+```
+
+Local JSON/SQLite capture stays enabled by default (`--format=json,sqlite`); S3 is an additional sink independent of local `--format`. Include `parquet` in `--format` for local Parquet.
+
+S3 is configured on the **agent** DaemonSet via `FLP_CONFIG` (direct-flp `encode.s3`), not as collector `--options`. Missing credentials fail the CLI before deploy. Default flush interval is `15s` (capped by `--max-time`); agents also flush pending Parquet parts on SIGTERM. Use an agent image with FLP S3 Parquet support, e.g.:
+
+```bash
+export NETOBSERV_AGENT_IMAGE=quay.io/jpinsonn/netobserv-ebpf-agent:s3-flowbuffer
+export NETOBSERV_COLLECTOR_IMAGE=quay.io/jpinsonn/network-observability-cli:s3-flowbuffer
+```
 
 ### Packet Capture
 

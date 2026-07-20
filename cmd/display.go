@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/jpillora/sizestr"
 	"github.com/rivo/tview"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -157,6 +161,32 @@ func updateStatusTexts() {
 	sizeText.SetText(getSizeText())
 }
 
+// redirectLogsAwayFromTTY sends logrus output to a file while the TUI owns the
+// terminal. kubectl/oc exec -it merges stderr into the same TTY as tview, so
+// periodic Info logs (e.g. parquet flush) otherwise corrupt the screen.
+// When --loglevel=debug|trace, logs stay on stderr for live troubleshooting.
+func redirectLogsAwayFromTTY() (restore func()) {
+	if log.IsLevelEnabled(logrus.DebugLevel) {
+		return func() {}
+	}
+	prev := log.Out
+	dir := outputRoot
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		log.SetOutput(io.Discard)
+		return func() { log.SetOutput(prev) }
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "collector-ui.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		log.SetOutput(io.Discard)
+		return func() { log.SetOutput(prev) }
+	}
+	log.SetOutput(f)
+	return func() {
+		log.SetOutput(prev)
+		_ = f.Close()
+	}
+}
+
 func hearbeat() {
 	for {
 		if captureEnded {
@@ -170,7 +200,8 @@ func hearbeat() {
 			updateTableAndSuggestions()
 		}
 
-		// refresh
+		// Partial redraw: updateStatusTexts / table content only — do not rebuild
+		// the widget tree (updateScreen) on the size tick.
 		if app != nil {
 			app.Draw()
 		}

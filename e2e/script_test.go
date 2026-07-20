@@ -73,7 +73,12 @@ func TestSubcommandHelp(t *testing.T) {
 		assert.Contains(t, plain, "Features:")
 		assert.Contains(t, plain, "Filters:")
 		assert.Contains(t, plain, "Options:")
+		assert.Contains(t, plain, "--format:")
+		assert.Contains(t, plain, "json,sqlite")
+		assert.Contains(t, plain, "parquet")
 		assert.Contains(t, plain, "Examples:")
+		assert.Contains(t, plain, "netobserv flows --format=parquet")
+		assert.Contains(t, plain, "netobserv flows --format=json,parquet")
 	})
 
 	t.Run("flows --help at any position", func(t *testing.T) {

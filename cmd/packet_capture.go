@@ -34,13 +34,34 @@ var (
 
 func runPacketCapture(_ *cobra.Command, _ []string) {
 	capture = Packet
-	if isBackground {
-		go backgroundHearbeat() // show table periodically in background
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
 		startPacketCollector()
-	} else {
-		go startPacketCollector()
-		createFlowDisplay()
+	}()
+	go enforceTimeLimit()
+
+	if isBackground {
+		go backgroundHearbeat()
+		<-done
+		return
 	}
+
+	uiStarted := time.Now()
+	createFlowDisplay()
+	uiTooShort := errAdvancedDisplay == nil && time.Since(uiStarted) < 500*time.Millisecond
+	if errAdvancedDisplay != nil || uiTooShort {
+		reason := errAdvancedDisplay
+		if reason == nil {
+			reason = fmt.Errorf("UI exited immediately")
+		}
+		log.Warnf("UI unavailable (%v); continuing capture until --maxtime, --maxbytes, or signal", reason)
+		<-done
+		return
+	}
+	requestCollectorStop()
+	<-done
 }
 
 //nolint:cyclop
@@ -79,7 +100,10 @@ func startPacketCollector() {
 	collectorStarted = true
 
 	go func() {
-		<-utils.ExitChannel()
+		select {
+		case <-collectorStopCh:
+		case <-utils.ExitChannel():
+		}
 		log.Debug("Ending collector")
 		close(flowPackets)
 		collector.Close()
@@ -90,11 +114,6 @@ func startPacketCollector() {
 	for fp := range flowPackets {
 		if !captureStarted {
 			log.Debugf("Received first %d packets", len(flowPackets))
-		}
-
-		if stopReceived {
-			log.Debug("Stop received")
-			return
 		}
 
 		genericMap := config.GenericMap{}
@@ -127,6 +146,7 @@ func startPacketCollector() {
 		if totalBytes > maxBytes {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", sizestr.ToString(maxBytes))
+				requestCollectorStop()
 				return
 			}
 		}
@@ -137,6 +157,7 @@ func startPacketCollector() {
 		if int(duration) > int(maxTime) {
 			if exit := onLimitReached(); exit {
 				log.Infof("Capture reached %s, exiting now...", maxTime)
+				requestCollectorStop()
 				return
 			}
 		}
