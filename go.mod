@@ -6,7 +6,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.13.10
 	github.com/gopacket/gopacket v1.6.1
 	github.com/jpillora/sizestr v1.0.0
-	github.com/mattn/go-sqlite3 v1.14.44
+	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/navidys/tvxwidgets v0.14.0
 	github.com/netobserv/flowlogs-pipeline v1.11.5-community
 	github.com/netobserv/netobserv-ebpf-agent v1.11.5-community
