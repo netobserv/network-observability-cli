@@ -214,7 +214,8 @@ func writePacketData(ngw *pcapgo.NgWriter, genericMap *config.GenericMap, data *
 		}
 	}
 
-	if err := ngw.WritePacketWithOptions(gopacket.CaptureInfo{
+	ngwMu.Lock()
+	err = ngw.WritePacketWithOptions(gopacket.CaptureInfo{
 		Timestamp:     ts,
 		Length:        len(b),
 		CaptureLength: len(b),
@@ -224,7 +225,9 @@ func writePacketData(ngw *pcapgo.NgWriter, genericMap *config.GenericMap, data *
 			dstComment.String(),
 			commonComment.String(),
 		},
-	}); err != nil {
+	})
+	ngwMu.Unlock()
+	if err != nil {
 		log.Error("Error while writing packet", err)
 		return
 	}
@@ -234,7 +237,8 @@ func writePacketData(ngw *pcapgo.NgWriter, genericMap *config.GenericMap, data *
 	commonComment.Reset()
 }
 
-var keylogMu sync.Mutex
+// ngwMu serializes all NgWriter writes (packets and TLS keylog DSB blocks).
+var ngwMu sync.Mutex
 var keylogOffset int64
 
 func embedTLSKeylog(ngw *pcapgo.NgWriter, path string) error {
@@ -245,8 +249,8 @@ func embedTLSKeylog(ngw *pcapgo.NgWriter, path string) error {
 	if len(content) == 0 {
 		return nil
 	}
-	keylogMu.Lock()
-	defer keylogMu.Unlock()
+	ngwMu.Lock()
+	defer ngwMu.Unlock()
 	if err := ngw.WriteDecryptionSecretsBlock(pcapgo.DSB_SECRETS_TYPE_TLS, content); err != nil {
 		return err
 	}
@@ -265,7 +269,10 @@ func watchTLSKeylog(ngw *pcapgo.NgWriter, path string) {
 		if err != nil {
 			continue
 		}
-		if _, err := f.Seek(keylogOffset, io.SeekStart); err != nil {
+		ngwMu.Lock()
+		offset := keylogOffset
+		ngwMu.Unlock()
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
 			_ = f.Close()
 			continue
 		}
@@ -274,13 +281,13 @@ func watchTLSKeylog(ngw *pcapgo.NgWriter, path string) {
 		if err != nil || len(data) == 0 {
 			continue
 		}
-		keylogMu.Lock()
+		ngwMu.Lock()
 		if err := ngw.WriteDecryptionSecretsBlock(pcapgo.DSB_SECRETS_TYPE_TLS, data); err != nil {
 			log.Warnf("failed to append TLS keylog DSB: %v", err)
 		} else {
 			keylogOffset += int64(len(data))
 		}
-		keylogMu.Unlock()
+		ngwMu.Unlock()
 	}
 }
 

@@ -85,6 +85,11 @@ func TestOptionEnabled(t *testing.T) {
 
 	options = "enable_openssl=false"
 	assert.False(t, optionEnabled("enable_openssl"))
+
+	// Exact key match: a longer option name must not satisfy a shorter query.
+	options = "enable_openssl_debug=true"
+	assert.False(t, optionEnabled("enable_openssl"))
+	assert.True(t, optionEnabled("enable_openssl_debug"))
 }
 
 func TestPlaintextCaptureEnabled(t *testing.T) {

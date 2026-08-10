@@ -194,10 +194,19 @@ func onLimitReached() bool {
 // optionEnabled reports whether a named CLI option is set in the pipe-separated --options string.
 // The shell passes flags as --name or name=true.
 func optionEnabled(name string) bool {
-	if strings.Contains(options, name+"=false") {
-		return false
+	for _, part := range strings.Split(options, "|") {
+		part = strings.TrimSpace(part)
+		part = strings.TrimPrefix(part, "--")
+		key, val, hasVal := strings.Cut(part, "=")
+		if key != name {
+			continue
+		}
+		if hasVal {
+			return val != "false"
+		}
+		return true
 	}
-	return strings.Contains(options, name+"=true") || strings.Contains(options, name)
+	return false
 }
 
 // Create output file, preventing path traversal
