@@ -16,7 +16,7 @@ if [ -z "${runBackground+x}" ]; then runBackground="false"; fi
 # output as yaml only
 if [ -z "${outputYAML+x}" ]; then outputYAML="false"; fi
 # formated date for file names
-if [ -z "${dateName+x}" ]; then dateName="$(date +"%Y_%m_%d_%I_%M")"; fi
+if [ -z "${dateName+x}" ]; then dateName="$(date +"%Y_%m_%d_%H_%M")"; fi
 
 # options such as filters, background etc
 options=""
@@ -157,8 +157,9 @@ case "$1" in
 esac
 
 function onExit() {
+  local code=$?
   cleanup
-  exit 0
+  exit "$code"
 }
 
 trap onExit EXIT
@@ -170,6 +171,10 @@ if [[ "$command" == "flows" || "$command" == "packets" || "$command" == "metrics
   optionStr=""
   for opt in "${options[@]}"; do
     opt="${opt#--}"  # remove leading --
+    # S3 connection/cred flags are applied to agent FLP_CONFIG only; keep them off the collector --options
+    case "$opt" in
+      s3-*) continue ;;
+    esac
     if [ -n "$optionStr" ]; then
       optionStr="$optionStr|$opt"
     else

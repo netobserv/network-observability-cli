@@ -67,6 +67,8 @@ $ oc netobserv flows [<feature_option>] [<command_options>]
 | Option | Description | Default"
 features_usage
 flowsAndPackets_collector_usage
+flows_format_usage
+s3_export_usage
 filters_usage
 flowsAndMetrics_filters_usage
 echo -e "|==="
@@ -75,7 +77,19 @@ echo "
 .Example running flows capture on TCP protocol and port 49051 with PacketDrop and RTT features enabled:
 [source,terminal]
 ----
-$ oc netobserv flows --enable_pkt_drop  --enable_rtt --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
+\$ oc netobserv flows --enable_pkt_drop  --enable_rtt --action=Accept --cidr=0.0.0.0/0 --protocol=TCP --port=49051
+----
+
+.Example writing local Parquet (schema v1) only:
+[source,terminal]
+----
+\$ oc netobserv flows --format=parquet
+----
+
+.Example writing JSON and Parquet:
+[source,terminal]
+----
+\$ oc netobserv flows --format=json,parquet
 ----"
 
 # packets table

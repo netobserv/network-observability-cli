@@ -65,6 +65,9 @@ var (
 )
 
 func createMetricDisplay() {
+	restoreLogs := redirectLogsAwayFromTTY()
+	defer restoreLogs()
+
 	updateShowMetricCount()
 
 	app = tview.NewApplication().

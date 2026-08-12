@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -56,7 +57,25 @@ var (
 	stopReceived     = false
 	useMocks         = false
 	isBackground     = false
+
+	collectorStopMu  sync.Mutex
+	collectorStopped bool
+	collectorStopCh  = make(chan struct{})
 )
+
+// requestCollectorStop unblocks collectors waiting on flow/packet channels and
+// sets stopReceived. Safe to call multiple times. Does not call os.Exit — callers
+// must wait for in-flight work (e.g. parquet Flush) to finish before the process ends.
+func requestCollectorStop() {
+	collectorStopMu.Lock()
+	defer collectorStopMu.Unlock()
+	if collectorStopped {
+		return
+	}
+	collectorStopped = true
+	stopReceived = true
+	close(collectorStopCh)
+}
 
 // Execute executes the root command.
 func Execute() error {
@@ -76,13 +95,16 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&useMocks, "mock", "", false, "Use mock")
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-c
-		log.Info("Received SIGTERM; cleaning up...")
-		stopReceived = true
-
-		os.Exit(0)
+		log.Info("Received shutdown signal; flushing and stopping collector...")
+		requestCollectorStop()
+		if app != nil {
+			app.Stop()
+		}
+		// Do not os.Exit here — that skips deferred Flush (critical for parquet).
+		// Collectors exit after collectorStopCh closes their input channels.
 	}()
 
 	// flow
@@ -193,7 +215,7 @@ func onLimitReached() bool {
 
 // Create output file, preventing path traversal
 func createOutputFile(kind, filename string) (*os.File, error) {
-	base := "./output/" + kind + "/"
+	base := filepath.Join(outputRoot, kind) + string(os.PathSeparator)
 	if err := os.MkdirAll(base, 0700); err != nil {
 		return nil, err
 	}

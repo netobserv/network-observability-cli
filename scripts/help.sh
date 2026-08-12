@@ -78,6 +78,17 @@ function flows_examples {
   echo "    netobserv flows --query='SrcK8S_Namespace=~\"app-.*\"'"
   echo "  Capture flows from/to a specific pod pattern on a specific node:"
   echo "    netobserv flows --node-selector=kubernetes.io/hostname:my-node --query='SrcK8S_Name=~\".*my-pod.*\" or DstK8S_Name=~\".*my-pod.*\"'"
+  echo "  Also export Hive-partitioned Parquet to S3 (any S3-compatible endpoint; credentials via env, not flags):"
+  echo "    export NETOBSERV_S3_ACCESS_KEY=<access-key> NETOBSERV_S3_SECRET_KEY=<secret-key>"
+  echo "    netobserv flows --s3-endpoint=https://s3.example.com --s3-bucket=<bucket> --s3-account=<account>"
+  echo "  Write local Parquet (schema v1) only:"
+  echo "    netobserv flows --format=parquet"
+  echo "  Write JSON + Parquet (no SQLite):"
+  echo "    netobserv flows --format=json,parquet"
+  echo "  Write all local sinks:"
+  echo "    netobserv flows --format=json,sqlite,parquet"
+  echo "  Local Parquet plus S3 export:"
+  echo "    netobserv flows --format=parquet --s3-endpoint=https://s3.example.com --s3-bucket=<bucket>"
 }
 
 # packets examples
@@ -127,6 +138,45 @@ function flowsAndPackets_collector_usage {
   echo "  --log-level:                  components logs                                       (default: info)"
   echo "  --max-time:                   maximum capture time                                  (default: 5m)"
   echo "  --max-bytes:                  maximum capture bytes                                 (default: 50000000 = 50MB)"
+}
+
+# flows local output formats (collector; non-exclusive list)
+function flows_format_usage {
+  echo "  --format:                     local flows output sink(s)                            (default: json,sqlite)"
+  echo "                                  Comma-separated and/or repeatable. Tokens:"
+  echo "                                  json     → JSON under output/flow/"
+  echo "                                  sqlite   → SQLite DB under output/flow/"
+  echo "                                  parquet  → Hive-partitioned Parquet schema v1 under"
+  echo "                                             output/flow/<capture>/cluster_id=cli/…"
+  echo "                                  Examples: --format=json,sqlite (default when omitted)"
+  echo "                                            --format=parquet"
+  echo "                                            --format=json,parquet"
+  echo "                                            --format=json,sqlite,parquet"
+  echo "                                            --format=json --format=parquet"
+  echo "                                  When parquet is selected: collector runs in-cluster;"
+  echo "                                  parts are flushed every few seconds + on exit;"
+  echo "                                  --copy still prompts by default (same as other"
+  echo "                                  formats); requires a collector image built with"
+  echo "                                  parquet support (not quay …:main alone);"
+  echo "                                  same schema as S3 Parquet export; independent of --s3-*"
+}
+
+# Optional S3 Parquet export (flows only; local JSON/SQLite remains default)
+function s3_export_usage {
+  echo "  --s3-endpoint:                S3-compatible endpoint URL                            (default: n/a)"
+  echo "  --s3-bucket:                  S3 bucket name                                        (default: n/a)"
+  echo "  --s3-account:                 Hive cluster_id partition value                       (default: cli)"
+  echo "  --s3-prefix:                  optional key prefix before cluster_id                  (default: n/a)"
+  echo "  --s3-secure:                  use HTTPS (default: true if endpoint is https://)     (default: auto)"
+  echo "  --s3-batch-size:              flows per Parquet object before flush                 (default: 5000)"
+  echo "  --s3-write-timeout:           flush timeout when batch is not full                  (default: 15s, capped by --max-time)"
+  echo "  --s3-credentials-file:        path to credentials file (not secret values)          (default: n/a)"
+  echo "  --s3-secret:                  Kubernetes Secret name in the CLI namespace            (default: n/a)"
+  echo "  Credentials (prefer env; never pass secret keys as flags):"
+  echo "    NETOBSERV_S3_ACCESS_KEY / NETOBSERV_S3_SECRET_KEY"
+  echo "    or AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY"
+  echo "    or --s3-credentials-file with accessKeyId/secretAccessKey (or AWS shared credentials)"
+  echo "    or --s3-secret=<name> Secret keys accessKeyId/secretAccessKey"
 }
 
 # fmetrics collector options
@@ -193,7 +243,11 @@ function flows_usage {
   echo
   echo "Options:"
   flowsAndPackets_collector_usage
+  flows_format_usage
   script_usage
+  echo
+  echo "S3 Parquet export (optional; requires agent image with FLP S3 Parquet encode):"
+  s3_export_usage
   echo
   echo "Examples:"
   flows_examples

@@ -60,6 +60,26 @@ CONFIG_JSON_TEMP="config.json"
 CLUSTER_CONFIG="cluster-config-v1.yaml"
 NETWORK_CONFIG="cluster-network.yaml"
 
+# Optional S3 Parquet export (opt-in; local JSON/SQLite remains default)
+s3Endpoint=""
+s3Bucket=""
+s3Account="cli"
+s3Prefix=""
+s3Secure=""
+s3BatchSize="5000"
+# Default flush interval for CLI captures (operator default is 60s; too long for --max-time=1m).
+s3WriteTimeout="15s"
+s3WriteTimeoutSet="false"
+s3CredentialsFile=""
+s3Secret=""
+s3AccessKeyId=""
+s3SecretAccessKey=""
+s3ExportEnabled="false"
+# Local flows output formats (comma-separated): json, sqlite, parquet.
+# Default when --format is omitted: json,sqlite (never parquet).
+outputFormat="json,sqlite"
+formatFlagSet=false
+
 function loadYAMLs() {
   namespaceYAML='
     namespaceYAMLContent
@@ -409,11 +429,26 @@ function copyOutput() {
   if [[ ! -d ${OUTPUT_PATH} ]]; then
     mkdir -p ${OUTPUT_PATH} >/dev/null
   fi
-  ${K8S_CLI_BIN} cp -n "$namespace" collector:output ./output
+  # Collector writes under /output (WORKDIR /); kubectl cp path is container-absolute.
+  ${K8S_CLI_BIN} cp -n "$namespace" collector:/output ./output
   flowFile=$(find ./output -name "*txt" | sort | tail -1)
   if [[ -n "$flowFile" ]] ; then
     buildJSON "$flowFile"
     rm "$flowFile"
+  fi
+  # Only report parquet when this run requested it. Do not count leftover
+  # *.parquet from prior sessions under ./output/flow/ (false "still exported").
+  if [[ ",${outputFormat}," == *",parquet,"* ]]; then
+    parquetFiles=$(find ./output/flow -path '*/cluster_id=*/*.parquet' 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "${parquetFiles}" -gt 0 ]]; then
+      echo "Copied ${parquetFiles} Parquet part(s) under ./output/flow/ (--format includes parquet)"
+      find ./output/flow -path '*/cluster_id=*/*.parquet' 2>/dev/null | head -20
+    else
+      echo "WARNING: --format includes parquet but no .parquet files were copied."
+      echo "  Check collector logs for flush errors, and rebuild the collector image if needed:"
+      echo "    IMAGE_ORG=<you> VERSION=dev make image-build image-push manifest-build manifest-push"
+      echo "    NETOBSERV_COLLECTOR_IMAGE=quay.io/<you>/network-observability-cli:dev oc netobserv flows --format=parquet --copy=true"
+    fi
   fi
 }
 
@@ -489,6 +524,23 @@ function cleanup() {
     fi
 
     printf "\nCleaning up..."
+    if [[ "$s3ExportEnabled" == "true" ]]; then
+      # Give agents time to receive SIGTERM and flush remaining S3 Parquet parts
+      # (encode.S3 flushes on exit; allow one writeTimeout + network RTT).
+      _grace="${s3WriteTimeout%s}"
+      if [[ -z "$_grace" || ! "$_grace" =~ ^[0-9]+$ ]]; then
+        _grace=15
+      fi
+      _grace=$(( _grace + 5 ))
+      echo
+      echo "Waiting ${_grace}s for agent S3 Parquet flush before deleting DaemonSet... (press Enter to skip)"
+      if [[ -t 0 ]]; then
+        # Interactive: Enter skips; timeout continues after full grace period.
+        read -r -t "$_grace" _ || true
+      else
+        sleep "$_grace"
+      fi
+    fi
     deleteServiceMonitor
     deleteDashboardCM
     deleteDaemonset
@@ -537,14 +589,176 @@ function overridePromStage() {
 
 # update FLP Config
 function updateFLPConfig() {
-  jsonContent=$(cat "$1")
-  # already escaped chars must be double-escaped
-  jsonContent=${jsonContent//\\/\\\\}
-  # get json as string with escaped quotes
-  jsonContent=${jsonContent//\"/\\\"}
+  # Use strenv so secrets/special characters are not shell-interpolated into the
+  # yq expression (the previous quote-escaping path could silently no-op).
+  FLP_JSON="$(cat "$1")" \
+    "$YQ_BIN" e --inplace \
+    '(.spec.template.spec.containers[0].env[] | select(.name == "FLP_CONFIG").value) = strenv(FLP_JSON)' \
+    "$2"
+}
 
-  # update FLP_CONFIG env
-  "$YQ_BIN" e --inplace ".spec.template.spec.containers[0].env[] |= select(.name==\"FLP_CONFIG\").value|=\"$jsonContent\"" "$2"
+# Load S3 credentials without putting secrets on the CLI argv.
+# Precedence: --s3-credentials-file > --s3-secret > NETOBSERV_S3_* > AWS_*
+function resolve_s3_credentials() {
+  if [[ -n "$s3CredentialsFile" ]]; then
+    if [[ ! -f "$s3CredentialsFile" ]]; then
+      echo "S3 credentials file not found: $s3CredentialsFile" >&2
+      exit 1
+    fi
+    # JSON/YAML keys: accessKeyId / secretAccessKey (operator Secret layout)
+    s3AccessKeyId=$("$YQ_BIN" e -r '.accessKeyId // .access_key_id // .aws_access_key_id // ""' "$s3CredentialsFile" 2>/dev/null || true)
+    s3SecretAccessKey=$("$YQ_BIN" e -r '.secretAccessKey // .secret_access_key // .aws_secret_access_key // ""' "$s3CredentialsFile" 2>/dev/null || true)
+    # AWS shared-credentials style ([default] aws_access_key_id=...)
+    if [[ -z "$s3AccessKeyId" || -z "$s3SecretAccessKey" ]]; then
+      s3AccessKeyId=$(awk -F' *= *' '/^[[:space:]]*aws_access_key_id[[:space:]]*=/{print $2; exit}' "$s3CredentialsFile")
+      s3SecretAccessKey=$(awk -F' *= *' '/^[[:space:]]*aws_secret_access_key[[:space:]]*=/{print $2; exit}' "$s3CredentialsFile")
+    fi
+  elif [[ -n "$s3Secret" ]]; then
+    echo "loading S3 credentials from Secret/$s3Secret in namespace $namespace"
+    s3AccessKeyId=$(${K8S_CLI_BIN} get secret "$s3Secret" -n "$namespace" -o jsonpath='{.data.accessKeyId}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    s3SecretAccessKey=$(${K8S_CLI_BIN} get secret "$s3Secret" -n "$namespace" -o jsonpath='{.data.secretAccessKey}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    if [[ -z "$s3AccessKeyId" || -z "$s3SecretAccessKey" ]]; then
+      # AWS-style secret keys
+      s3AccessKeyId=$(${K8S_CLI_BIN} get secret "$s3Secret" -n "$namespace" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' 2>/dev/null | base64 -d 2>/dev/null || true)
+      s3SecretAccessKey=$(${K8S_CLI_BIN} get secret "$s3Secret" -n "$namespace" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    fi
+  elif [[ -n "${NETOBSERV_S3_ACCESS_KEY:-}" && -n "${NETOBSERV_S3_SECRET_KEY:-}" ]]; then
+    s3AccessKeyId="$NETOBSERV_S3_ACCESS_KEY"
+    s3SecretAccessKey="$NETOBSERV_S3_SECRET_KEY"
+  elif [[ -n "${AWS_ACCESS_KEY_ID:-}" && -n "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
+    s3AccessKeyId="$AWS_ACCESS_KEY_ID"
+    s3SecretAccessKey="$AWS_SECRET_ACCESS_KEY"
+  fi
+
+  if [[ -z "$s3AccessKeyId" || -z "$s3SecretAccessKey" ]]; then
+    echo "S3 export requires credentials via one of:" >&2
+    echo "  - env NETOBSERV_S3_ACCESS_KEY / NETOBSERV_S3_SECRET_KEY" >&2
+    echo "  - env AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY" >&2
+    echo "  - --s3-credentials-file=<path> (accessKeyId/secretAccessKey or AWS shared credentials)" >&2
+    echo "  - --s3-secret=<name> (Kubernetes Secret in namespace $namespace)" >&2
+    echo "Do not pass secret keys as CLI flags (visible in shell history and process list)." >&2
+    exit 1
+  fi
+}
+
+# Derive secure TLS flag from endpoint when --s3-secure was not set
+function resolve_s3_secure() {
+  if [[ -n "$s3Secure" ]]; then
+    return
+  fi
+  if [[ "$s3Endpoint" == https://* ]]; then
+    s3Secure="true"
+  else
+    s3Secure="false"
+  fi
+}
+
+# Apply optional S3 Parquet encode stage (fork) matching FLP EncodeS3 / operator layout.
+# S3 is configured on the *agent* DaemonSet via FLP_CONFIG (direct-flp), not collector --options.
+function apply_s3_export() {
+  resolve_s3_secure
+  resolve_s3_credentials
+
+  # Cap default flush interval so short --max-time captures still upload before cleanup.
+  if [[ "$s3WriteTimeoutSet" != "true" && -n "$maxTime" ]]; then
+    case "$maxTime" in
+      *s)
+        _mt_sec="${maxTime%s}"
+        ;;
+      *m)
+        _mt_sec=$(( ${maxTime%m} * 60 ))
+        ;;
+      *h)
+        _mt_sec=$(( ${maxTime%h} * 3600 ))
+        ;;
+      *)
+        _mt_sec=""
+        ;;
+    esac
+    if [[ -n "$_mt_sec" && "$_mt_sec" -gt 0 ]]; then
+      _flush=$(( _mt_sec / 4 ))
+      if [[ "$_flush" -lt 5 ]]; then
+        _flush=5
+      elif [[ "$_flush" -gt 15 ]]; then
+        _flush=15
+      fi
+      s3WriteTimeout="${_flush}s"
+    fi
+  fi
+
+  copyFLPConfig "$manifest"
+
+  # Fork from the same stage that feeds local gRPC (enrich or filter)
+  follows=$("$YQ_BIN" -r '.pipeline[] | select(.name == "send") | .follows // "enrich"' "$json")
+  if [[ -z "$follows" || "$follows" == "null" ]]; then
+    follows="enrich"
+  fi
+  # yq may emit a trailing newline; keep a single token
+  follows=$(printf '%s' "$follows" | tr -d '\n')
+
+  existing=$("$YQ_BIN" -r '.pipeline[] | select(.name == "s3-export") | .name' "$json")
+  if [[ -z "$existing" ]]; then
+    "$YQ_BIN" e -oj --inplace '.parameters += [{"name":"s3-export","encode":{"type":"s3","s3":{}}}]' "$json"
+    "$YQ_BIN" e -oj --inplace ".pipeline += [{\"name\":\"s3-export\",\"follows\":\"$follows\"}]" "$json"
+  fi
+
+  # Use strenv so secrets with quotes/special chars are not shell-interpolated into yq exprs
+  S3_ENDPOINT="$s3Endpoint" \
+  S3_BUCKET="$s3Bucket" \
+  S3_ACCOUNT="$s3Account" \
+  S3_PREFIX="$s3Prefix" \
+  S3_SECURE="$s3Secure" \
+  S3_BATCH_SIZE="$s3BatchSize" \
+  S3_WRITE_TIMEOUT="$s3WriteTimeout" \
+  S3_ACCESS_KEY_ID="$s3AccessKeyId" \
+  S3_SECRET_ACCESS_KEY="$s3SecretAccessKey" \
+  "$YQ_BIN" e -oj --inplace '
+    (.parameters[] | select(.name == "s3-export").encode.s3) |= {
+      "account": strenv(S3_ACCOUNT),
+      "endpoint": strenv(S3_ENDPOINT),
+      "bucket": strenv(S3_BUCKET),
+      "prefix": strenv(S3_PREFIX),
+      "format": "parquet",
+      "batchSize": env(S3_BATCH_SIZE) | tonumber,
+      "writeTimeout": strenv(S3_WRITE_TIMEOUT),
+      "secure": env(S3_SECURE) == "true",
+      "accessKeyId": strenv(S3_ACCESS_KEY_ID),
+      "secretAccessKey": strenv(S3_SECRET_ACCESS_KEY)
+    }
+  ' "$json"
+
+  # Omit empty prefix for cleaner config
+  if [[ -z "$s3Prefix" ]]; then
+    "$YQ_BIN" e -oj --inplace 'del(.parameters[] | select(.name == "s3-export").encode.s3.prefix)' "$json"
+  fi
+
+  updateFLPConfig "$json" "$manifest"
+
+  # Fail hard if FLP_CONFIG was not actually updated (silent yq/env failures)
+  _flp_check=$("$YQ_BIN" e -r '.spec.template.spec.containers[0].env[] | select(.name=="FLP_CONFIG").value' "$manifest")
+  if ! printf '%s' "$_flp_check" | grep -Fq '"name": "s3-export"'; then
+    echo "ERROR: failed to embed s3-export stage into agent FLP_CONFIG" >&2
+    exit 1
+  fi
+  if ! printf '%s' "$_flp_check" | grep -Fq "\"endpoint\": \"$s3Endpoint\""; then
+    echo "ERROR: S3 endpoint missing from agent FLP_CONFIG after update" >&2
+    exit 1
+  fi
+  if ! printf '%s' "$_flp_check" | grep -Fq "\"bucket\": \"$s3Bucket\""; then
+    echo "ERROR: S3 bucket missing from agent FLP_CONFIG after update" >&2
+    exit 1
+  fi
+  if ! printf '%s' "$_flp_check" | grep -Fq '"accessKeyId":'; then
+    echo "ERROR: S3 credentials missing from agent FLP_CONFIG after update" >&2
+    exit 1
+  fi
+
+  s3ExportEnabled="true"
+  if [[ "$agentImg" == *"netobserv/netobserv-ebpf-agent:main"* ]]; then
+    echo "WARNING: agent image is $agentImg — S3 Parquet encode requires an agent built with FLP S3 Parquet support." >&2
+    echo "  Set NETOBSERV_AGENT_IMAGE to a custom image (e.g. quay.io/<you>/netobserv-ebpf-agent:s3-flowbuffer)." >&2
+  fi
+  echo "S3 Parquet export enabled → s3://$s3Bucket/${s3Prefix:+$s3Prefix/}cluster_id=$s3Account/… (Hive layout, flush every $s3WriteTimeout + on agent exit)"
 }
 
 # append a new flow filter rule to array
@@ -777,6 +991,9 @@ function edit_manifest() {
 
     overridePromStage
     updateFLPConfig "$json" "$manifest"
+    ;;
+  "s3_export")
+    apply_s3_export
     ;;
   esac
 }
@@ -1162,6 +1379,145 @@ function parse_args() {
         echo "invalid value for --get-subnets"
       fi
       ;;
+    *format) # Local flows output formats (collector): comma-separated and/or repeatable
+      if [[ "$command" != "flows" ]]; then
+        echo "--format is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --format (json|sqlite|parquet)" >&2
+        exit 1
+      fi
+      # Reset default on first --format; merge subsequent --format flags.
+      if [[ "$formatFlagSet" != "true" ]]; then
+        outputFormat=""
+        formatFlagSet=true
+      fi
+      IFS=',' read -ra _fmt_tokens <<< "$value"
+      for _tok in "${_fmt_tokens[@]}"; do
+        _tok=$(echo "$_tok" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+        if [[ -z "$_tok" ]]; then
+          continue
+        fi
+        case "$_tok" in
+        json|sqlite|parquet)
+          if [[ ",${outputFormat}," != *",${_tok},"* ]]; then
+            if [[ -n "$outputFormat" ]]; then
+              outputFormat="${outputFormat},${_tok}"
+            else
+              outputFormat="$_tok"
+            fi
+          fi
+          ;;
+        *)
+          echo "invalid --format token '${_tok}' (use json, sqlite, and/or parquet)" >&2
+          exit 1
+          ;;
+        esac
+      done
+      if [[ -z "$outputFormat" ]]; then
+        echo "missing value for --format (json|sqlite|parquet)" >&2
+        exit 1
+      fi
+      ;;
+    *s3-endpoint)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-endpoint is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-endpoint" >&2
+        exit 1
+      fi
+      s3Endpoint="$value"
+      ;;
+    *s3-bucket)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-bucket is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-bucket" >&2
+        exit 1
+      fi
+      s3Bucket="$value"
+      ;;
+    *s3-account)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-account is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-account" >&2
+        exit 1
+      fi
+      s3Account="$value"
+      ;;
+    *s3-prefix)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-prefix is only valid for flows" >&2
+        exit 1
+      fi
+      s3Prefix="$value"
+      ;;
+    *s3-secure)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-secure is only valid for flows" >&2
+        exit 1
+      fi
+      defaultValue "true"
+      if [[ "$value" == "true" || "$value" == "false" ]]; then
+        s3Secure="$value"
+      else
+        echo "invalid value for --s3-secure (use true or false)" >&2
+        exit 1
+      fi
+      ;;
+    *s3-batch-size)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-batch-size is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-batch-size" >&2
+        exit 1
+      fi
+      s3BatchSize="$value"
+      ;;
+    *s3-write-timeout)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-write-timeout is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-write-timeout" >&2
+        exit 1
+      fi
+      s3WriteTimeout="$value"
+      s3WriteTimeoutSet="true"
+      ;;
+    *s3-credentials-file)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-credentials-file is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-credentials-file" >&2
+        exit 1
+      fi
+      s3CredentialsFile="$value"
+      ;;
+    *s3-secret)
+      if [[ "$command" != "flows" ]]; then
+        echo "--s3-secret is only valid for flows" >&2
+        exit 1
+      fi
+      if [[ -z "$value" || "$value" == "$key" ]]; then
+        echo "missing value for --s3-secret" >&2
+        exit 1
+      fi
+      s3Secret="$value"
+      ;;
     *include_list) # Restrict metrics capture
       if [[ "$command" == "metrics" ]]; then
         includeList="$value"
@@ -1177,6 +1533,14 @@ function parse_args() {
     esac
   done
 
+  # Summarize local output formats once (after merging comma-separated / repeatable --format)
+  if [[ "$formatFlagSet" == "true" ]]; then
+    echo "Local output format(s): ${outputFormat}"
+    if [[ ",${outputFormat}," == *",parquet,"* ]]; then
+      echo "  Parquet → ./output/flow/<capture>/cluster_id=cli/year=…/part-cli-….parquet (schema v1)"
+    fi
+  fi
+
   # avoid packet capture without filters
   if [[ "$command" = "packets" ]]; then
     currentFilters=$("$YQ_BIN" -r ".spec.template.spec.containers[0].env[] | select(.name == \"FLOW_FILTER_RULES\").value" "$manifest")
@@ -1190,5 +1554,18 @@ function parse_args() {
   elif [[ "$command" = "metrics" ]]; then
     # always restrict generated metrics
     edit_manifest "include_list" "$includeList"
+  fi
+
+  # Optional S3 Parquet export (flows only); applied after filters so the fork follows enrich/filter
+  if [[ -n "$s3Endpoint" || -n "$s3Bucket" || -n "$s3CredentialsFile" || -n "$s3Secret" ]]; then
+    if [[ "$command" != "flows" ]]; then
+      echo "S3 export is only supported for flows" >&2
+      exit 1
+    fi
+    if [[ -z "$s3Endpoint" || -z "$s3Bucket" ]]; then
+      echo "--s3-endpoint and --s3-bucket are both required to enable S3 export" >&2
+      exit 1
+    fi
+    edit_manifest "s3_export"
   fi
 }
