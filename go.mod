@@ -8,7 +8,7 @@ require (
 	github.com/jpillora/sizestr v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/navidys/tvxwidgets v0.14.0
-	github.com/netobserv/flowlogs-pipeline v1.11.5-community
+	github.com/netobserv/flowlogs-pipeline v1.12.0-community
 	github.com/netobserv/netobserv-ebpf-agent v1.12.0-community
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.43.0
