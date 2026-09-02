@@ -200,7 +200,7 @@ github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc
 github.com/netobserv/flowlogs-pipeline/pkg/pipeline/write/grpc/genericmap
 github.com/netobserv/flowlogs-pipeline/pkg/utils
-# github.com/netobserv/netobserv-ebpf-agent v1.11.5-community
+# github.com/netobserv/netobserv-ebpf-agent v1.12.0-community
 ## explicit; go 1.25.7
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils
 github.com/netobserv/netobserv-ebpf-agent/pkg/utils/networkevents
