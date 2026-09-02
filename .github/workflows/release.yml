@@ -35,7 +35,7 @@ jobs:
         run: sudo apt-get install make
       # QEMU and buildx needed for multiarch builds (otherwise, microdnf step fails)
       - name: Set up QEMU dependency
-        uses: docker/setup-qemu-action@27d0a4f181a40b142cce983c5393082c365d1480 # v1.2.0
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f211e3e9ded2d9377c8cadc4489a4e38014bc4c9 # v1.7.0
       - name: docker login to quay.io
