@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 env:
-  WF_REGISTRY_USER: netobserv+github_ci
+  WF_REGISTRY_USER: netobserv+cli_github_ci
   WF_ORG: netobserv
   WF_MULTIARCH_TARGETS: amd64 arm64 ppc64le s390x
 
