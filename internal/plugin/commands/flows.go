@@ -65,7 +65,7 @@ Filters accepted: --direction, --cidr, --protocol, --sport, --dport, --port,
 		},
 	}
 
-	registerCommonCaptureFlags(cmd, &capOpts, true, 5*time.Minute)
+	registerCommonCaptureFlags(cmd, &capOpts, true, true, 5*time.Minute)
 	registerFlowMetricsFlags(cmd, &featureFlags)
 	registerPrivilegedFlag(cmd, &privileged)
 

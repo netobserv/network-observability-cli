@@ -75,7 +75,7 @@ func newMetricsCommand(pluginName string, rawArgs []string) *cobra.Command {
 		},
 	}
 
-	registerCommonCaptureFlags(cmd, &capOpts, false, time.Hour)
+	registerCommonCaptureFlags(cmd, &capOpts, false, false, time.Hour)
 	registerFlowMetricsFlags(cmd, &featureFlags)
 	registerPrivilegedFlag(cmd, &privileged)
 	cmd.Flags().StringSliceVar(&includeList, "include_list", nil, "Restrict generated metrics to this explicit list, overriding feature-flag defaults; repeatable or comma-separated")

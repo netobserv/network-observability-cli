@@ -24,3 +24,12 @@ func TestCaptureCommandsAcceptPositionalHelp(t *testing.T) {
 		})
 	}
 }
+
+func TestMetricsDoesNotOfferOutputCopy(t *testing.T) {
+	root := NewRootCommand("oc-netobserv", "test")
+	metrics, _, err := root.Find([]string{"metrics"})
+	require.NoError(t, err)
+	require.NotNil(t, metrics)
+
+	assert.Nil(t, metrics.Flags().Lookup("copy"))
+}

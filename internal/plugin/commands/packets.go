@@ -80,7 +80,7 @@ At least one flow filter is required, to avoid high resource consumption. See
 		},
 	}
 
-	registerCommonCaptureFlags(cmd, &capOpts, true, 5*time.Minute)
+	registerCommonCaptureFlags(cmd, &capOpts, true, true, 5*time.Minute)
 	registerPrivilegedFlag(cmd, &privileged)
 	cmd.Flags().BoolVar(&enableOpenSSL, "enable_openssl", false, "Capture plaintext via libssl uprobes (hooks every container on each node; infra binaries excluded)")
 	cmd.Flags().IntVar(&tlsPlaintextMinBytes, "tls_plaintext_min_bytes", 0, "Drop short TLS plaintext events before export")

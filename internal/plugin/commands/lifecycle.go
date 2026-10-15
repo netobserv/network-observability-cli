@@ -66,7 +66,7 @@ func newCleanupCommand() *cobra.Command {
 				return err
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Cleaning up...")
-			return capture.Cleanup(cmd.Context(), client, global.namespace)
+			return capture.Cleanup(cmd.Context(), client, global.namespace, cmd.OutOrStdout())
 		},
 	}
 }

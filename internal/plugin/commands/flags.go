@@ -11,12 +11,16 @@ import (
 // registerCommonCaptureFlags registers the flags shared by flows/packets/metrics, replacing the
 // common branches of parse_args (log-level, max-time, max-bytes, background, copy,
 // node-selector, get-subnets, --yaml, --privileged).
-func registerCommonCaptureFlags(cmd *cobra.Command, capOpts *captureOptions, allowMaxBytes bool, defaultMaxTime time.Duration) {
+func registerCommonCaptureFlags(cmd *cobra.Command, capOpts *captureOptions, allowMaxBytes, allowCopy bool, defaultMaxTime time.Duration) {
 	flags := cmd.Flags()
 	flags.StringVar(&capOpts.logLevel, "log-level", "info", "Log level of the agents and collector: trace, debug, info, warn, error, fatal, panic")
 	flags.DurationVar(&capOpts.maxTime, "max-time", defaultMaxTime, "Automatically stop the capture after this duration")
 	flags.BoolVar(&capOpts.background, "background", false, "Run the capture in the background instead of streaming it to this terminal")
-	flags.StringVar(&capOpts.copyMode, "copy", "prompt", `Whether to copy the capture output locally when it ends: "true", "false" or "prompt"`)
+	if allowCopy {
+		flags.StringVar(&capOpts.copyMode, "copy", "prompt", `Whether to copy the capture output locally when it ends: "true", "false" or "prompt"`)
+	} else {
+		capOpts.copyMode = "false"
+	}
 	flags.StringVar(&capOpts.nodeSelector, "node-selector", "", "Restrict the agents to nodes matching this label, as key:value")
 	flags.BoolVar(&capOpts.getSubnets, "get-subnets", false, "Label flows with the cluster's machine/pod/service subnets")
 	flags.BoolVar(&capOpts.outputYAML, "yaml", false, "Write the manifests to ./output instead of applying them")

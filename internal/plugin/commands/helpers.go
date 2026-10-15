@@ -135,29 +135,31 @@ func printBackgroundInstructions(ctx context.Context, out io.Writer, kind manife
 
 // onCaptureExit replaces cleanup()'s trap-on-EXIT behavior after an interactive foreground
 // capture: prompt to copy the output, then tear every resource down.
-func onCaptureExit(ctx context.Context, client *k8sclient.Client, namespace string, capOpts *captureOptions, out io.Writer) error {
-	// isE2E replaces bash's `if [[ "$isE2E" = true || "$copy" = true ]]; then copyOutput; fi`:
-	// the e2e test harness sets this to skip the interactive prompt and always copy, regardless
-	// of --copy or how the capture ended (including a signal-interrupted one).
-	switch {
-	case os.Getenv("isE2E") == "true", capOpts.copyMode == "true":
-		if err := doCopy(ctx, client, namespace, out); err != nil {
-			fmt.Fprintf(out, "copy failed: %v\n", err)
-		}
-	case capOpts.copyMode == "prompt":
-		if promptYesNo(out, "Copy the capture output locally? [yes/no] ") {
+func onCaptureExit(ctx context.Context, client *k8sclient.Client, namespace string, kind manifests.CaptureKind, capOpts *captureOptions, out io.Writer) error {
+	if kind.HasCollector() {
+		// isE2E replaces bash's `if [[ "$isE2E" = true || "$copy" = true ]]; then copyOutput; fi`:
+		// the e2e test harness sets this to skip the interactive prompt and always copy, regardless
+		// of --copy or how the capture ended (including a signal-interrupted one).
+		switch {
+		case os.Getenv("isE2E") == "true", capOpts.copyMode == "true":
 			if err := doCopy(ctx, client, namespace, out); err != nil {
 				fmt.Fprintf(out, "copy failed: %v\n", err)
 			}
-		} else {
+		case capOpts.copyMode == "prompt":
+			if promptYesNo(out, "Copy the capture output locally? [yes/no] ") {
+				if err := doCopy(ctx, client, namespace, out); err != nil {
+					fmt.Fprintf(out, "copy failed: %v\n", err)
+				}
+			} else {
+				fmt.Fprintln(out, "copy skipped")
+			}
+		default:
 			fmt.Fprintln(out, "copy skipped")
 		}
-	default:
-		fmt.Fprintln(out, "copy skipped")
 	}
 
 	fmt.Fprintln(out, "\nCleaning up...")
-	return capture.Cleanup(ctx, client, namespace)
+	return capture.Cleanup(ctx, client, namespace, out)
 }
 
 // doCopy replaces copyOutput: copy the collector's /output directory locally, then convert the

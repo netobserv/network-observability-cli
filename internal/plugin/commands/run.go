@@ -313,7 +313,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 			// most CLIs (clean up and exit, not ask another question first).
 			exitOpts.copyMode = "false"
 		}
-		_ = onCaptureExit(context.Background(), client, namespace, &exitOpts, out)
+		_ = onCaptureExit(context.Background(), client, namespace, r.kind, &exitOpts, out)
 	}()
 	return capture.ExecInPod(r.ctx, r.client, &capture.ExecOptions{
 		Namespace: r.global.namespace,
