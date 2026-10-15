@@ -30,7 +30,10 @@ At least one flow filter is required, to avoid high resource consumption. See
 		Example:            fmt.Sprintf("  %[1]s packets --protocol=TCP --port=8080\n  %[1]s packets --enable_openssl --peer_ip=10.0.0.5", pluginName),
 		Args:               cobra.ArbitraryArgs,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if positionalHelpRequested(args) {
+				return cmd.Help()
+			}
 			global.applyDefaults()
 			if err := capOpts.validate("packets"); err != nil {
 				return err

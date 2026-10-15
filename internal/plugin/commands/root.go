@@ -23,12 +23,23 @@ func NewRootCommand(invokedAs, version string, argv ...[]string) *cobra.Command 
 	}
 
 	root := &cobra.Command{
-		Use:           "netobserv",
-		Short:         "Lightweight flow and packet visualization tool",
-		Long:          fmt.Sprintf("%s deploys the NetObserv eBPF agent on your cluster to capture flows, packets or metrics for live viewing or local export.", pluginName),
+		Use:   "netobserv",
+		Short: "Lightweight flow and packet visualization tool",
+		Long:  fmt.Sprintf("%s deploys the NetObserv eBPF agent on your cluster to capture flows, packets or metrics for live viewing or local export.", pluginName),
+		Example: fmt.Sprintf(`  Capture dropped flows:
+    %[1]s flows --drops
+  Capture flows from namespaces starting with "app-":
+    %[1]s flows --query='SrcK8S_Namespace=~"app-.*"'
+  Capture TCP flows on port 8080 or UDP flows:
+    %[1]s flows --protocol=TCP --port=8080 or --protocol=UDP
+  Capture TLS plaintext for a specific pod:
+    %[1]s packets --port=8443 --enable_openssl --peer_ip=<pod-ip> --privileged --background
+  Generate all available metrics:
+    %[1]s metrics --enable_all`, pluginName),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.CompletionOptions.HiddenDefaultCmd = true
 
 	root.PersistentFlags().StringVarP(&global.namespace, "namespace", "n", "", "Namespace to deploy the collector and agents in (default: netobserv-cli, or $NETOBSERV_NAMESPACE)")
 	root.PersistentFlags().StringVar(&global.kubeconfig, "kubeconfig", "", "Path to the kubeconfig file to use (default: $KUBECONFIG, or ~/.kube/config)")
@@ -59,6 +70,10 @@ func argsAfterCommand(argv []string, command string) []string {
 		}
 	}
 	return nil
+}
+
+func positionalHelpRequested(args []string) bool {
+	return len(args) == 1 && args[0] == "help"
 }
 
 func pluginInvocation(invokedAs string) string {

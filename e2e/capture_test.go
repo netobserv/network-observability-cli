@@ -4,7 +4,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/netobserv/network-observability-cli/e2e/cluster"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
@@ -59,18 +59,15 @@ func TestFlowCapture(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.NotEmpty(t, output)
-			// ensure script setup is fine
-			assert.Contains(t, output, "namespace/netobserv-cli created")
-			assert.Contains(t, output, "serviceaccount/netobserv-cli created")
-			assert.Contains(t, output, "service/collector created")
-			assert.Contains(t, output, "daemonset.apps/netobserv-cli created")
-			assert.Contains(t, output, "pod/collector created")
-			assert.Contains(t, output, "pod/collector condition met")
-			// check that CLI is running
+			// ensure setup is fine
+			assert.Contains(t, output, "creating netobserv-cli namespace")
+			assert.Contains(t, output, "creating service account")
+			assert.Contains(t, output, "creating collector service")
+			assert.Contains(t, output, "creating flow-capture agents")
+			assert.Contains(t, output, "Running collector...")
+			assert.Contains(t, output, "Executing collector command...")
+			// check that the in-pod CLI is running (unchanged in this rewrite)
 			assert.Contains(t, output, "Starting Flow Capture...")
-			assert.Contains(t, output, "Started collector")
-			// check that script terminated
-			assert.Contains(t, output, "command terminated")
 			assert.Contains(t, output, "Flows")
 			assert.Contains(t, output, "Table refresh is paused")
 			return ctx
@@ -84,7 +81,7 @@ func TestFlowCapture(t *testing.T) {
 			assert.True(t, dirExists(dirPath), "directory %s not found", dirPath)
 			err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 
 				if !info.IsDir() {
@@ -100,13 +97,13 @@ func TestFlowCapture(t *testing.T) {
 			assert.Nil(t, err)
 
 			// check json file
-			assert.Equal(t, 1, len(jsons))
+			require.Len(t, jsons, 1)
 			jsonBytes, err := os.ReadFile(jsons[0])
 			assert.Nil(t, err)
 			assert.Contains(t, string(jsonBytes), "AgentIP")
 
 			// check db file
-			assert.Equal(t, 1, len(dbs))
+			require.Len(t, dbs, 1)
 			dbBytes, err := os.ReadFile(dbs[0])
 			assert.Nil(t, err)
 			assert.Contains(t, string(dbBytes), "SQLite format")
@@ -134,18 +131,15 @@ func TestPacketCapture(t *testing.T) {
 			assert.Nil(t, err)
 
 			assert.NotEmpty(t, output)
-			// ensure script setup is fine
-			assert.Contains(t, output, "namespace/netobserv-cli created")
-			assert.Contains(t, output, "serviceaccount/netobserv-cli created")
-			assert.Contains(t, output, "service/collector created")
-			assert.Contains(t, output, "daemonset.apps/netobserv-cli created")
-			assert.Contains(t, output, "pod/collector created")
-			assert.Contains(t, output, "pod/collector condition met")
-			// check that CLI is running
+			// ensure setup is fine
+			assert.Contains(t, output, "creating netobserv-cli namespace")
+			assert.Contains(t, output, "creating service account")
+			assert.Contains(t, output, "creating collector service")
+			assert.Contains(t, output, "creating packet-capture agents")
+			assert.Contains(t, output, "Running collector...")
+			assert.Contains(t, output, "Executing collector command...")
+			// check that the in-pod CLI is running (unchanged in this rewrite)
 			assert.Contains(t, output, "Starting Packet Capture...")
-			assert.Contains(t, output, "Started collector")
-			// check that script terminated
-			assert.Contains(t, output, "command terminated")
 			assert.Contains(t, output, "Flows")
 			assert.Contains(t, output, "Table refresh is paused")
 			return ctx
@@ -158,7 +152,7 @@ func TestPacketCapture(t *testing.T) {
 			assert.True(t, dirExists(dirPath), "directory %s not found", dirPath)
 			err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
-					fmt.Println(err)
+					return err
 				}
 
 				if !info.IsDir() {
@@ -172,7 +166,7 @@ func TestPacketCapture(t *testing.T) {
 			assert.Nil(t, err)
 
 			// check pcap file
-			assert.Equal(t, 1, len(pcaps))
+			require.Len(t, pcaps, 1)
 			pcapBytes, err := os.ReadFile(pcaps[0])
 			assert.Nil(t, err)
 

@@ -32,7 +32,10 @@ Filters accepted: --direction, --cidr, --protocol, --sport, --dport, --port,
 		// splitFilterArgs/applyFilterGroups from the explicit argv snapshot, not registered on
 		// this FlagSet (see filters.go) — so Cobra must not error on them as "unknown flag".
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if positionalHelpRequested(args) {
+				return cmd.Help()
+			}
 			global.applyDefaults()
 			if err := capOpts.validate("flows"); err != nil {
 				return err

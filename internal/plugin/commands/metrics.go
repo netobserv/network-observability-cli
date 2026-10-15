@@ -28,7 +28,10 @@ func newMetricsCommand(pluginName string, rawArgs []string) *cobra.Command {
 		Example:            fmt.Sprintf("  %[1]s metrics\n  %[1]s metrics --enable_all --background", pluginName),
 		Args:               cobra.ArbitraryArgs,
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if positionalHelpRequested(args) {
+				return cmd.Help()
+			}
 			global.applyDefaults()
 			if err := capOpts.validate("metrics"); err != nil {
 				return err
