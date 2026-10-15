@@ -17,6 +17,7 @@ NAME := network-observability-cli
 DIST_DIR ?= build
 FILES_OUTPUT_DIR ?= output
 OUTPUT := $(DIST_DIR)/$(NAME)
+UNIT_PACKAGES := $(shell go list -mod=vendor ./... | grep -v '/e2e/integration-tests$$')
 
 # Available commands for development with args
 COMMANDS = flows packets cleanup
@@ -108,7 +109,7 @@ compile: ## Build the binary
 .PHONY: test
 test: ## Test code using go test
 	@echo "### Testing code"
-	GOOS=$(GOOS) go test -mod vendor -a ./... -coverpkg=./... -coverprofile cover.out
+	GOOS=$(GOOS) go test -mod vendor $(UNIT_PACKAGES) -coverprofile cover.out
 
 .PHONY: tests-e2e
 tests-e2e: VERSION=test

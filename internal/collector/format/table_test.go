@@ -2,6 +2,7 @@ package format_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/netobserv/flowlogs-pipeline/pkg/config"
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,10 @@ import (
 )
 
 func TestFormatTableRows(t *testing.T) {
+	previousLocation := time.Local
+	time.Local = time.FixedZone("test", int(time.Hour/time.Second))
+	t.Cleanup(func() { time.Local = previousLocation })
+
 	displayConfig, err := collectordisplay.LoadConfig()
 	assert.NoError(t, err)
 	columns := make([]*collectorformat.ColumnConfig, len(displayConfig.Columns))

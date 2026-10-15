@@ -10,6 +10,7 @@ type Runtime struct {
 	Ended       func() bool
 	IsMetrics   func() bool
 	FPS         func() int
+	Sleep       func(time.Duration)
 	UpdateState func()
 	UpdateData  func()
 	Draw        func()
@@ -17,6 +18,10 @@ type Runtime struct {
 }
 
 func (r Runtime) Heartbeat() {
+	sleep := r.Sleep
+	if sleep == nil {
+		sleep = time.Sleep
+	}
 	for {
 		if r.Ended() {
 			return
@@ -24,11 +29,15 @@ func (r Runtime) Heartbeat() {
 		r.UpdateState()
 		r.UpdateData()
 		r.Draw()
-		time.Sleep(time.Second / time.Duration(max(1, r.FPS())))
+		sleep(time.Second / time.Duration(max(1, r.FPS())))
 	}
 }
 
 func (r Runtime) BackgroundHeartbeat() {
+	sleep := r.Sleep
+	if sleep == nil {
+		sleep = time.Sleep
+	}
 	for {
 		if r.Ended() {
 			return
@@ -37,6 +46,6 @@ func (r Runtime) BackgroundHeartbeat() {
 			r.UpdateData()
 			r.PrintRows()
 		}
-		time.Sleep(5 * time.Second)
+		sleep(5 * time.Second)
 	}
 }

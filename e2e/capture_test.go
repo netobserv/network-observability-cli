@@ -51,7 +51,7 @@ func TestFlowCapture(t *testing.T) {
 			})
 			defer timer.Stop()
 
-			output, err := RunCommandAndTerminate(clog, "commands/oc-netobserv", "flows", "--log-level=trace")
+			output, err := RunCommandWithPTYInput(clog, "commands/oc-netobserv", []string{"flows", "--log-level=trace"}, PTYInput{Delay: 20 * time.Second, Data: []byte{0}}, PTYInput{Delay: 2 * time.Second, Data: []byte{9}}, PTYInput{Delay: 1 * time.Second, Data: []byte{27}})
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
@@ -71,6 +71,8 @@ func TestFlowCapture(t *testing.T) {
 			assert.Contains(t, output, "Started collector")
 			// check that script terminated
 			assert.Contains(t, output, "command terminated")
+			assert.Contains(t, output, "Flows")
+			assert.Contains(t, output, "Table refresh is paused")
 			return ctx
 		},
 	).Assess("check downloaded output flow files",
@@ -124,7 +126,7 @@ func TestPacketCapture(t *testing.T) {
 			})
 			defer timer.Stop()
 
-			output, err := RunCommandAndTerminate(clog, "commands/oc-netobserv", "packets", "--log-level=trace", "--protocol=TCP", "--port=6443")
+			output, err := RunCommandWithPTYInput(clog, "commands/oc-netobserv", []string{"packets", "--log-level=trace", "--protocol=TCP", "--port=6443"}, PTYInput{Delay: 20 * time.Second, Data: []byte{0}}, PTYInput{Delay: 2 * time.Second, Data: []byte{9}}, PTYInput{Delay: 1 * time.Second, Data: []byte{27}})
 			// TODO: find a way to avoid error here; this is probably related to SIGTERM instead of CTRL + C call
 			//assert.Nil(t, err)
 
@@ -144,6 +146,8 @@ func TestPacketCapture(t *testing.T) {
 			assert.Contains(t, output, "Started collector")
 			// check that script terminated
 			assert.Contains(t, output, "command terminated")
+			assert.Contains(t, output, "Flows")
+			assert.Contains(t, output, "Table refresh is paused")
 			return ctx
 		},
 	).Assess("check downloaded output pcap files",
