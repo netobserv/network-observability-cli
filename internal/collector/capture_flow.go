@@ -66,7 +66,8 @@ func startFlowCollector() {
 	// Create a text file to receive json chunks; the file will be fixed and renamed as json later, when pulled in shell.
 	f, err := collectorfiles.CreateCapture("flow", filename+".txt")
 	if err != nil {
-		log.Fatalf("Creating output file failed: %v", err)
+		log.Errorf("Creating output file failed: %v", err)
+		return
 	}
 	defer f.Close()
 	log.Debugf("Created flow logs txt file: %s", f.Name())

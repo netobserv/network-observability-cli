@@ -48,7 +48,10 @@ func runPacketCapture(_ *cobra.Command, _ []string) {
 	packetOutput.Stop()
 }
 
-func startPacketCollector() {
+// startPacketCollector coordinates the packet writer, optional plaintext
+// correlation, and collector lifecycle. The select below intentionally keeps
+// all termination paths together so every path flushes the capture correctly.
+func startPacketCollector() { //nolint:cyclop
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan struct{})
