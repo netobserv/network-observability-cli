@@ -53,14 +53,14 @@ func TestFlowDisplayMultipleFlows(t *testing.T) {
 		bytes += 1000
 
 		// add flow to table
-		parseGenericMapAndAppendFlow([]byte(fmt.Sprintf(`{
+		parseGenericMapAndAppendFlow(fmt.Appendf(nil, `{
 			"AgentIP":"10.0.1.1",
 			"Bytes":%d,
 			"DstAddr":"10.0.0.6",
 			"Packets":1,
 			"SrcAddr":"10.0.0.5",
 			"TimeFlowEndMs":%d
-		}`, bytes, flowTime)))
+		}`, bytes, flowTime))
 
 		tickTimeAndAddBytes()
 	}
