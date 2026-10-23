@@ -13,7 +13,7 @@
 
 //go:build (linux || darwin) && !appengine
 
-package parsers
+package util
 
 import (
 	"bytes"

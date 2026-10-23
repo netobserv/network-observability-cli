@@ -21,12 +21,21 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/types/objectpath"
-	// This package is dependency-restricted; see x/tools/go/gcexportdata.TestDeps.
+	"golang.org/x/tools/internal/aliases"
+	"golang.org/x/tools/internal/typesinternal"
 )
 
 type intReader struct {
 	*bytes.Reader
 	path string
+}
+
+func (r *intReader) int64() int64 {
+	i, err := binary.ReadVarint(r.Reader)
+	if err != nil {
+		errorf("import %q: read varint error: %v", r.path, err)
+	}
+	return i
 }
 
 func (r *intReader) uint64() uint64 {
@@ -92,12 +101,12 @@ const (
 // and returns 0 and a reference to the package.
 // If the export data version is not recognized or the format is otherwise
 // compromised, an error is returned.
-func IImportData(fset *token.FileSet, imports map[string]*types.Package, data []byte, path string) (*types.Package, error) {
+func IImportData(fset *token.FileSet, imports map[string]*types.Package, data []byte, path string) (int, *types.Package, error) {
 	pkgs, err := iimportCommon(fset, GetPackagesFromMap(imports), data, false, path, false, nil)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	return pkgs[0], nil
+	return 0, pkgs[0], nil
 }
 
 // IImportBundle imports a set of packages from the serialized package bundle.
@@ -565,8 +574,8 @@ func (r *importReader) obj(pkg *types.Package, name string) {
 		if tag == genericAliasTag {
 			tparams = r.tparamList()
 		}
-		obj := types.NewTypeName(pos, pkg, name, nil)
-		types.NewAlias(obj, r.typ()).SetTypeParams(tparams)
+		typ := r.typ()
+		obj := aliases.New(pos, pkg, name, typ, tparams)
 		markBlack(obj) // workaround for golang/go#69912
 		r.declare(obj)
 
@@ -615,13 +624,8 @@ func (r *importReader) obj(pkg *types.Package, name string) {
 				// If the receiver has any targs, set those as the
 				// rparams of the method (since those are the
 				// typeparams being used in the method sig/body).
-				//
-				// Avoid dependency on typesinternal.RecvBase here.
-				t := recv.Type()
-				if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
-					t = ptr.Elem()
-				}
-				targs := types.Unalias(t).(*types.Named).TypeArgs()
+				_, recvNamed := typesinternal.ReceiverNamed(recv)
+				targs := recvNamed.TypeArgs()
 				var rparams []*types.TypeParam
 				if targs.Len() > 0 {
 					rparams = make([]*types.TypeParam, targs.Len())
@@ -671,7 +675,7 @@ func (r *importReader) obj(pkg *types.Package, name string) {
 		typ := r.typ()
 
 		v := types.NewVar(pos, pkg, name, typ)
-		v.SetKind(types.PackageVar)
+		typesinternal.SetVarKind(v, typesinternal.PackageVar)
 		r.declare(v)
 
 	default:
