@@ -103,6 +103,35 @@ func startPacketCollector() {
 	packetOutput.SetStop(func() { cancel(); <-done })
 	defer packetOutput.Clear()
 
+	// NgWriter buffers pcapng blocks. Flush periodically so a managed capture
+	// can be copied while it is still running, just like an interactive one.
+	// The final deferred Flush still provides the complete, durable file.
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if writerErr, fileErr := packetOutput.Flush(); writerErr != nil || fileErr != nil {
+					if writerErr != nil {
+						log.Errorf("failed to flush pcapng writer: %v", writerErr)
+					}
+					if fileErr != nil {
+						log.Errorf("failed to sync pcapng file: %v", fileErr)
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	defer func() {
+		cancel()
+		<-flushDone
+	}()
+
 	var wireBuf *collectorpacket.WireBuffer
 	if plaintextCaptureEnabled() {
 		wireBuf = collectorpacket.NewWireBuffer(collectorpacket.CorrelationWindow, func(m config.GenericMap) {

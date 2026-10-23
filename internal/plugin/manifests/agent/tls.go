@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	flpapi "github.com/netobserv/flowlogs-pipeline/pkg/api"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
+	"github.com/netobserv/netobserv-operator/pkg/capture"
 )
 
 // EnableCollectorTLS replaces enableCollectorTLS: adds the CA volume/mount and
@@ -15,23 +14,7 @@ import (
 // against a string that happens to contain JSON.
 func (b *Builder) EnableCollectorTLS(caCertPath string) error {
 	c := b.container()
-	c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
-		Name: "collector-ca", MountPath: "/etc/collector-ca", ReadOnly: true,
-	})
-	b.ds.Spec.Template.Spec.Volumes = append(b.ds.Spec.Template.Spec.Volumes, corev1.Volume{
-		Name: "collector-ca",
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "collector-ca"},
-			},
-		},
-	})
-	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
-		ConfigMapRef: &corev1.ConfigMapEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: "collector-tls-config"},
-			Optional:             ptr.To(false),
-		},
-	})
+	capture.ConfigureCollectorTLS(&b.ds.Spec.Template.Spec, c)
 
 	send, err := b.pipelineStage("send")
 	if err != nil {

@@ -9,16 +9,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	"github.com/netobserv/network-observability-cli/internal/k8s/client"
 	"github.com/netobserv/network-observability-cli/internal/k8s/ocp"
 	"github.com/netobserv/network-observability-cli/internal/plugin/capture"
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
 )
 
 // stdin is overridden in tests so promptYesNo doesn't block on the real terminal.
@@ -89,20 +88,8 @@ func buildOptionString(rawArgs []string) string {
 // buildInPodArgs replaces commands/netobserv's execCommand/execCommandBase construction: the
 // in-pod CLI invocation, used both as the foreground `oc exec` command and (wrapped in `bash -c
 // ... && sleep infinity`) as the background Pod's own startup command.
-func buildInPodArgs(kind manifests.CaptureKind, capOpts *captureOptions, namespace, optionStr string) []string {
-	args := []string{
-		"/network-observability-cli", "get-" + string(kind),
-		"--loglevel", capOpts.logLevel,
-		"--maxtime", capOpts.maxTime.String(),
-		"--namespace", namespace,
-	}
-	if kind.HasCollector() {
-		args = append(args, "--maxbytes", strconv.FormatInt(capOpts.maxBytes, 10))
-	}
-	if optionStr != "" {
-		args = append(args, "--options", optionStr)
-	}
-	return args
+func buildInPodArgs(kind sharedcapture.Type, capOpts *captureOptions, namespace, optionStr string) []string {
+	return sharedcapture.CollectorCommand(kind, namespace, capOpts.logLevel, capOpts.maxTime.String(), capOpts.maxBytes, optionStr)
 }
 
 // shellQuoteJoin renders args as a POSIX shell command line, for the `bash -c "<cmd> && sleep
@@ -115,15 +102,15 @@ func shellQuoteJoin(args []string) string {
 	return strings.Join(quoted, " ")
 }
 
-func printBackgroundInstructions(ctx context.Context, out io.Writer, kind manifests.CaptureKind, capOpts *captureOptions, client *k8sclient.Client) {
+func printBackgroundInstructions(ctx context.Context, out io.Writer, kind sharedcapture.Type, capOpts *captureOptions, client *k8sclient.Client) {
 	switch kind {
-	case manifests.Flows, manifests.Packets:
+	case sharedcapture.Flows, sharedcapture.Packets:
 		fmt.Fprintln(out, "Background capture started. Use:")
 		fmt.Fprintln(out, " - 'netobserv follow' to see the capture progress")
 		fmt.Fprintln(out, " - 'netobserv copy' to copy the generated files locally")
 		fmt.Fprintln(out, " - 'netobserv cleanup' to remove the netobserv components")
 		fmt.Fprintf(out, "\nCapture ends automatically in %s or reaching %d bytes\n", capOpts.maxTime, capOpts.maxBytes)
-	case manifests.Metrics:
+	case sharedcapture.Metrics:
 		fmt.Fprintln(out, "Metrics capture started.")
 		if url, err := ocp.ConsoleURL(ctx, client.Dynamic); err == nil && url != "" {
 			fmt.Fprintf(out, "Open %s/monitoring/dashboards/netobserv-cli to see generated metrics.\n", url)
@@ -135,7 +122,7 @@ func printBackgroundInstructions(ctx context.Context, out io.Writer, kind manife
 
 // onCaptureExit replaces cleanup()'s trap-on-EXIT behavior after an interactive foreground
 // capture: prompt to copy the output, then tear every resource down.
-func onCaptureExit(ctx context.Context, client *k8sclient.Client, namespace string, kind manifests.CaptureKind, capOpts *captureOptions, out io.Writer) error {
+func onCaptureExit(ctx context.Context, client *k8sclient.Client, namespace string, kind sharedcapture.Type, capOpts *captureOptions, out io.Writer) error {
 	if kind.HasCollector() {
 		// isE2E replaces bash's `if [[ "$isE2E" = true || "$copy" = true ]]; then copyOutput; fi`:
 		// the e2e test harness sets this to skip the interactive prompt and always copy, regardless

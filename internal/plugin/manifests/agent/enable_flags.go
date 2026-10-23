@@ -1,6 +1,7 @@
 package agent
 
 import (
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 )
@@ -29,33 +30,39 @@ func (b *Builder) enableHostPID() {
 // EnablePacketDrops replaces the --enable_pkt_drop branch of parse_args (privileged + env var).
 func (b *Builder) EnablePacketDrops() {
 	b.EnablePrivileged()
-	b.setEnv(envPktDrops, "true")
+	b.enableFeature(sharedcapture.PacketDrop)
 }
 
 // EnableDNSTracking replaces the --enable_dns branch of parse_args.
 func (b *Builder) EnableDNSTracking() {
-	b.setEnv(envDNSTracking, "true")
+	b.enableFeature(sharedcapture.DNSTracking)
 }
 
 // EnableRTT replaces the --enable_rtt branch of parse_args.
 func (b *Builder) EnableRTT() {
-	b.setEnv(envRTT, "true")
+	b.enableFeature(sharedcapture.FlowRTT)
 }
 
 // EnableNetworkEvents replaces the --enable_network_events branch of parse_args.
 func (b *Builder) EnableNetworkEvents() {
 	b.EnablePrivileged()
-	b.setEnv(envNetworkEvents, "true")
+	b.enableFeature(sharedcapture.NetworkEvents)
 }
 
 // EnablePacketTranslation replaces the --enable_pkt_translation branch of parse_args.
 func (b *Builder) EnablePacketTranslation() {
-	b.setEnv(envPktTranslation, "true")
+	b.enableFeature(sharedcapture.PacketTranslation)
 }
 
 // EnableIPSecTracking replaces the --enable_ipsec branch of parse_args.
 func (b *Builder) EnableIPSecTracking() {
-	b.setEnv(envIPSecTracking, "true")
+	b.enableFeature(sharedcapture.IPSec)
+}
+
+func (b *Builder) enableFeature(feature sharedcapture.Feature) {
+	if name, ok := sharedcapture.FeatureEnvName(feature); ok {
+		b.setEnv(name, "true")
+	}
 }
 
 // EnableAll replaces the --enable_all branch of parse_args: every flows/metrics feature flag

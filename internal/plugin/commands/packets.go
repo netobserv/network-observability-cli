@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 )
 
 func newPacketsCommand(pluginName string, rawArgs []string) *cobra.Command {
@@ -39,7 +39,7 @@ At least one flow filter is required, to avoid high resource consumption. See
 				return err
 			}
 
-			builder, err := newCaptureBuilder(manifests.Packets, &global)
+			builder, err := newCaptureBuilder(sharedcapture.Packets, &global)
 			if err != nil {
 				return err
 			}
@@ -76,7 +76,7 @@ At least one flow filter is required, to avoid high resource consumption. See
 				return err
 			}
 
-			return runCapture(cmd, manifests.Packets, &global, &capOpts, builder, nil, rawArgs)
+			return runCapture(cmd, sharedcapture.Packets, &global, &capOpts, builder, nil, rawArgs)
 		},
 	}
 

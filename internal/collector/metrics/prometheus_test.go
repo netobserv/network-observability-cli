@@ -19,6 +19,13 @@ func TestBuildQueryRoundsEndToMinuteAndCalculatesStep(t *testing.T) {
 	assert.Equal(t, 30*time.Second, query.Range.Step)
 }
 
+func TestBuildQueryHandlesZeroPoints(t *testing.T) {
+	query := BuildQuery(time.Date(2026, 1, 1, 12, 0, 30, 0, time.UTC), time.Minute, 0, "up")
+	if query.Range.Step != time.Minute {
+		t.Fatalf("expected a one-minute step for zero points, got %s", query.Range.Step)
+	}
+}
+
 func TestMatrixDataAlignsShorterSeriesAndLimitsSeries(t *testing.T) {
 	matrix := Matrix{
 		{Metric: pmod.Metric{"job": "api"}, Values: []pmod.SamplePair{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},

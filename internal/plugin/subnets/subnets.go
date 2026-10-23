@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	sigsyaml "sigs.k8s.io/yaml"
 
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	"github.com/netobserv/network-observability-cli/internal/k8s/ocp"
 )
 
@@ -24,14 +24,6 @@ const (
 
 // installConfig is the subset of the OpenShift install-config.yaml (itself stored as a YAML
 // string inside the cluster-config-v1 ConfigMap) this package reads.
-type installConfig struct {
-	Networking struct {
-		MachineNetwork []struct {
-			CIDR string `json:"cidr"`
-		} `json:"machineNetwork"`
-	} `json:"networking"`
-}
-
 // Discover reads the cluster-config-v1 ConfigMap (kube-system) for machine network CIDRs and
 // the OpenShift Network "cluster" object for pod/service network CIDRs.
 //
@@ -47,15 +39,11 @@ func Discover(ctx context.Context, clientset kubernetes.Interface, dyn dynamic.I
 	if err != nil {
 		return nil, fmt.Errorf("cannot get cluster-config-v1 ConfigMap: %w", err)
 	}
-	var ic installConfig
-	if err := sigsyaml.Unmarshal([]byte(cm.Data["install-config"]), &ic); err != nil {
-		return nil, fmt.Errorf("cannot decode install-config: %w", err)
+	machineCIDRs, err := sharedcapture.ParseMachineNetworkCIDRs(cm.Data["install-config"])
+	if err != nil {
+		return nil, err
 	}
-	for _, mn := range ic.Networking.MachineNetwork {
-		if mn.CIDR != "" {
-			result[Machines] = append(result[Machines], mn.CIDR)
-		}
-	}
+	result[Machines] = machineCIDRs
 
 	network, err := ocp.GetNetwork(ctx, dyn)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +17,7 @@ import (
 
 	"github.com/netobserv/network-observability-cli/internal/k8s/client"
 	"github.com/netobserv/network-observability-cli/internal/k8s/ocp"
-	"github.com/netobserv/network-observability-cli/internal/plugin/capture"
+	plugincapture "github.com/netobserv/network-observability-cli/internal/plugin/capture"
 	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
 	"github.com/netobserv/network-observability-cli/internal/plugin/manifests/agent"
 	"github.com/netobserv/network-observability-cli/internal/plugin/subnets"
@@ -35,7 +36,7 @@ type versionRequirement struct {
 // single entry point and still executes every step in the same order bash did.
 type captureRun struct {
 	cmd        *cobra.Command
-	kind       manifests.CaptureKind
+	kind       sharedcapture.Type
 	global     *globalOptions
 	capOpts    *captureOptions
 	builder    *agent.Builder
@@ -52,7 +53,7 @@ type captureRun struct {
 
 // runCapture is the single entry point flows/packets/metrics call after building and mutating
 // their agent.Builder from the user's flags.
-func runCapture(cmd *cobra.Command, kind manifests.CaptureKind, global *globalOptions, capOpts *captureOptions, builder *agent.Builder, versionReqs []versionRequirement, rawArgs []string) error {
+func runCapture(cmd *cobra.Command, kind sharedcapture.Type, global *globalOptions, capOpts *captureOptions, builder *agent.Builder, versionReqs []versionRequirement, rawArgs []string) error {
 	global.applyDefaults()
 	r := &captureRun{
 		cmd: cmd, kind: kind, global: global, capOpts: capOpts, builder: builder, versionReq: versionReqs, rawArgs: rawArgs,
@@ -211,7 +212,7 @@ func (r *captureRun) applyManifests(namespaceObj *corev1.Namespace, rbacBundle [
 			return err
 		}
 	}
-	if r.kind == manifests.Metrics {
+	if r.kind == sharedcapture.Metrics {
 		fmt.Fprintln(r.out, "creating service monitor")
 		metricsBundle, err := manifests.BuildMetricsBundle(r.global.namespace)
 		if err != nil {
@@ -233,7 +234,7 @@ func (r *captureRun) applyManifests(namespaceObj *corev1.Namespace, rbacBundle [
 
 func (r *captureRun) applyCollectorService() error {
 	fmt.Fprintln(r.out, "creating collector service")
-	svc := manifests.BuildCollectorService(r.global.namespace)
+	svc := sharedcapture.BuildCollectorService("collector", r.global.namespace, map[string]string{"run": "collector"})
 	if r.tls {
 		if svc.Annotations == nil {
 			svc.Annotations = map[string]string{}
@@ -257,7 +258,7 @@ func (r *captureRun) applyCollectorService() error {
 // resolve-tls initContainer has run, then either exec into the collector or leave it running.
 func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 	if !r.tls {
-		if err := capture.WaitForDaemonSetReady(r.ctx, r.client, r.global.namespace, capture.DaemonSetName, 10*time.Minute, r.out); err != nil {
+		if err := plugincapture.WaitForDaemonSetReady(r.ctx, r.client, r.global.namespace, plugincapture.DaemonSetName, 10*time.Minute, r.out); err != nil {
 			return err
 		}
 	}
@@ -269,7 +270,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 	}
 
 	fmt.Fprintln(r.out, "Running collector...")
-	pod, err := capture.CreateCollectorPod(r.ctx, r.client, &capture.CollectorPodOptions{
+	pod, err := plugincapture.CreateCollectorPod(r.ctx, r.client, &plugincapture.CollectorPodOptions{
 		Namespace:      r.global.namespace,
 		Image:          r.global.collectorImage,
 		PullPolicy:     corev1.PullPolicy(r.global.pullPolicy),
@@ -280,7 +281,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 	if err != nil {
 		return err
 	}
-	if err := capture.WaitForPodReady(r.ctx, r.client, r.global.namespace, pod.Name, 2*time.Minute); err != nil {
+	if err := plugincapture.WaitForPodReady(r.ctx, r.client, r.global.namespace, pod.Name, 2*time.Minute); err != nil {
 		return err
 	}
 
@@ -289,7 +290,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 		if err := r.sink.Apply(r.ctx, ds); err != nil {
 			return err
 		}
-		if err := capture.WaitForDaemonSetReady(r.ctx, r.client, r.global.namespace, capture.DaemonSetName, 10*time.Minute, r.out); err != nil {
+		if err := plugincapture.WaitForDaemonSetReady(r.ctx, r.client, r.global.namespace, plugincapture.DaemonSetName, 10*time.Minute, r.out); err != nil {
 			return err
 		}
 	}
@@ -315,7 +316,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 		}
 		_ = onCaptureExit(context.Background(), client, namespace, r.kind, &exitOpts, out)
 	}()
-	return capture.ExecInPod(r.ctx, r.client, &capture.ExecOptions{
+	return plugincapture.ExecInPod(r.ctx, r.client, &plugincapture.ExecOptions{
 		Namespace: r.global.namespace,
 		Pod:       pod.Name,
 		Command:   inPodArgs,
@@ -328,7 +329,7 @@ func (r *captureRun) runCollector(ds *appsv1.DaemonSet) error {
 
 // newSink replaces applyYAML's branch on outputYAML: either every manifest is applied straight
 // to the cluster, or rendered to ./output/<kind>_capture_<date>.yml instead.
-func newSink(client *k8sclient.Client, capOpts *captureOptions, kind manifests.CaptureKind, out io.Writer) (k8sclient.Sink, func(), error) {
+func newSink(client *k8sclient.Client, capOpts *captureOptions, kind sharedcapture.Type, out io.Writer) (k8sclient.Sink, func(), error) {
 	if !capOpts.outputYAML {
 		return &k8sclient.ClusterSink{Client: client}, func() {}, nil
 	}
@@ -346,7 +347,7 @@ func newSink(client *k8sclient.Client, capOpts *captureOptions, kind manifests.C
 	return k8sclient.NewYAMLWriter(f), func() { _ = f.Close() }, nil
 }
 
-func checkClusterVersion(ctx context.Context, client *k8sclient.Client, isOCP bool, kind manifests.CaptureKind, reqs []versionRequirement, out io.Writer) error {
+func checkClusterVersion(ctx context.Context, client *k8sclient.Client, isOCP bool, kind sharedcapture.Type, reqs []versionRequirement, out io.Writer) error {
 	if !isOCP {
 		fmt.Fprintln(out, "Skipping OpenShift version check: cluster is not OpenShift")
 		return nil
@@ -368,7 +369,7 @@ func checkClusterVersion(ctx context.Context, client *k8sclient.Client, isOCP bo
 	}
 
 	allReqs := append([]versionRequirement{}, reqs...)
-	if kind == manifests.Packets {
+	if kind == sharedcapture.Packets {
 		allReqs = append(allReqs, versionRequirement{feature: "Packet capture", minVersion: "4.16.0"})
 	}
 
@@ -386,16 +387,16 @@ func checkClusterVersion(ctx context.Context, client *k8sclient.Client, isOCP bo
 
 // singularLabel replaces setup()'s hardcoded "creating flow-capture agents" / "packet-capture" /
 // "metric-capture" progress messages, which used the singular form matching the underlying
-// manifest filenames (flow-capture.yml, ...) rather than the plural CaptureKind value itself.
-func singularLabel(kind manifests.CaptureKind) string {
+// manifest filenames (flow-capture.yml, ...) rather than the plural CaptureType value itself.
+func singularLabel(kind sharedcapture.Type) string {
 	return kind.Singular()
 }
 
-func printYAMLInstructions(out io.Writer, kind manifests.CaptureKind) {
+func printYAMLInstructions(out io.Writer, kind sharedcapture.Type) {
 	fmt.Fprintln(out, "Check the generated YAML file in output folder.")
 	if kind.HasCollector() {
 		fmt.Fprintln(out, "Apply it with: oc apply -f ./output/<file>.yml")
-	} else if kind == manifests.Metrics {
+	} else if kind == sharedcapture.Metrics {
 		fmt.Fprintln(out, "Apply it, then open your OCP Console and search for the netobserv-cli dashboard.")
 	}
 }

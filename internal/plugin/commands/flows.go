@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 )
 
 func newFlowsCommand(pluginName string, rawArgs []string) *cobra.Command {
@@ -41,7 +41,7 @@ Filters accepted: --direction, --cidr, --protocol, --sport, --dport, --port,
 				return err
 			}
 
-			builder, err := newCaptureBuilder(manifests.Flows, &global)
+			builder, err := newCaptureBuilder(sharedcapture.Flows, &global)
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ Filters accepted: --direction, --cidr, --protocol, --sport, --dport, --port,
 			for _, q := range queries {
 				builder.AddFilterQuery(q)
 			}
-			return runCapture(cmd, manifests.Flows, &global, &capOpts, builder, reqs, rawArgs)
+			return runCapture(cmd, sharedcapture.Flows, &global, &capOpts, builder, reqs, rawArgs)
 		},
 	}
 

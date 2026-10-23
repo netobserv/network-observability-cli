@@ -7,21 +7,18 @@ import (
 	flpapi "github.com/netobserv/flowlogs-pipeline/pkg/api"
 	flpconfig "github.com/netobserv/flowlogs-pipeline/pkg/config"
 	agentconfig "github.com/netobserv/netobserv-ebpf-agent/pkg/config"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
 )
 
 func newFlowsBuilder(t *testing.T) *Builder {
 	t.Helper()
-	ds, err := manifests.BuildDaemonSet(manifests.Flows, "netobserv-cli", "quay.io/netobserv/netobserv-ebpf-agent:main")
-	require.NoError(t, err)
-	pipeline, err := manifests.CollectorPipelineConfig("collector.netobserv-cli.svc.cluster.local")
-	require.NoError(t, err)
+	ds := sharedcapture.BuildAgentDaemonSet(sharedcapture.AgentOptions{Name: "netobserv-cli", Namespace: "netobserv-cli", ServiceAccount: "netobserv-cli", Image: "quay.io/netobserv/netobserv-ebpf-agent:main", Type: sharedcapture.Flows, Sampling: 1, ExcludeInterfaces: []string{"lo"}, Labels: map[string]string{"app": "netobserv-cli"}, ContainerName: "netobserv-cli"})
+	pipeline := sharedcapture.CollectorPipelineConfig("collector.netobserv-cli.svc.cluster.local")
 	b, err := New(ds, pipeline)
 	require.NoError(t, err)
 	return b
@@ -29,10 +26,8 @@ func newFlowsBuilder(t *testing.T) *Builder {
 
 func newMetricsBuilder(t *testing.T) *Builder {
 	t.Helper()
-	ds, err := manifests.BuildDaemonSet(manifests.Metrics, "netobserv-cli", "quay.io/netobserv/netobserv-ebpf-agent:main")
-	require.NoError(t, err)
-	pipeline, err := manifests.MetricsPipelineConfig()
-	require.NoError(t, err)
+	ds := sharedcapture.BuildAgentDaemonSet(sharedcapture.AgentOptions{Name: "netobserv-cli", Namespace: "netobserv-cli", ServiceAccount: "netobserv-cli", Image: "quay.io/netobserv/netobserv-ebpf-agent:main", Type: sharedcapture.Metrics, Sampling: 1, ExcludeInterfaces: []string{"lo"}, Labels: map[string]string{"app": "netobserv-cli"}, ContainerName: "netobserv-cli"})
+	pipeline := sharedcapture.MetricsPipelineConfig()
 	b, err := New(ds, pipeline)
 	require.NoError(t, err)
 	return b

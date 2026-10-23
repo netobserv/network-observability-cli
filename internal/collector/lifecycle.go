@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/netobserv/flowlogs-pipeline/pkg/pipeline/utils"
 	"github.com/netobserv/network-observability-cli/internal/collector/cleanup"
 )
 
@@ -45,8 +46,10 @@ func onLimitReached() bool {
 	if !isBackground {
 		return true
 	}
-	if err := cleanup.DeleteDaemonSet(context.Background(), namespace); err != nil {
-		log.Error(err)
+	if !optionEnabled("managed") {
+		if err := cleanup.DeleteDaemonSet(context.Background(), namespace); err != nil {
+			log.Error(err)
+		}
 	}
 	fmt.Print("Thank you for using...")
 	printBanner()
@@ -54,6 +57,13 @@ func onLimitReached() bool {
 		fmt.Print("\n\n  - Open NetObserv / On Demand dashboard to see generated metrics\n\n\t- Once finished, remove everything using 'oc netobserv cleanup'\n\n                                                      See you soon !\n")
 	} else {
 		fmt.Print("\n\n\t- Download the generated output using 'oc netobserv copy' command\n\n\t- Once finished, clean the collector pod using 'oc netobserv cleanup'\n\n                                                      See you soon !\n")
+	}
+	markManagedCaptureCompleted()
+	if utils.ExitChannel() != nil {
+		utils.CloseExitChannel()
+	}
+	if optionEnabled("managed") {
+		select {}
 	}
 	return false
 }

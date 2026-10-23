@@ -34,7 +34,8 @@ func TestCreateCollectorPodForeground(t *testing.T) {
 	assert.Equal(t, []string{"sleep", "infinity"}, pod.Spec.Containers[0].Command)
 	assert.Equal(t, corev1.PullAlways, pod.Spec.Containers[0].ImagePullPolicy, "defaults to Always when unset, matching bash's hardcoded --image-pull-policy=Always")
 	assert.Empty(t, pod.Spec.InitContainers)
-	assert.Empty(t, pod.Spec.Volumes)
+	require.Len(t, pod.Spec.Volumes, 1)
+	assert.Equal(t, "output", pod.Spec.Volumes[0].Name)
 }
 
 func TestCreateCollectorPodHonorsConfiguredPullPolicy(t *testing.T) {
@@ -68,15 +69,15 @@ func TestCreateCollectorPodWithTLS(t *testing.T) {
 	assert.Equal(t, "resolve-tls", pod.Spec.InitContainers[0].Name)
 	assert.Contains(t, pod.Spec.InitContainers[0].Command, "netobserv-cli")
 
-	require.Len(t, pod.Spec.Volumes, 1)
-	assert.Equal(t, "collector-tls", pod.Spec.Volumes[0].Name)
-	require.NotNil(t, pod.Spec.Volumes[0].Secret)
-	assert.Equal(t, "collector-tls", pod.Spec.Volumes[0].Secret.SecretName)
+	require.Len(t, pod.Spec.Volumes, 2)
+	assert.Equal(t, "collector-tls", pod.Spec.Volumes[1].Name)
+	require.NotNil(t, pod.Spec.Volumes[1].Secret)
+	assert.Equal(t, "collector-tls", pod.Spec.Volumes[1].Secret.SecretName)
 
 	c := pod.Spec.Containers[0]
 	require.Len(t, c.EnvFrom, 1)
 	assert.Equal(t, "collector-tls-config", c.EnvFrom[0].ConfigMapRef.Name)
 	assert.False(t, *c.EnvFrom[0].ConfigMapRef.Optional)
-	require.Len(t, c.VolumeMounts, 1)
-	assert.Equal(t, "collector-tls", c.VolumeMounts[0].Name)
+	require.Len(t, c.VolumeMounts, 2)
+	assert.Equal(t, "collector-tls", c.VolumeMounts[1].Name)
 }

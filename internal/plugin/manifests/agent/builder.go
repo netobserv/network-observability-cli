@@ -47,10 +47,9 @@ type Builder struct {
 	filters  []agentconfig.FlowFilter
 }
 
-// New wraps a DaemonSet freshly built by internal/plugin/manifests.BuildDaemonSet (whose
-// FLP_CONFIG/FLOW_FILTER_RULES env vars are still the "{}"/"[]" placeholders) together with the
-// FLP pipeline config to populate FLP_CONFIG with (internal/plugin/manifests.CollectorPipelineConfig
-// or MetricsPipelineConfig).
+// New wraps a DaemonSet freshly built by the shared capture builder (whose
+// FLP_CONFIG/FLOW_FILTER_RULES env vars are still the placeholders) together
+// with the typed FLP pipeline config to populate FLP_CONFIG.
 func New(ds *appsv1.DaemonSet, pipeline *flpconfig.Root) (*Builder, error) {
 	if ds == nil {
 		return nil, fmt.Errorf("daemonset is nil")

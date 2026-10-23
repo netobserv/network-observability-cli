@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	agentconfig "github.com/netobserv/netobserv-ebpf-agent/pkg/config"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
 	"github.com/netobserv/network-observability-cli/internal/plugin/manifests/agent"
 )
 
@@ -40,10 +40,8 @@ func TestSplitFilterArgsBareDrops(t *testing.T) {
 
 func newTestBuilder(t *testing.T) *agent.Builder {
 	t.Helper()
-	ds, err := manifests.BuildDaemonSet(manifests.Flows, "netobserv-cli", "img")
-	require.NoError(t, err)
-	pipeline, err := manifests.CollectorPipelineConfig("collector.netobserv-cli.svc.cluster.local")
-	require.NoError(t, err)
+	ds := sharedcapture.BuildAgentDaemonSet(sharedcapture.AgentOptions{Name: "netobserv-cli", Namespace: "netobserv-cli", ServiceAccount: "netobserv-cli", Image: "img", Type: sharedcapture.Flows, Sampling: 1, ExcludeInterfaces: []string{"lo"}, Labels: map[string]string{"app": "netobserv-cli"}, ContainerName: "netobserv-cli"})
+	pipeline := sharedcapture.CollectorPipelineConfig("collector.netobserv-cli.svc.cluster.local")
 	b, err := agent.New(ds, pipeline)
 	require.NoError(t, err)
 	return b

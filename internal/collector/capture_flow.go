@@ -46,6 +46,14 @@ func runFlowCapture(_ *cobra.Command, _ []string) {
 }
 
 func startFlowCollector() {
+	utils.InitExitChannel()
+	var limitTimer *time.Timer
+	if isBackground {
+		limitTimer = time.AfterFunc(maxTime, func() {
+			onLimitReached()
+		})
+		defer limitTimer.Stop()
+	}
 	if len(filename) > 0 {
 		log.Debugf("Starting Flow Capture for %s...", filename)
 	} else {

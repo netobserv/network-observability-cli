@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/netobserv/netobserv-operator/pkg/capture"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -48,26 +49,13 @@ func CreateCollectorPod(ctx context.Context, client *k8sclient.Client, opts *Col
 		pullPolicy = corev1.PullAlways
 	}
 
-	pod := &corev1.Pod{
-		// `run: collector` matches the label `oc run`/`kubectl run` itself would have set on a
-		// pod named "collector" — res/collector-service.yml's Service selects on exactly this
-		// label, so a collector Pod without it would never receive any agent traffic at all.
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      CollectorPodName,
-			Namespace: opts.Namespace,
-			Labels:    map[string]string{"run": CollectorPodName},
-		},
-		Spec: corev1.PodSpec{
-			ServiceAccountName: opts.ServiceAccount,
-			RestartPolicy:      corev1.RestartPolicyNever,
-			Containers: []corev1.Container{{
-				Name:            CollectorPodName,
-				Image:           opts.Image,
-				ImagePullPolicy: pullPolicy,
-				Command:         opts.Command,
-			}},
-		},
-	}
+	// The shared builder owns the common Pod shape and labels; CLI-only TLS wiring
+	// is added below before the object is sent to the API server.
+	pod := capture.BuildCollectorPod(capture.CollectorPodOptions{
+		Name: CollectorPodName, Namespace: opts.Namespace, ServiceAccount: opts.ServiceAccount,
+		Image: opts.Image, Command: opts.Command,
+	})
+	pod.Spec.Containers[0].ImagePullPolicy = pullPolicy
 
 	if opts.TLSEnabled {
 		// The resolve-tls initContainer writes the collector-tls-config ConfigMap (resolved

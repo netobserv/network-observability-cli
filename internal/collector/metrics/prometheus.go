@@ -20,6 +20,9 @@ import (
 
 // BuildQuery creates a range query for the requested duration and point count.
 func BuildQuery(now time.Time, duration time.Duration, points int, promQL string) Query {
+	if points < 1 {
+		points = 1
+	}
 	end := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, now.Location())
 	return Query{
 		Range: v1.Range{

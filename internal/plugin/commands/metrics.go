@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/netobserv/network-observability-cli/internal/plugin/manifests"
+	sharedcapture "github.com/netobserv/netobserv-operator/pkg/capture"
 )
 
 // baseMetrics replaces help.sh's `includeList` default: the metrics always generated regardless
@@ -37,7 +37,7 @@ func newMetricsCommand(pluginName string, rawArgs []string) *cobra.Command {
 				return err
 			}
 
-			builder, err := newCaptureBuilder(manifests.Metrics, &global)
+			builder, err := newCaptureBuilder(sharedcapture.Metrics, &global)
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ func newMetricsCommand(pluginName string, rawArgs []string) *cobra.Command {
 				fmt.Fprintf(cmd.OutOrStdout(), " - %s\n", m)
 			}
 
-			return runCapture(cmd, manifests.Metrics, &global, &capOpts, builder, reqs, rawArgs)
+			return runCapture(cmd, sharedcapture.Metrics, &global, &capOpts, builder, reqs, rawArgs)
 		},
 	}
 
