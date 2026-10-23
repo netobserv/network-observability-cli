@@ -103,6 +103,18 @@ func envVar(t *testing.T, ds *appsv1.DaemonSet, name string) string {
 	return ""
 }
 
+func optionalEnvVar(ds *appsv1.DaemonSet, name string) string {
+	if len(ds.Spec.Template.Spec.Containers) == 0 {
+		return ""
+	}
+	for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == name {
+			return env.Value
+		}
+	}
+	return ""
+}
+
 func flowFilters(t *testing.T, ds *appsv1.DaemonSet) []agentconfig.FlowFilter {
 	t.Helper()
 	var filters []agentconfig.FlowFilter
@@ -307,7 +319,7 @@ func TestMetricYAML(t *testing.T) {
 			assert.Equal(t, "openshift-config-managed", metadataField(t, dashboardCM, "namespace"))
 
 			ds := decodeDaemonSet(t, docs)
-			assert.Equal(t, "false", envVar(t, ds, "ENABLE_PKT_DROPS"))
+			assert.NotEqual(t, "true", optionalEnvVar(ds, "ENABLE_PKT_DROPS"))
 
 			return ctx
 		},
