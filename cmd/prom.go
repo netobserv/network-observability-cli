@@ -114,7 +114,7 @@ func newClient(timeout time.Duration, skipTLS bool, caPath string, tokenPath str
 func executeQueryRange(ctx context.Context, cl api.Client, q *Query) (pmod.Value, error) {
 	log.Debugf("executeQueryRange: %v; promQL=%s", q.Range, q.PromQL)
 	v1api := v1.NewAPI(cl)
-	result, warnings, err := v1api.QueryRange(ctx, q.PromQL, q.Range)
+	result, warnings, _, err := v1api.QueryRange(ctx, q.PromQL, q.Range)
 	log.Tracef("Result:\n%v", result)
 	if len(warnings) > 0 {
 		log.Infof("executeQueryRange warnings: %v", warnings)
